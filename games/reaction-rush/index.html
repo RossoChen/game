@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reaction Rush</title>
+  <style>
+    :root { color-scheme: dark; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
+      background:#0b1220; color:#e7eefc;
+      display:flex; min-height:100vh; align-items:center; justify-content:center;
+    }
+    .card{
+      width:min(720px, 92vw);
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      padding:22px 18px;
+    }
+    h1{ margin:0 0 6px; font-size:22px; letter-spacing:.2px; }
+    .sub{ opacity:.8; margin:0 0 16px; line-height:1.45; }
+    .grid{ display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; }
+    @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
+    .panel{
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:14px;
+    }
+    .bigBtn{
+      width:100%;
+      padding:18px 14px;
+      font-size:18px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background:#2a3346;
+      color:#e7eefc;
+      cursor:pointer;
+      transition: transform .04s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .bigBtn:active{ transform: scale(.99); }
+    .bigBtn[disabled]{ cursor:not-allowed; opacity:.88; }
+    .state-ready{ background:#2a3346; }
+    .state-wait{ background:#5a3b2b; border-color: rgba(255,199,153,.35); }
+    .state-go{ background:#1f5a3b; border-color: rgba(144,255,192,.35); }
+    .state-fail{ background:#5a1f2a; border-color: rgba(255,144,170,.35); }
+
+    .stats{
+      display:grid; grid-template-columns:1fr 1fr; gap:10px;
+    }
+    .stat{
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .k{ opacity:.75; font-size:12px; }
+    .v{ font-size:20px; font-weight:700; margin-top:4px; }
+    .row{ display:flex; gap:10px; margin-top:12px; }
+    .btn{
+      flex:1;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#e7eefc;
+      cursor:pointer;
+    }
+    .btn:hover{ background:rgba(255,255,255,.09); }
+    .log{
+      margin-top:10px;
+      max-height:220px;
+      overflow:auto;
+      font-size:13px;
+      line-height:1.45;
+      opacity:.9;
+    }
+    .tag{
+      display:inline-block;
+      font-size:12px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      margin-left:8px;
+      opacity:.9;
+    }
+    .hint{ opacity:.75; font-size:12px; margin-top:10px; }
+    a{ color:#9fd0ff; text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Reaction Rush <span class="tag">單檔可上 GitHub Pages</span></h1>
+    <p class="sub">
+      等按鈕變綠再點，太早點算失敗。10 局後會算平均。
+      <br/>（這東西很無聊沒錯，但它很「可展示」，而且不會惹資安部門不爽。）
+    </p>
+
+    <div class="grid">
+      <div class="panel">
+        <button id="playBtn" class="bigBtn state-ready">開始（按我）</button>
+        <div class="hint">
+          快捷鍵：<b>Space</b> 開始/點擊　|　<b>R</b> 重置
+        </div>
+        <div id="log" class="log"></div>
+      </div>
+
+      <div class="panel">
+        <div class="stats">
+          <div class="stat">
+            <div class="k">回合</div>
+            <div id="round" class="v">0 / 10</div>
+          </div>
+          <div class="stat">
+            <div class="k">最新反應</div>
+            <div id="last" class="v">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">平均（成功）</div>
+            <div id="avg" class="v">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">最佳</div>
+            <div id="best" class="v">—</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="resetBtn" class="btn">重置</button>
+          <button id="copyBtn" class="btn">複製成績</button>
+        </div>
+
+        <div class="hint">
+          小提示：你如果平均 <b>&lt; 220ms</b>，那你不是很強，就是你在作弊（我持保留態度）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const playBtn  = document.getElementById('playBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const copyBtn  = document.getElementById('copyBtn');
+  const elRound  = document.getElementById('round');
+  const elLast   = document.getElementById('last');
+  const elAvg    = document.getElementById('avg');
+  const elBest   = document.getElementById('best');
+  const logEl    = document.getElementById('log');
+
+  const TOTAL = 10;
+  let state = 'ready'; // ready | wait | go | done
+  let round = 0;
+  let results = []; // {ms, ok}
+  let tGo = 0;
+  let timer = null;
+
+  // Keep best score in localStorage (pure client-side)
+  const LS_KEY = 'reaction_rush_best_ms';
+  let bestMs = Number(localStorage.getItem(LS_KEY) || 0) || 0;
+
+  function fmtMs(ms){ return `${Math.round(ms)} ms`; }
+
+  function setBtnState(kind){
+    playBtn.classList.remove('state-ready','state-wait','state-go','state-fail');
+    if(kind==='ready'){
+      playBtn.classList.add('state-ready');
+      playBtn.textContent = '開始（按我）';
+    }else if(kind==='wait'){
+      playBtn.classList.add('state-wait');
+      playBtn.textContent = '等一下…（別偷點）';
+    }else if(kind==='go'){
+      playBtn.classList.add('state-go');
+      playBtn.textContent = '現在！點！';
+    }else if(kind==='fail'){
+      playBtn.classList.add('state-fail');
+      playBtn.textContent = '太早了 😑（再來）';
+    }else if(kind==='done'){
+      playBtn.classList.add('state-ready');
+      playBtn.textContent = '再玩一輪';
+    }
+  }
+
+  function updateStats(){
+    elRound.textContent = `${round} / ${TOTAL}`;
+
+    const last = results.length ? results[results.length-1] : null;
+    elLast.textContent = last ? (last.ok ? fmtMs(last.ms) : '失敗') : '—';
+
+    const oks = results.filter(r => r.ok).map(r => r.ms);
+    if(oks.length){
+      const avg = oks.reduce((a,b)=>a+b,0) / oks.length;
+      elAvg.textContent = fmtMs(avg);
+      const best = Math.min(...oks);
+      elBest.textContent = fmtMs(bestMs ? Math.min(bestMs, best) : best);
+    }else{
+      elAvg.textContent = '—';
+      elBest.textContent = bestMs ? fmtMs(bestMs) : '—';
+    }
+  }
+
+  function log(line){
+    const ts = new Date().toLocaleTimeString();
+    logEl.innerHTML = `<div>[${ts}] ${line}</div>` + logEl.innerHTML;
+  }
+
+  function clearTimer(){
+    if(timer){ clearTimeout(timer); timer = null; }
+  }
+
+  function scheduleGo(){
+    clearTimer();
+    // random delay: 900~2600ms
+    const delay = 900 + Math.random() * 1700;
+    timer = setTimeout(() => {
+      state = 'go';
+      tGo = performance.now();
+      setBtnState('go');
+      log('✅ GO！');
+    }, delay);
+  }
+
+  function startRound(){
+    if(round >= TOTAL){
+      // new session
+      round = 0;
+      results = [];
+    }
+    round += 1;
+    state = 'wait';
+    setBtnState('wait');
+    playBtn.disabled = false;
+    log(`第 ${round} 回合：等待變綠…`);
+    scheduleGo();
+    updateStats();
+  }
+
+  function onClick(){
+    if(state === 'ready' || state === 'done'){
+      startRound();
+      return;
+    }
+    if(state === 'wait'){
+      // early click
+      results.push({ms: 0, ok: false});
+      setBtnState('fail');
+      log('❌ 太早點：判定失敗。');
+      clearTimer();
+      state = 'ready';
+      updateStats();
+      return;
+    }
+    if(state === 'go'){
+      const ms = performance.now() - tGo;
+      results.push({ms, ok: true});
+      log(`🎯 命中：${fmtMs(ms)}`);
+
+      if(!bestMs || ms < bestMs){
+        bestMs = ms;
+        localStorage.setItem(LS_KEY, String(Math.round(bestMs)));
+        log(`🏆 新紀錄：${fmtMs(bestMs)}`);
+      }
+
+      updateStats();
+
+      if(round >= TOTAL){
+        state = 'done';
+        setBtnState('done');
+        log('📊 本輪結束。按「再玩一輪」或 Space。');
+      }else{
+        // auto next
+        state = 'ready';
+        setBtnState('ready');
+        // slight pause then start next to keep flow
+        setTimeout(startRound, 450);
+      }
+    }
+  }
+
+  function resetAll(){
+    clearTimer();
+    state = 'ready';
+    round = 0;
+    results = [];
+    setBtnState('ready');
+    log('🔄 已重置（不含最佳紀錄）。');
+    updateStats();
+  }
+
+  async function copyScore(){
+    const oks = results.filter(r => r.ok).map(r => r.ms);
+    const fails = results.filter(r => !r.ok).length;
+    const avg = oks.length ? (oks.reduce((a,b)=>a+b,0)/oks.length) : null;
+    const best = oks.length ? Math.min(...oks) : null;
+
+    const text =
+`Reaction Rush 成績
+- 回合：${round}/${TOTAL}
+- 成功：${oks.length}，失敗：${fails}
+- 平均：${avg ? Math.round(avg)+' ms' : '—'}
+- 本輪最佳：${best ? Math.round(best)+' ms' : '—'}
+- 歷史最佳：${bestMs ? Math.round(bestMs)+' ms' : '—'}
+- 時間：${new Date().toLocaleString()}`;
+
+    try{
+      await navigator.clipboard.writeText(text);
+      log('📋 成績已複製到剪貼簿。');
+    }catch(e){
+      log('⚠️ 複製失敗（瀏覽器權限問題）。你可以手動選取。');
+      // fallback: prompt
+      window.prompt('複製這段：', text);
+    }
+  }
+
+  playBtn.addEventListener('click', onClick);
+  resetBtn.addEventListener('click', resetAll);
+  copyBtn.addEventListener('click', copyScore);
+
+  window.addEventListener('keydown', (e) => {
+    if(e.code === 'Space'){
+      e.preventDefault();
+      onClick();
+    }else if(e.key.toLowerCase() === 'r'){
+      resetAll();
+    }
+  });
+
+  // Init
+  setBtnState('ready');
+  updateStats();
+  log('👋 Ready。按「開始」或 Space。');
+})();
+</script>
+</body>
+</html>
