@@ -5,217 +5,200 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
   <title>Snake</title>
 
-  <!-- PWA / Add to Home Screen (iOS/Android) -->
+  <!-- iOS standalone (Add to Home Screen) -->
   <meta name="theme-color" content="#0b1220" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Snake" />
-  <link rel="manifest" href="/game/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/game/icons/icon-192.png" />
+
+  <!-- 如果你 manifest 放在 repo 根目錄，repo 叫 game，這樣寫最穩 -->
+  <link rel="manifest" href="/game/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
 
   <style>
     :root { color-scheme: dark; }
 
-    /* ✅ 全站鎖定：不捲動、不回彈、不被瀏覽器拉著跑 */
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      overscroll-behavior: none;
-      background: #0b1220;
-      color: #e7eefc;
+    html, body{
+      margin:0; height:100%;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:#0b1220; color:#e7eefc;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: none;
+      -webkit-user-select:none; user-select:none;
+      touch-action:none;
     }
-    body {
-      position: fixed; /* iOS Safari: 真的鎖住畫面 */
-      inset: 0;
-    }
+    body{ position:fixed; inset:0; }
 
-    /* ✅ 動態島 / Home Indicator 安全區 */
-    .app {
-      height: 100svh; /* 比 100vh 更抗手機瀏覽器工具列跳動 */
+    .app{
+      height:100svh;
       padding-top: calc(env(safe-area-inset-top) + 10px);
       padding-right: calc(env(safe-area-inset-right) + 12px);
       padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
       padding-left: calc(env(safe-area-inset-left) + 12px);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
+      display:grid;
+      grid-template-rows: auto 1fr auto;
+      gap:10px;
+      place-items:center;
     }
 
-    /* 計分板 */
-    .hud {
-      width: min(520px, 96vw);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
+    .hud{
+      width:min(520px, 96vw);
+      display:grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap:10px;
+      align-items:center;
     }
-    .pill {
-      flex: 1;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      border-radius: 999px;
-      padding: 10px 12px;
-      font-size: 14px;
-      text-align: center;
-      white-space: nowrap;
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:14px;
+      text-align:center;
+      white-space:nowrap;
     }
-    .pill strong { font-weight: 800; }
+    .pill strong{ font-weight:800; }
 
-    /* 遊戲區（固定方形） */
-    .stage {
-      width: min(520px, 96vw);
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .btn{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#e7eefc;
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
-    .stageInner {
-      width: 100%;
-      height: 100%;
-      max-height: min(520px, 58svh);
-      aspect-ratio: 1 / 1;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: #0a0f1c;
-      position: relative;
-      overflow: hidden;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      touch-action: none;
-    }
+    .btn:active{ transform:scale(0.985); }
 
-    /* Game Over / Paused */
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 16px;
-      background: rgba(0,0,0,.55);
-      backdrop-filter: blur(6px);
+    /* ✅ 直接用 CSS min() 算出「不會變 0」的正方形棋盤 */
+    .board{
+      width: min(520px, 96vw, 56svh);
+      height:min(520px, 96vw, 56svh);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:#0a0f1c;
+      position:relative;
+      overflow:hidden;
     }
-    .overlay.show { display: flex; }
-    .overlay h2 { margin: 0 0 6px; font-size: 18px; }
-    .overlay p { margin: 0; opacity: .85; font-size: 13px; line-height: 1.4; }
+    canvas{ width:100%; height:100%; display:block; }
 
-    /* 方向鍵（只留你要的） */
-    .dpad {
-      width: min(520px, 96vw);
-      display: grid;
+    .overlay{
+      position:absolute; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      text-align:center;
+      padding:16px;
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(6px);
+    }
+    .overlay.show{ display:flex; }
+    .overlay h2{ margin:0 0 6px; font-size:18px; }
+    .overlay p{ margin:0; opacity:.85; font-size:13px; line-height:1.4; }
+
+    .dpad{
+      width:min(520px, 96vw);
+      display:grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
+      gap:10px;
     }
-    .btn {
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      border-radius: 14px;
-      padding: 14px 0;
-      color: #e7eefc;
-      font-size: 18px;
-      font-weight: 700;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
+    .pad{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#e7eefc;
+      border-radius:14px;
+      padding:14px 0;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
-    .btn:active { transform: scale(0.985); }
-    .blank { opacity: 0; pointer-events: none; }
+    .blank{ opacity:0; pointer-events:none; }
 
-    /* 小一點的手機：按鍵跟棋盤也能塞得下 */
-    @media (max-height: 720px) {
-      .stageInner { max-height: min(520px, 52svh); }
-      .btn { padding: 12px 0; }
-      .pill { padding: 9px 10px; }
+    @media (max-height: 720px){
+      .pad{ padding:12px 0; }
+      .pill{ padding:9px 10px; }
+      .btn{ padding:9px 10px; }
     }
   </style>
 </head>
 
 <body>
-  <div class="app" id="app">
+  <div class="app">
     <div class="hud">
       <div class="pill">分數：<strong id="score">0</strong></div>
       <div class="pill">最高：<strong id="best">0</strong></div>
-      <div class="pill">狀態：<strong id="state">Ready</strong></div>
+      <button class="btn" id="startBtn">Start</button>
+      <button class="btn" id="restartBtn">Restart</button>
     </div>
 
-    <div class="stage">
-      <div class="stageInner" id="stage">
-        <canvas id="cv"></canvas>
-        <div class="overlay" id="overlay">
-          <div>
-            <h2 id="ovTitle">Paused</h2>
-            <p id="ovText">點一下畫面或按方向鍵開始</p>
-          </div>
+    <div class="board" id="board">
+      <canvas id="cv"></canvas>
+      <div class="overlay show" id="overlay">
+        <div>
+          <h2 id="ovTitle">Ready</h2>
+          <p id="ovText">按 Start / 方向鍵開始</p>
         </div>
       </div>
     </div>
 
-    <div class="dpad" id="dpad">
-      <button class="btn blank"> </button>
-      <button class="btn" data-dir="U">▲</button>
-      <button class="btn blank"> </button>
+    <div class="dpad">
+      <button class="pad blank"> </button>
+      <button class="pad" data-dir="U">▲</button>
+      <button class="pad blank"> </button>
 
-      <button class="btn" data-dir="L">◀</button>
-      <button class="btn" id="toggle">⏯</button>
-      <button class="btn" data-dir="R">▶</button>
+      <button class="pad" data-dir="L">◀</button>
+      <button class="pad blank"> </button>
+      <button class="pad" data-dir="R">▶</button>
 
-      <button class="btn blank"> </button>
-      <button class="btn" data-dir="D">▼</button>
-      <button class="btn blank"> </button>
+      <button class="pad blank"> </button>
+      <button class="pad" data-dir="D">▼</button>
+      <button class="pad blank"> </button>
     </div>
   </div>
 
 <script>
 (() => {
-  // ===== Config =====
+  // 防 iOS 彈跳/滑動（你要固定頁面）
+  document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
+
   const GRID = 22;
   const BASE_STEP_MS = 140;
   const SPEEDUP_EVERY = 6;
   const SPEEDUP_FACTOR = 0.92;
-  const BEST_KEY = "snake_best_v2";
+  const BEST_KEY = "snake_best_v3";
 
-  // ===== DOM =====
-  const stage = document.getElementById("stage");
+  const board = document.getElementById("board");
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
 
   const elScore = document.getElementById("score");
   const elBest  = document.getElementById("best");
-  const elState = document.getElementById("state");
+  const startBtn   = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
 
   const overlay = document.getElementById("overlay");
   const ovTitle = document.getElementById("ovTitle");
   const ovText  = document.getElementById("ovText");
-  const toggleBtn = document.getElementById("toggle");
 
   let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
   elBest.textContent = best;
 
-  // ===== Canvas sizing (square, crisp) =====
-  function resizeCanvas() {
-    const rect = stage.getBoundingClientRect();
-    const sizeCss = Math.floor(Math.min(rect.width, rect.height));
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    cv.width = Math.floor(sizeCss * dpr);
+  let dpr = 1;
+  let sizeCss = 0;
+
+  function resizeCanvas(){
+    const rect = board.getBoundingClientRect();
+    sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width  = Math.floor(sizeCss * dpr);
     cv.height = Math.floor(sizeCss * dpr);
-    cv.style.width = sizeCss + "px";
-    cv.style.height = sizeCss + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     draw();
   }
   window.addEventListener("resize", resizeCanvas);
 
-  // ===== Game state =====
   let snake, dir, pendingDir, food, score, foodsEaten;
   let running = false;
   let gameOver = false;
@@ -224,31 +207,32 @@
 
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
-  function isReverse(nd){ return (nd.x === -dir.x && nd.y === -dir.y); }
+  function isReverse(nd){ return nd.x===-dir.x && nd.y===-dir.y; }
 
   function setOverlay(show, title, text){
     if(show){
       ovTitle.textContent = title;
       ovText.textContent  = text;
       overlay.classList.add("show");
-    } else {
+    }else{
       overlay.classList.remove("show");
     }
-  }
-
-  function setStateLabel(){
-    if(gameOver) elState.textContent = "Over";
-    else if(running) elState.textContent = "Run";
-    else elState.textContent = "Ready";
   }
 
   function syncUI(){
     elScore.textContent = score;
     elBest.textContent = best;
-    setStateLabel();
+    startBtn.textContent = running ? "Pause" : "Start";
   }
 
-  function resetGame() {
+  function placeFood(){
+    while(true){
+      const p = {x:randInt(GRID), y:randInt(GRID)};
+      if(!snake.some(s => same(s,p))){ food=p; return; }
+    }
+  }
+
+  function resetGame(){
     const mid = Math.floor(GRID/2);
     snake = [{x:mid, y:mid}, {x:mid-1, y:mid}, {x:mid-2, y:mid}];
     dir = {x:1, y:0};
@@ -256,57 +240,63 @@
     score = 0;
     foodsEaten = 0;
     stepMs = BASE_STEP_MS;
-    gameOver = false;
     running = false;
+    gameOver = false;
     lastStepAt = 0;
     placeFood();
     syncUI();
-    setOverlay(true, "Ready", "點一下畫面或按方向鍵開始");
-    toggleBtn.textContent = "⏯";
     draw();
-  }
-
-  function placeFood() {
-    while(true){
-      const p = {x: randInt(GRID), y: randInt(GRID)};
-      if(!snake.some(s => same(s,p))){ food = p; return; }
-    }
+    setOverlay(true, "Ready", "按 Start / 方向鍵開始");
   }
 
   function queueDir(dx, dy){
     const nd = {x:dx, y:dy};
     if(isReverse(nd)) return;
     pendingDir = nd;
-    if(!running && !gameOver) setRunning(true); // 手機：按方向就直接跑
+    if(!running && !gameOver) setRunning(true);
   }
 
-  function applyDirQueue(){
+  function setRunning(v){
+    if(gameOver && v) return;
+    running = v;
+    syncUI();
+    if(running){
+      setOverlay(false);
+      requestAnimationFrame(loop);
+    }else{
+      setOverlay(true, "Paused", "按 Start 繼續");
+    }
+  }
+
+  function applyDir(){
     if(!pendingDir) return;
     if(isReverse(pendingDir)) return;
     dir = pendingDir;
     pendingDir = null;
   }
 
+  function endGame(){
+    running = false;
+    gameOver = true;
+    syncUI();
+    draw(true);
+    setOverlay(true, "Game Over", "按 Restart 重新開始");
+  }
+
   function step(){
-    applyDirQueue();
+    applyDir();
 
     const head = snake[0];
     const next = {x: head.x + dir.x, y: head.y + dir.y};
 
-    // hit wall
-    if(next.x < 0 || next.x >= GRID || next.y < 0 || next.y >= GRID){
-      endGame();
-      return;
-    }
+    if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){ endGame(); return; }
 
     const willEat = same(next, food);
-    const bodyToCheck = willEat ? snake : snake.slice(0, -1);
-    if(bodyToCheck.some(p => same(p, next))){
-      endGame();
-      return;
-    }
+    const body = willEat ? snake : snake.slice(0, -1);
+    if(body.some(p => same(p, next))){ endGame(); return; }
 
     snake.unshift(next);
+
     if(willEat){
       foodsEaten += 1;
       score += 10;
@@ -318,7 +308,7 @@
         stepMs = Math.max(60, Math.floor(stepMs * SPEEDUP_FACTOR));
       }
       placeFood();
-    } else {
+    }else{
       snake.pop();
     }
 
@@ -326,30 +316,9 @@
     draw();
   }
 
-  function endGame(){
-    gameOver = true;
-    running = false;
-    syncUI();
-    setOverlay(true, "Game Over", "碰到牆或身體就結束。點一下重新開始");
-    draw(true);
-  }
-
-  function setRunning(v){
-    if(gameOver) return;
-    running = v;
-    syncUI();
-    if(running){
-      setOverlay(false);
-      requestAnimationFrame(loop);
-    } else {
-      setOverlay(true, "Paused", "點一下畫面或按 ⏯ 繼續");
-    }
-  }
-
   function loop(t){
     if(!running) return;
     if(!lastStepAt) lastStepAt = t;
-
     if(t - lastStepAt >= stepMs){
       lastStepAt = t;
       step();
@@ -358,14 +327,13 @@
   }
 
   function draw(isOver=false){
-    const w = cv.getBoundingClientRect().width;
+    const w = sizeCss || Math.floor(board.getBoundingClientRect().width) || 1;
     const cell = w / GRID;
 
     ctx.clearRect(0,0,w,w);
 
-    // grid (subtle)
+    // grid
     ctx.globalAlpha = 0.10;
-    ctx.lineWidth = 1;
     ctx.beginPath();
     for(let i=1;i<GRID;i++){
       const p = i*cell;
@@ -383,7 +351,7 @@
     ctx.fill();
 
     // snake
-    for(let i=snake.length-1; i>=0; i--){
+    for(let i=snake.length-1;i>=0;i--){
       const p = snake[i];
       const x = p.x*cell, y = p.y*cell;
       const r = cell*0.18;
@@ -411,76 +379,59 @@
     ctx.closePath();
   }
 
-  // ===== Controls =====
-  // Keyboard
+  // keyboard
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"," "].includes(k)) e.preventDefault();
 
     if(k === " "){
-      if(gameOver) { resetGame(); setRunning(true); }
-      else setRunning(!running);
+      if(gameOver) return;
+      setRunning(!running);
       return;
     }
     if(gameOver) return;
 
-    if(k === "arrowup" || k === "w") queueDir(0,-1);
-    else if(k === "arrowdown" || k === "s") queueDir(0, 1);
-    else if(k === "arrowleft" || k === "a") queueDir(-1,0);
-    else if(k === "arrowright" || k === "d") queueDir(1,0);
+    if(k==="arrowup"||k==="w") queueDir(0,-1);
+    else if(k==="arrowdown"||k==="s") queueDir(0,1);
+    else if(k==="arrowleft"||k==="a") queueDir(-1,0);
+    else if(k==="arrowright"||k==="d") queueDir(1,0);
   }, {passive:false});
 
-  // D-pad
+  // dpad
   document.querySelectorAll("[data-dir]").forEach(btn => {
     btn.addEventListener("click", () => {
       if(gameOver) return;
       const d = btn.dataset.dir;
       if(d==="U") queueDir(0,-1);
-      if(d==="D") queueDir(0, 1);
+      if(d==="D") queueDir(0,1);
       if(d==="L") queueDir(-1,0);
-      if(d==="R") queueDir(1, 0);
+      if(d==="R") queueDir(1,0);
     });
   });
 
-  // Toggle
-  toggleBtn.addEventListener("click", () => {
-    if(gameOver){ resetGame(); setRunning(true); return; }
+  // start/pause
+  startBtn.addEventListener("click", () => {
+    if(gameOver) return;
     setRunning(!running);
   });
 
-  // Tap stage: start/pause or restart on game over
-  stage.addEventListener("click", () => {
-    if(gameOver){ resetGame(); setRunning(true); return; }
+  // restart
+  restartBtn.addEventListener("click", () => {
+    resetGame();
+    setRunning(true);
+  });
+
+  // tap board: start/pause
+  board.addEventListener("click", () => {
+    if(gameOver) return;
     setRunning(!running);
   });
 
-  // Swipe on canvas (optional but好用)
-  let start = null;
-  cv.addEventListener("pointerdown", (e) => {
-    cv.setPointerCapture(e.pointerId);
-    start = {x:e.clientX, y:e.clientY};
+  // init（等 layout 完成再做 resize，避免 0）
+  requestAnimationFrame(() => {
+    resizeCanvas();
+    resetGame();
   });
-  cv.addEventListener("pointerup", (e) => {
-    if(!start) return;
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-    start = null;
-
-    const ax = Math.abs(dx), ay = Math.abs(dy);
-    if(Math.max(ax, ay) < 18) return; // ignore tiny swipe
-
-    if(ax > ay){
-      if(dx > 0) queueDir(1,0);
-      else queueDir(-1,0);
-    }else{
-      if(dy > 0) queueDir(0,1);
-      else queueDir(0,-1);
-    }
-  });
-
-  // ===== Init =====
-  resizeCanvas();
-  resetGame();
 })();
 </script>
 </body>
