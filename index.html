@@ -2,30 +2,86 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+
   <title>RossoChen Games</title>
+
+  <!-- ✅ iOS: 讓「加入主畫面」變成 standalone（沒有網址列那種） -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Games" />
+  <meta name="theme-color" content="#0b1220" />
+
+  <!-- ✅ repo 叫 game：根目錄下的 manifest / icons -->
+  <link rel="manifest" href="/game/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/game/icons/icon-192.png" />
+
   <style>
     :root{color-scheme:dark}
-    body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif;background:#0b1220;color:#e7eefc}
-    .wrap{width:min(900px,92vw);margin:40px auto}
+
+    /* ✅ 固定頁面，不讓整個網頁跟著上下滑、回彈 */
+    html,body{
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:#0b1220;
+      color:#e7eefc;
+      font-family:system-ui,"Noto Sans TC",sans-serif;
+      -webkit-user-select:none; user-select:none;
+      touch-action:manipulation;
+    }
+    body{ position:fixed; inset:0; }
+
+    /* ✅ 安全區：動態島/狀態列/下方 Home 指示條 */
+    .app{
+      height:100svh;
+      padding-top: calc(env(safe-area-inset-top) + 14px);
+      padding-right: calc(env(safe-area-inset-right) + 14px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
+      padding-left: calc(env(safe-area-inset-left) + 14px);
+      display:flex;
+      justify-content:center;
+    }
+
+    /* 內容如果變多：改成「內部可捲動」，但整頁不會被 Safari 拉著跑 */
+    .wrap{
+      width:min(900px,92vw);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
     h1{margin:0 0 8px;font-size:28px}
     p{margin:0 0 18px;opacity:.8}
-    a.card{display:block;padding:16px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);text-decoration:none;color:inherit}
+
+    a.card{
+      display:block;
+      padding:16px;
+      border-radius:16px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      text-decoration:none;
+      color:inherit;
+      -webkit-tap-highlight-color:transparent;
+    }
     a.card:hover{background:rgba(255,255,255,.09)}
     .t{font-weight:800;margin-bottom:6px}
     .d{opacity:.78;font-size:13px;line-height:1.4}
   </style>
 </head>
+
 <body>
-  <div class="wrap">
-    <h1>Games Hub</h1>
-    <p>入口頁。每個遊戲一個資料夾。</p>
+  <div class="app">
+    <div class="wrap">
+      <h1>Games Hub</h1>
+      <p>入口頁。每個遊戲一個資料夾。</p>
 
-    <a class="card" href="games/snake/">
-      <div class="t">Snake</div>
-      <div class="d">經典貪食蛇：碰牆/碰身體結束。</div>
-    </a>
-
+      <!-- ✅ 不要 target=_blank，不要放外部完整網址，避免跳回 Safari -->
+      <a class="card" href="games/snake/">
+        <div class="t">Snake</div>
+        <div class="d">經典貪食蛇：碰牆/碰身體結束。</div>
+      </a>
+    </div>
   </div>
 </body>
 </html>
