@@ -200,6 +200,7 @@
   window.addEventListener("resize", resizeCanvas);
 
   let snake, dir, pendingDir, food, score, foodsEaten;
+  let initialized = false;
   let running = false;
   let gameOver = false;
   let stepMs = BASE_STEP_MS;
@@ -416,10 +417,17 @@
   });
 
   // restart
-  restartBtn.addEventListener("click", () => {
+  startBtn.addEventListener("click", () => {
+  // ✅ 第一次點 Start：先確保 canvas 尺寸 + 遊戲狀態都初始化完成
+  if (!initialized) {
+    resizeCanvas();
     resetGame();
-    setRunning(true);
+    initialized = true;
+  }
+  if (gameOver) return;
+  setRunning(!running);
   });
+
 
   // tap board: start/pause
   board.addEventListener("click", () => {
@@ -429,9 +437,11 @@
 
   // init（等 layout 完成再做 resize，避免 0）
   requestAnimationFrame(() => {
-    resizeCanvas();
-    resetGame();
+  resizeCanvas();
+  resetGame();
+  initialized = true;
   });
+
 })();
 </script>
 </body>
