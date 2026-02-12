@@ -2,65 +2,63 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reaction Rush</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <title>Snake</title>
   <style>
     :root { color-scheme: dark; }
     body{
-      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
       background:#0b1220; color:#e7eefc;
       display:flex; min-height:100vh; align-items:center; justify-content:center;
     }
     .card{
-      width:min(720px, 92vw);
+      width:min(720px, 94vw);
       background:rgba(255,255,255,.06);
       border:1px solid rgba(255,255,255,.12);
       border-radius:18px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
-      padding:22px 18px;
+      box-shadow:0 20px 60px rgba(0,0,0,.45);
+      padding:18px;
     }
-    h1{ margin:0 0 6px; font-size:22px; letter-spacing:.2px; }
-    .sub{ opacity:.8; margin:0 0 16px; line-height:1.45; }
-    .grid{ display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; }
-    @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
+    h1{ margin:0 0 10px; font-size:20px; }
+    .top{
+      display:flex; gap:12px; flex-wrap:wrap;
+      align-items:center; justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .stats{ display:flex; gap:10px; flex-wrap:wrap; }
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:13px;
+      opacity:.95;
+    }
+    .wrap{
+      display:grid; grid-template-columns: 1fr 260px; gap:14px;
+      align-items:start;
+    }
+    @media (max-width: 780px){
+      .wrap{ grid-template-columns:1fr; }
+    }
     .panel{
-      background:rgba(0,0,0,.25);
+      background:rgba(0,0,0,.24);
       border:1px solid rgba(255,255,255,.10);
       border-radius:14px;
-      padding:14px;
+      padding:12px;
     }
-    .bigBtn{
+    canvas{
       width:100%;
-      padding:18px 14px;
-      font-size:18px;
+      aspect-ratio: 1 / 1;
+      background:#0a0f1c;
       border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      background:#2a3346;
-      color:#e7eefc;
-      cursor:pointer;
-      transition: transform .04s ease, background .2s ease, border-color .2s ease;
-      user-select:none;
+      border:1px solid rgba(255,255,255,.12);
+      display:block;
+      touch-action: none; /* allow swipe */
     }
-    .bigBtn:active{ transform: scale(.99); }
-    .bigBtn[disabled]{ cursor:not-allowed; opacity:.88; }
-    .state-ready{ background:#2a3346; }
-    .state-wait{ background:#5a3b2b; border-color: rgba(255,199,153,.35); }
-    .state-go{ background:#1f5a3b; border-color: rgba(144,255,192,.35); }
-    .state-fail{ background:#5a1f2a; border-color: rgba(255,144,170,.35); }
-
-    .stats{
-      display:grid; grid-template-columns:1fr 1fr; gap:10px;
-    }
-    .stat{
-      padding:10px 12px;
-      border-radius:12px;
-      background:rgba(255,255,255,.05);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .k{ opacity:.75; font-size:12px; }
-    .v{ font-size:20px; font-weight:700; margin-top:4px; }
-    .row{ display:flex; gap:10px; margin-top:12px; }
-    .btn{
+    .btnRow{ display:flex; gap:10px; margin-top:10px; }
+    button{
       flex:1;
       padding:10px 12px;
       border-radius:12px;
@@ -69,16 +67,47 @@
       color:#e7eefc;
       cursor:pointer;
     }
-    .btn:hover{ background:rgba(255,255,255,.09); }
-    .log{
+    button:hover{ background:rgba(255,255,255,.09); }
+    .hint{
+      font-size:12px; opacity:.8; line-height:1.5;
       margin-top:10px;
-      max-height:220px;
-      overflow:auto;
-      font-size:13px;
-      line-height:1.45;
-      opacity:.9;
     }
-    .tag{
+    .dpad{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:8px;
+      max-width: 260px;
+    }
+    .dpad button{ padding:12px 0; }
+    .dpad .blank{
+      border:1px dashed rgba(255,255,255,.10);
+      background:transparent;
+      cursor:default;
+    }
+    .overlay{
+      position:relative;
+    }
+    .banner{
+      position:absolute;
+      inset:12px;
+      border-radius:14px;
+      background:rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.12);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:16px;
+      backdrop-filter: blur(6px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .15s ease;
+    }
+    .banner.show{ opacity:1; pointer-events:auto; }
+    .banner h2{ margin:0 0 6px; font-size:18px; }
+    .banner p{ margin:0; opacity:.85; font-size:13px; line-height:1.4; }
+    .badge{
       display:inline-block;
       font-size:12px;
       padding:2px 8px;
@@ -88,55 +117,58 @@
       margin-left:8px;
       opacity:.9;
     }
-    .hint{ opacity:.75; font-size:12px; margin-top:10px; }
-    a{ color:#9fd0ff; text-decoration:none; }
-    a:hover{ text-decoration:underline; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Reaction Rush <span class="tag">單檔可上 GitHub Pages</span></h1>
-    <p class="sub">
-      等按鈕變綠再點，太早點算失敗。10 局後會算平均。
-      <br/>（這東西很無聊沒錯，但它很「可展示」，而且不會惹資安部門不爽。）
-    </p>
+    <div class="top">
+      <h1>Snake <span class="badge">單檔可部署</span></h1>
+      <div class="stats">
+        <div class="pill">分數：<span id="score">0</span></div>
+        <div class="pill">最高：<span id="best">0</span></div>
+        <div class="pill">速度：<span id="speed">1.0x</span></div>
+      </div>
+    </div>
 
-    <div class="grid">
-      <div class="panel">
-        <button id="playBtn" class="bigBtn state-ready">開始（按我）</button>
-        <div class="hint">
-          快捷鍵：<b>Space</b> 開始/點擊　|　<b>R</b> 重置
+    <div class="wrap">
+      <div class="panel overlay">
+        <canvas id="cv"></canvas>
+        <div id="banner" class="banner">
+          <div>
+            <h2 id="bannerTitle">Paused</h2>
+            <p id="bannerText">按 Space 或「開始/暫停」繼續。手機可滑動控制方向。</p>
+          </div>
         </div>
-        <div id="log" class="log"></div>
+        <div class="btnRow">
+          <button id="toggleBtn">開始</button>
+          <button id="restartBtn">重新開始</button>
+        </div>
+        <div class="hint">
+          控制：方向鍵 / WASD / 手機滑動（上、下、左、右）<br/>
+          規則：碰到牆或身體 → Game Over。吃到食物加分，速度會慢慢變快。
+        </div>
       </div>
 
       <div class="panel">
-        <div class="stats">
-          <div class="stat">
-            <div class="k">回合</div>
-            <div id="round" class="v">0 / 10</div>
-          </div>
-          <div class="stat">
-            <div class="k">最新反應</div>
-            <div id="last" class="v">—</div>
-          </div>
-          <div class="stat">
-            <div class="k">平均（成功）</div>
-            <div id="avg" class="v">—</div>
-          </div>
-          <div class="stat">
-            <div class="k">最佳</div>
-            <div id="best" class="v">—</div>
-          </div>
+        <div class="hint" style="margin-top:0">
+          手機如果你覺得滑動不夠穩（Safari 有時候很挑），就用這個方向鍵。<br/>
+         （放心，這不是「多此一舉」，這叫風險控管。）
         </div>
 
-        <div class="row">
-          <button id="resetBtn" class="btn">重置</button>
-          <button id="copyBtn" class="btn">複製成績</button>
+        <div class="dpad">
+          <button class="blank" disabled> </button>
+          <button data-dir="U">▲</button>
+          <button class="blank" disabled> </button>
+          <button data-dir="L">◀</button>
+          <button class="blank" disabled> </button>
+          <button data-dir="R">▶</button>
+          <button class="blank" disabled> </button>
+          <button data-dir="D">▼</button>
+          <button class="blank" disabled> </button>
         </div>
 
         <div class="hint">
-          小提示：你如果平均 <b>&lt; 220ms</b>，那你不是很強，就是你在作弊（我持保留態度）。
+          小抬槓：你如果想「存檔」，單機遊戲就存 localStorage / IndexedDB；但你要防作弊？別鬧，前端永遠不可信。
         </div>
       </div>
     </div>
@@ -144,196 +176,333 @@
 
 <script>
 (() => {
-  const playBtn  = document.getElementById('playBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const copyBtn  = document.getElementById('copyBtn');
-  const elRound  = document.getElementById('round');
-  const elLast   = document.getElementById('last');
-  const elAvg    = document.getElementById('avg');
-  const elBest   = document.getElementById('best');
-  const logEl    = document.getElementById('log');
+  // ===== Config =====
+  const GRID = 22;           // 22x22
+  const BASE_STEP_MS = 140;  // base speed
+  const SPEEDUP_EVERY = 5;   // every N foods, speed up
+  const SPEEDUP_FACTOR = 0.92; // step_ms *= factor (faster)
+  const BEST_KEY = "snake_best_v1";
 
-  const TOTAL = 10;
-  let state = 'ready'; // ready | wait | go | done
-  let round = 0;
-  let results = []; // {ms, ok}
-  let tGo = 0;
-  let timer = null;
+  // ===== DOM =====
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const elScore = document.getElementById("score");
+  const elBest = document.getElementById("best");
+  const elSpeed = document.getElementById("speed");
+  const toggleBtn = document.getElementById("toggleBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const banner = document.getElementById("banner");
+  const bannerTitle = document.getElementById("bannerTitle");
+  const bannerText = document.getElementById("bannerText");
 
-  // Keep best score in localStorage (pure client-side)
-  const LS_KEY = 'reaction_rush_best_ms';
-  let bestMs = Number(localStorage.getItem(LS_KEY) || 0) || 0;
+  let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
+  elBest.textContent = best;
 
-  function fmtMs(ms){ return `${Math.round(ms)} ms`; }
+  // ===== Canvas sizing for crisp lines =====
+  function resizeCanvas() {
+    const rect = cv.getBoundingClientRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width = Math.floor(rect.width * dpr);
+    cv.height = Math.floor(rect.width * dpr); // square
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw in CSS pixels
+  }
+  window.addEventListener("resize", () => { resizeCanvas(); draw(); });
 
-  function setBtnState(kind){
-    playBtn.classList.remove('state-ready','state-wait','state-go','state-fail');
-    if(kind==='ready'){
-      playBtn.classList.add('state-ready');
-      playBtn.textContent = '開始（按我）';
-    }else if(kind==='wait'){
-      playBtn.classList.add('state-wait');
-      playBtn.textContent = '等一下…（別偷點）';
-    }else if(kind==='go'){
-      playBtn.classList.add('state-go');
-      playBtn.textContent = '現在！點！';
-    }else if(kind==='fail'){
-      playBtn.classList.add('state-fail');
-      playBtn.textContent = '太早了 😑（再來）';
-    }else if(kind==='done'){
-      playBtn.classList.add('state-ready');
-      playBtn.textContent = '再玩一輪';
+  // ===== Game state =====
+  let snake, dir, pendingDir, food, score, foodsEaten;
+  let running = false;
+  let gameOver = false;
+  let stepMs = BASE_STEP_MS;
+  let lastStepAt = 0;
+
+  function randInt(n){ return Math.floor(Math.random() * n); }
+  function same(a,b){ return a.x===b.x && a.y===b.y; }
+
+  function resetGame() {
+    // Start snake in the middle
+    const mid = Math.floor(GRID/2);
+    snake = [{x:mid, y:mid}, {x:mid-1, y:mid}, {x:mid-2, y:mid}];
+    dir = {x:1, y:0}; // moving right
+    pendingDir = null;
+    score = 0;
+    foodsEaten = 0;
+    stepMs = BASE_STEP_MS;
+    gameOver = false;
+    running = false;
+    lastStepAt = 0;
+    placeFood();
+    syncUI();
+    showBanner("Paused", "按 Space 或「開始/暫停」開始。手機可滑動控制方向。");
+    toggleBtn.textContent = "開始";
+    draw();
+  }
+
+  function placeFood() {
+    while(true){
+      const p = {x: randInt(GRID), y: randInt(GRID)};
+      if(!snake.some(s => same(s,p))){
+        food = p;
+        return;
+      }
     }
   }
 
-  function updateStats(){
-    elRound.textContent = `${round} / ${TOTAL}`;
+  function syncUI(){
+    elScore.textContent = score;
+    const speedMul = (BASE_STEP_MS / stepMs);
+    elSpeed.textContent = speedMul.toFixed(2) + "x";
+    elBest.textContent = best;
+  }
 
-    const last = results.length ? results[results.length-1] : null;
-    elLast.textContent = last ? (last.ok ? fmtMs(last.ms) : '失敗') : '—';
-
-    const oks = results.filter(r => r.ok).map(r => r.ms);
-    if(oks.length){
-      const avg = oks.reduce((a,b)=>a+b,0) / oks.length;
-      elAvg.textContent = fmtMs(avg);
-      const best = Math.min(...oks);
-      elBest.textContent = fmtMs(bestMs ? Math.min(bestMs, best) : best);
+  function setRunning(v){
+    running = v;
+    if(running){
+      hideBanner();
+      toggleBtn.textContent = "暫停";
+      requestAnimationFrame(loop);
     }else{
-      elAvg.textContent = '—';
-      elBest.textContent = bestMs ? fmtMs(bestMs) : '—';
+      showBanner(gameOver ? "Game Over" : "Paused",
+        gameOver
+          ? "碰到牆或身體就結束。按「重新開始」再來一局。"
+          : "按 Space 或「開始/暫停」繼續。");
+      toggleBtn.textContent = gameOver ? "開始" : "開始";
     }
   }
 
-  function log(line){
-    const ts = new Date().toLocaleTimeString();
-    logEl.innerHTML = `<div>[${ts}] ${line}</div>` + logEl.innerHTML;
+  function showBanner(title, text){
+    bannerTitle.textContent = title;
+    bannerText.textContent = text;
+    banner.classList.add("show");
+  }
+  function hideBanner(){
+    banner.classList.remove("show");
   }
 
-  function clearTimer(){
-    if(timer){ clearTimeout(timer); timer = null; }
+  function isReverse(newDir){
+    return (newDir.x === -dir.x && newDir.y === -dir.y);
   }
 
-  function scheduleGo(){
-    clearTimer();
-    // random delay: 900~2600ms
-    const delay = 900 + Math.random() * 1700;
-    timer = setTimeout(() => {
-      state = 'go';
-      tGo = performance.now();
-      setBtnState('go');
-      log('✅ GO！');
-    }, delay);
+  function applyDirQueue(){
+    if(!pendingDir) return;
+    if(isReverse(pendingDir)) return;
+    dir = pendingDir;
+    pendingDir = null;
   }
 
-  function startRound(){
-    if(round >= TOTAL){
-      // new session
-      round = 0;
-      results = [];
-    }
-    round += 1;
-    state = 'wait';
-    setBtnState('wait');
-    playBtn.disabled = false;
-    log(`第 ${round} 回合：等待變綠…`);
-    scheduleGo();
-    updateStats();
-  }
+  function step(){
+    applyDirQueue();
 
-  function onClick(){
-    if(state === 'ready' || state === 'done'){
-      startRound();
+    const head = snake[0];
+    const next = {x: head.x + dir.x, y: head.y + dir.y};
+
+    // Wall collision
+    if(next.x < 0 || next.x >= GRID || next.y < 0 || next.y >= GRID){
+      endGame();
       return;
     }
-    if(state === 'wait'){
-      // early click
-      results.push({ms: 0, ok: false});
-      setBtnState('fail');
-      log('❌ 太早點：判定失敗。');
-      clearTimer();
-      state = 'ready';
-      updateStats();
+
+    // Body collision (note: tail may move unless eating)
+    const willEat = same(next, food);
+    const bodyToCheck = willEat ? snake : snake.slice(0, -1);
+    if(bodyToCheck.some(p => same(p, next))){
+      endGame();
       return;
     }
-    if(state === 'go'){
-      const ms = performance.now() - tGo;
-      results.push({ms, ok: true});
-      log(`🎯 命中：${fmtMs(ms)}`);
 
-      if(!bestMs || ms < bestMs){
-        bestMs = ms;
-        localStorage.setItem(LS_KEY, String(Math.round(bestMs)));
-        log(`🏆 新紀錄：${fmtMs(bestMs)}`);
+    snake.unshift(next);
+
+    if(willEat){
+      foodsEaten += 1;
+      score += 10;
+      if(score > best){
+        best = score;
+        localStorage.setItem(BEST_KEY, String(best));
       }
+      if(foodsEaten % SPEEDUP_EVERY === 0){
+        stepMs = Math.max(60, Math.floor(stepMs * SPEEDUP_FACTOR));
+      }
+      placeFood();
+    }else{
+      snake.pop();
+    }
 
-      updateStats();
+    syncUI();
+    draw();
+  }
 
-      if(round >= TOTAL){
-        state = 'done';
-        setBtnState('done');
-        log('📊 本輪結束。按「再玩一輪」或 Space。');
+  function endGame(){
+    gameOver = true;
+    running = false;
+    showBanner("Game Over", "碰到牆或身體就結束。按「重新開始」再來一局。");
+    toggleBtn.textContent = "開始";
+    draw(true);
+  }
+
+  function draw(isOver=false){
+    const rect = cv.getBoundingClientRect();
+    const w = rect.width;
+    const cell = w / GRID;
+
+    // background
+    ctx.clearRect(0,0,w,w);
+
+    // subtle grid (optional)
+    ctx.globalAlpha = 0.12;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=1;i<GRID;i++){
+      const p = i*cell;
+      ctx.moveTo(p, 0); ctx.lineTo(p, w);
+      ctx.moveTo(0, p); ctx.lineTo(w, p);
+    }
+    ctx.strokeStyle = "#e7eefc";
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // food
+    ctx.fillStyle = "#ffcc66";
+    ctx.beginPath();
+    ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
+    ctx.fill();
+
+    // snake
+    for(let i=snake.length-1; i>=0; i--){
+      const p = snake[i];
+      const x = p.x*cell, y=p.y*cell;
+      const r = cell*0.18;
+      ctx.fillStyle = (i===0) ? "#7cf7b6" : "#57b8ff";
+      roundRect(ctx, x+2, y+2, cell-4, cell-4, r);
+      ctx.fill();
+    }
+
+    if(isOver){
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = "#ff668a";
+      ctx.fillRect(0,0,w,w);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r){
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
+  function loop(t){
+    if(!running) return;
+    if(!lastStepAt) lastStepAt = t;
+
+    const dt = t - lastStepAt;
+    if(dt >= stepMs){
+      // Catch up only one step to keep it simple/stable
+      lastStepAt = t;
+      step();
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ===== Controls =====
+  function queueDir(dx, dy){
+    const nd = {x:dx, y:dy};
+    if(isReverse(nd)) return;
+    pendingDir = nd;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"," "].includes(k)) e.preventDefault();
+
+    if(k === " "){
+      if(gameOver){
+        resetGame();
+        setRunning(true);
       }else{
-        // auto next
-        state = 'ready';
-        setBtnState('ready');
-        // slight pause then start next to keep flow
-        setTimeout(startRound, 450);
+        setRunning(!running);
       }
+      return;
     }
-  }
 
-  function resetAll(){
-    clearTimer();
-    state = 'ready';
-    round = 0;
-    results = [];
-    setBtnState('ready');
-    log('🔄 已重置（不含最佳紀錄）。');
-    updateStats();
-  }
+    if(gameOver) return;
 
-  async function copyScore(){
-    const oks = results.filter(r => r.ok).map(r => r.ms);
-    const fails = results.filter(r => !r.ok).length;
-    const avg = oks.length ? (oks.reduce((a,b)=>a+b,0)/oks.length) : null;
-    const best = oks.length ? Math.min(...oks) : null;
+    if(k === "arrowup" || k === "w") queueDir(0,-1);
+    else if(k === "arrowdown" || k === "s") queueDir(0, 1);
+    else if(k === "arrowleft" || k === "a") queueDir(-1,0);
+    else if(k === "arrowright" || k === "d") queueDir(1, 0);
 
-    const text =
-`Reaction Rush 成績
-- 回合：${round}/${TOTAL}
-- 成功：${oks.length}，失敗：${fails}
-- 平均：${avg ? Math.round(avg)+' ms' : '—'}
-- 本輪最佳：${best ? Math.round(best)+' ms' : '—'}
-- 歷史最佳：${bestMs ? Math.round(bestMs)+' ms' : '—'}
-- 時間：${new Date().toLocaleString()}`;
+    if(!running && !gameOver) draw();
+  }, {passive:false});
 
-    try{
-      await navigator.clipboard.writeText(text);
-      log('📋 成績已複製到剪貼簿。');
-    }catch(e){
-      log('⚠️ 複製失敗（瀏覽器權限問題）。你可以手動選取。');
-      // fallback: prompt
-      window.prompt('複製這段：', text);
-    }
-  }
-
-  playBtn.addEventListener('click', onClick);
-  resetBtn.addEventListener('click', resetAll);
-  copyBtn.addEventListener('click', copyScore);
-
-  window.addEventListener('keydown', (e) => {
-    if(e.code === 'Space'){
-      e.preventDefault();
-      onClick();
-    }else if(e.key.toLowerCase() === 'r'){
-      resetAll();
-    }
+  // D-pad buttons
+  document.querySelectorAll(".dpad button[data-dir]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if(gameOver) return;
+      const d = btn.dataset.dir;
+      if(d==="U") queueDir(0,-1);
+      if(d==="D") queueDir(0, 1);
+      if(d==="L") queueDir(-1,0);
+      if(d==="R") queueDir(1, 0);
+      if(!running) setRunning(true); // mobile convenience
+    });
   });
 
-  // Init
-  setBtnState('ready');
-  updateStats();
-  log('👋 Ready。按「開始」或 Space。');
+  // Touch swipe on canvas
+  let touchStart = null;
+  cv.addEventListener("pointerdown", (e) => {
+    cv.setPointerCapture(e.pointerId);
+    touchStart = {x: e.clientX, y: e.clientY};
+  });
+  cv.addEventListener("pointerup", (e) => {
+    if(!touchStart) return;
+    const dx = e.clientX - touchStart.x;
+    const dy = e.clientY - touchStart.y;
+    touchStart = null;
+
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    if(Math.max(ax, ay) < 18) {
+      // tap: toggle start/pause for convenience
+      if(gameOver){
+        resetGame();
+        setRunning(true);
+      }else{
+        setRunning(!running);
+      }
+      return;
+    }
+
+    if(ax > ay){
+      if(dx > 0) queueDir(1,0);
+      else queueDir(-1,0);
+    }else{
+      if(dy > 0) queueDir(0,1);
+      else queueDir(0,-1);
+    }
+
+    if(!running && !gameOver) setRunning(true);
+  });
+
+  toggleBtn.addEventListener("click", () => {
+    if(gameOver){
+      resetGame();
+      setRunning(true);
+      return;
+    }
+    setRunning(!running);
+  });
+
+  restartBtn.addEventListener("click", () => {
+    resetGame();
+    setRunning(true);
+  });
+
+  // ===== Init =====
+  resizeCanvas();
+  resetGame();
 })();
 </script>
 </body>
