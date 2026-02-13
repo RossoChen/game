@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
@@ -12,59 +13,85 @@
   <meta name="theme-color" content="#0b1220" />
 
   <!-- ✅ 保險：主畫面模式下避免 /game 沒尾斜線造成相對路徑歪掉 -->
-  <base href="/game/" />
-
-  <!-- ✅ PWA assets（你有就留，沒有也不會壞） -->
-  <link rel="manifest" href="/game/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/game/icons/icon-192.png" />
+  <base href="./" />
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
   <style>
-    :root{color-scheme:dark}
-    html,body{
-      height:100%;
-      margin:0;
-      overflow:hidden;
-      overscroll-behavior:none;
-      background:#0b1220;
-      color:#e7eefc;
-      font-family:system-ui,"Noto Sans TC",sans-serif;
-      -webkit-user-select:none; user-select:none;
-      touch-action:manipulation;
+    :root {
+      color-scheme: dark
     }
-    body{ position:fixed; inset:0; }
 
-    .app{
-      height:100svh;
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background: #0b1220;
+      color: #e7eefc;
+      font-family: system-ui, "Noto Sans TC", sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+    }
+
+    .app {
+      height: 100svh;
       padding-top: calc(env(safe-area-inset-top) + 14px);
       padding-right: calc(env(safe-area-inset-right) + 14px);
       padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
       padding-left: calc(env(safe-area-inset-left) + 14px);
-      display:flex;
-      justify-content:center;
+      display: flex;
+      justify-content: center;
     }
 
-    .wrap{
-      width:min(900px,92vw);
-      overflow:auto;
-      -webkit-overflow-scrolling:touch;
+    .wrap {
+      width: min(900px, 92vw);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
-    h1{margin:0 0 8px;font-size:28px}
-    p{margin:0 0 18px;opacity:.8}
-
-    a.card{
-      display:block;
-      padding:16px;
-      border-radius:16px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.12);
-      text-decoration:none;
-      color:inherit;
-      -webkit-tap-highlight-color:transparent;
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px
     }
-    a.card:hover{background:rgba(255,255,255,.09)}
-    .t{font-weight:800;margin-bottom:6px}
-    .d{opacity:.78;font-size:13px;line-height:1.4}
+
+    p {
+      margin: 0 0 18px;
+      opacity: .8
+    }
+
+    a.card {
+      display: block;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .12);
+      text-decoration: none;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    a.card:hover {
+      background: rgba(255, 255, 255, .09)
+    }
+
+    .t {
+      font-weight: 800;
+      margin-bottom: 6px
+    }
+
+    .d {
+      opacity: .78;
+      font-size: 13px;
+      line-height: 1.4
+    }
   </style>
 </head>
 
@@ -82,4 +109,5 @@
     </div>
   </div>
 </body>
+
 </html>
