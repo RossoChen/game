@@ -1,7 +1,8 @@
 {
-  "name": "Snake",
-  "short_name": "Snake",
-  "start_url": "/game/games/reaction-rush/",
+  "name": "RossoChen Games",
+  "short_name": "Games",
+  "start_url": "/game/",
+  "scope": "/game/",
   "display": "standalone",
   "background_color": "#0b1220",
   "theme_color": "#0b1220",
