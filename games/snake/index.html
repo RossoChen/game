@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Snake" />
 
-  <!-- 如果你 manifest 放在 repo 根目錄，repo 叫 game，這樣寫最穩 -->
+  <!-- repo 叫 game：根目錄下的 manifest / icons -->
   <link rel="manifest" href="/game/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
 
@@ -72,7 +72,6 @@
     }
     .btn:active{ transform:scale(0.985); }
 
-    /* ✅ 直接用 CSS min() 算出「不會變 0」的正方形棋盤 */
     .board{
       width: min(520px, 96vw, 56svh);
       height:min(520px, 96vw, 56svh);
@@ -160,14 +159,14 @@
 
 <script>
 (() => {
-  // 防 iOS 彈跳/滑動（你要固定頁面）
+  // 固定頁面：防 iOS 彈跳/滑動
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
   const GRID = 22;
   const BASE_STEP_MS = 140;
   const SPEEDUP_EVERY = 6;
   const SPEEDUP_FACTOR = 0.92;
-  const BEST_KEY = "snake_best_v3";
+  const BEST_KEY = "snake_best_v4";
 
   const board = document.getElementById("board");
   const cv = document.getElementById("cv");
@@ -186,7 +185,7 @@
   elBest.textContent = best;
 
   let dpr = 1;
-  let sizeCss = 0;
+  let sizeCss = 1;
 
   function resizeCanvas(){
     const rect = board.getBoundingClientRect();
@@ -195,9 +194,12 @@
     cv.width  = Math.floor(sizeCss * dpr);
     cv.height = Math.floor(sizeCss * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
+    // NOTE: 不要在這裡 draw()，避免 snake/food 還沒初始化就被呼叫而炸掉
   }
-  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    if(initialized) draw(); // 初始化後才重繪
+  });
 
   let snake, dir, pendingDir, food, score, foodsEaten;
   let initialized = false;
@@ -208,7 +210,7 @@
 
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
-  function isReverse(nd){ return nd.x===-dir.x && nd.y===-dir.y; }
+  function isReverse(nd){ return !!dir && nd.x===-dir.x && nd.y===-dir.y; }
 
   function setOverlay(show, title, text){
     if(show){
@@ -250,7 +252,15 @@
     setOverlay(true, "Ready", "按 Start / 方向鍵開始");
   }
 
+  function ensureInit(){
+    if(initialized) return;
+    resizeCanvas();
+    resetGame();
+    initialized = true;
+  }
+
   function queueDir(dx, dy){
+    ensureInit();
     const nd = {x:dx, y:dy};
     if(isReverse(nd)) return;
     pendingDir = nd;
@@ -328,7 +338,10 @@
   }
 
   function draw(isOver=false){
-    const w = sizeCss || Math.floor(board.getBoundingClientRect().width) || 1;
+    // 防呆：避免任何情境下未初始化就 draw() 造成整個遊戲失能
+    if(!snake || !food) return;
+
+    const w = sizeCss || 1;
     const cell = w / GRID;
 
     ctx.clearRect(0,0,w,w);
@@ -386,6 +399,7 @@
     if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"," "].includes(k)) e.preventDefault();
 
     if(k === " "){
+      ensureInit();
       if(gameOver) return;
       setRunning(!running);
       return;
@@ -412,36 +426,30 @@
 
   // start/pause
   startBtn.addEventListener("click", () => {
+    ensureInit();
     if(gameOver) return;
     setRunning(!running);
   });
 
   // restart
-  startBtn.addEventListener("click", () => {
-  // ✅ 第一次點 Start：先確保 canvas 尺寸 + 遊戲狀態都初始化完成
-  if (!initialized) {
+  restartBtn.addEventListener("click", () => {
     resizeCanvas();
     resetGame();
     initialized = true;
-  }
-  if (gameOver) return;
-  setRunning(!running);
+    setRunning(true);
   });
-
 
   // tap board: start/pause
   board.addEventListener("click", () => {
+    ensureInit();
     if(gameOver) return;
     setRunning(!running);
   });
 
-  // init（等 layout 完成再做 resize，避免 0）
+  // init
   requestAnimationFrame(() => {
-  resizeCanvas();
-  resetGame();
-  initialized = true;
+    ensureInit();
   });
-
 })();
 </script>
 </body>
