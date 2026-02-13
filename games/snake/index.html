@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="zh-Hant">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
@@ -17,185 +16,143 @@
   <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
 
   <style>
-    :root {
-      color-scheme: dark;
-    }
+    :root { color-scheme: dark; }
 
-    html,
-    body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      overscroll-behavior: none;
-      background: #0b1220;
-      color: #e7eefc;
+    html, body{
+      margin:0; height:100%;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:#0b1220; color:#e7eefc;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: none;
+      -webkit-user-select:none; user-select:none;
+      touch-action:none;
     }
+    body{ position:fixed; inset:0; }
 
-    body {
-      position: fixed;
-      inset: 0;
-    }
-
-    /* ✅ 改成 flex column：stage 會把 board+dpad 一起抬上來 */
-    .app {
-      height: 100svh;
+    .app{
+      height:100svh;
       padding-top: calc(env(safe-area-inset-top) + 14px);
-      /* Dynamic Island 友善一點 */
       padding-right: calc(env(safe-area-inset-right) + 12px);
       padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
       padding-left: calc(env(safe-area-inset-left) + 12px);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: center;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
     }
 
-    .hud {
-      width: min(520px, 96vw);
-      display: grid;
-      grid-template-columns: auto 1fr 1fr auto auto;
-      /* ✅ 多一個 Back */
-      gap: 10px;
-      align-items: center;
+    /* ✅ HUD 改成兩排：第一排 Back；第二排 分數/最高/Start/Restart */
+    .hud{
+      width:min(520px, 96vw);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .hudTop{
+      display:flex;
+      justify-content:flex-start;
+    }
+    .hudBottom{
+      display:grid;
+      grid-template-columns: 1fr 1fr auto auto;
+      gap:10px;
+      align-items:center;
     }
 
-    .pill {
-      border: 1px solid rgba(255, 255, 255, .14);
-      background: rgba(255, 255, 255, .06);
-      border-radius: 999px;
-      padding: 10px 12px;
-      font-size: 14px;
-      text-align: center;
-      white-space: nowrap;
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:14px;
+      text-align:center;
+      white-space:nowrap;
+    }
+    .pill strong{ font-weight:800; }
+
+    .btn{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#e7eefc;
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      white-space:nowrap;
+    }
+    .btn:active{ transform:scale(0.985); }
+
+    .stage{
+      width:min(520px, 96vw);
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      min-height:0;
     }
 
-    .pill strong {
-      font-weight: 800;
-    }
-
-    .btn {
-      border: 1px solid rgba(255, 255, 255, .14);
-      background: rgba(255, 255, 255, .06);
-      color: #e7eefc;
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-weight: 800;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      white-space: nowrap;
-    }
-
-    .btn:active {
-      transform: scale(0.985);
-    }
-
-    /* ✅ stage：把 board + dpad 放一起，整體在剩餘空間內「置中」→ dpad 不會貼底 */
-    .stage {
-      width: min(520px, 96vw);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      min-height: 0;
-    }
-
-    .board {
+    .board{
       width: min(520px, 96vw, 54svh);
-      /* ✅ 稍微縮小，讓 dpad 有空間往上 */
-      height: min(520px, 96vw, 54svh);
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, .12);
-      background: #0a0f1c;
-      position: relative;
-      overflow: hidden;
+      height:min(520px, 96vw, 54svh);
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:#0a0f1c;
+      position:relative;
+      overflow:hidden;
     }
+    canvas{ width:100%; height:100%; display:block; }
 
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
+    .overlay{
+      position:absolute; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      text-align:center;
+      padding:16px;
+      background:rgba(0,0,0,.55);
+      backdrop-filter:blur(6px);
     }
+    .overlay.show{ display:flex; }
+    .overlay h2{ margin:0 0 6px; font-size:18px; }
+    .overlay p{ margin:0; opacity:.85; font-size:13px; line-height:1.4; }
 
-    .overlay {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 16px;
-      background: rgba(0, 0, 0, .55);
-      backdrop-filter: blur(6px);
-    }
-
-    .overlay.show {
-      display: flex;
-    }
-
-    .overlay h2 {
-      margin: 0 0 6px;
-      font-size: 18px;
-    }
-
-    .overlay p {
-      margin: 0;
-      opacity: .85;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    .dpad {
-      width: min(520px, 96vw);
-      display: grid;
+    .dpad{
+      width:min(520px, 96vw);
+      display:grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
+      gap:10px;
+    }
+    .pad{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#e7eefc;
+      border-radius:14px;
+      padding:14px 0;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .blank{ opacity:0; pointer-events:none; }
+
+    /* ✅ 小手機：第二排變 2 欄，Start/Restart 會自動換行，避免跑出螢幕 */
+    @media (max-width: 360px){
+      .hudBottom{ grid-template-columns: 1fr 1fr; }
+      #startBtn, #restartBtn{ width:100%; }
     }
 
-    .pad {
-      border: 1px solid rgba(255, 255, 255, .14);
-      background: rgba(255, 255, 255, .06);
-      color: #e7eefc;
-      border-radius: 14px;
-      padding: 14px 0;
-      font-size: 18px;
-      font-weight: 900;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .blank {
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    @media (max-height: 720px) {
-      .pad {
-        padding: 12px 0;
-      }
-
-      .pill {
-        padding: 9px 10px;
-      }
-
-      .btn {
-        padding: 9px 10px;
-      }
-
-      .board {
+    @media (max-height: 720px){
+      .pad{ padding:12px 0; }
+      .pill{ padding:9px 10px; }
+      .btn{ padding:9px 10px; }
+      .board{
         width: min(520px, 96vw, 50svh);
-        height: min(520px, 96vw, 50svh);
+        height:min(520px, 96vw, 50svh);
       }
-
-      .stage {
-        gap: 10px;
-      }
+      .stage{ gap:10px; }
     }
   </style>
 </head>
@@ -203,11 +160,16 @@
 <body>
   <div class="app">
     <div class="hud">
-      <button class="btn" id="backBtn">← Back</button>
-      <div class="pill">分數：<strong id="score">0</strong></div>
-      <div class="pill">最高：<strong id="best">0</strong></div>
-      <button class="btn" id="startBtn">Start</button>
-      <button class="btn" id="restartBtn">Restart</button>
+      <div class="hudTop">
+        <button class="btn" id="backBtn">← Back</button>
+      </div>
+
+      <div class="hudBottom">
+        <div class="pill">分數：<strong id="score">0</strong></div>
+        <div class="pill">最高：<strong id="best">0</strong></div>
+        <button class="btn" id="startBtn">Start</button>
+        <button class="btn" id="restartBtn">Restart</button>
+      </div>
     </div>
 
     <div class="stage">
@@ -237,312 +199,311 @@
     </div>
   </div>
 
-  <script>
-    (() => {
-      // 固定頁面：防 iOS 彈跳/滑動
-      document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+<script>
+(() => {
+  // 固定頁面：防 iOS 彈跳/滑動
+  document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
-      const GRID = 22;
-      const BASE_STEP_MS = 140;
-      const SPEEDUP_EVERY = 6;
-      const SPEEDUP_FACTOR = 0.92;
-      const BEST_KEY = "snake_best_v4";
+  const GRID = 22;
+  const BASE_STEP_MS = 140;
+  const SPEEDUP_EVERY = 6;
+  const SPEEDUP_FACTOR = 0.92;
+  const BEST_KEY = "snake_best_v4";
 
-      const board = document.getElementById("board");
-      const cv = document.getElementById("cv");
-      const ctx = cv.getContext("2d");
+  const board = document.getElementById("board");
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
 
-      const elScore = document.getElementById("score");
-      const elBest = document.getElementById("best");
-      const startBtn = document.getElementById("startBtn");
-      const restartBtn = document.getElementById("restartBtn");
-      const backBtn = document.getElementById("backBtn");
+  const elScore = document.getElementById("score");
+  const elBest  = document.getElementById("best");
+  const startBtn   = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const backBtn    = document.getElementById("backBtn");
 
-      const overlay = document.getElementById("overlay");
-      const ovTitle = document.getElementById("ovTitle");
-      const ovText = document.getElementById("ovText");
+  const overlay = document.getElementById("overlay");
+  const ovTitle = document.getElementById("ovTitle");
+  const ovText  = document.getElementById("ovText");
 
-      // ✅ Back：優先回 Hub；有 referrer 才用 history.back
-      backBtn.addEventListener("click", () => {
-        const hub = "/game/";
-        try {
-          if (document.referrer && document.referrer.includes("/game/")) history.back();
-          else location.href = hub;
-        } catch (_) {
-          location.href = hub;
-        }
-      });
+  // ✅ Back：優先回 Hub；有 referrer 才用 history.back
+  backBtn.addEventListener("click", () => {
+    const hub = "/game/";
+    try{
+      if(document.referrer && document.referrer.includes("/game/")) history.back();
+      else location.href = hub;
+    }catch(_){
+      location.href = hub;
+    }
+  });
 
-      let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
-      elBest.textContent = best;
+  let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
+  elBest.textContent = best;
 
-      let dpr = 1;
-      let sizeCss = 1;
+  let dpr = 1;
+  let sizeCss = 1;
 
-      function resizeCanvas() {
-        const rect = board.getBoundingClientRect();
-        sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
-        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-        cv.width = Math.floor(sizeCss * dpr);
-        cv.height = Math.floor(sizeCss * dpr);
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        // NOTE: 不在此 draw()，避免未初始化炸掉
+  function resizeCanvas(){
+    const rect = board.getBoundingClientRect();
+    sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
+    dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width  = Math.floor(sizeCss * dpr);
+    cv.height = Math.floor(sizeCss * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // NOTE: 不要在這裡 draw()，避免 snake/food 還沒初始化就炸掉
+  }
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    if(initialized) draw();
+  });
+
+  let snake, dir, pendingDir, food, score, foodsEaten;
+  let initialized = false;
+  let running = false;
+  let gameOver = false;
+  let stepMs = BASE_STEP_MS;
+  let lastStepAt = 0;
+
+  function randInt(n){ return Math.floor(Math.random() * n); }
+  function same(a,b){ return a.x===b.x && a.y===b.y; }
+  function isReverse(nd){ return !!dir && nd.x===-dir.x && nd.y===-dir.y; }
+
+  function setOverlay(show, title, text){
+    if(show){
+      ovTitle.textContent = title;
+      ovText.textContent  = text;
+      overlay.classList.add("show");
+    }else{
+      overlay.classList.remove("show");
+    }
+  }
+
+  function syncUI(){
+    elScore.textContent = score;
+    elBest.textContent = best;
+    startBtn.textContent = running ? "Pause" : "Start";
+  }
+
+  function placeFood(){
+    while(true){
+      const p = {x:randInt(GRID), y:randInt(GRID)};
+      if(!snake.some(s => same(s,p))){ food=p; return; }
+    }
+  }
+
+  function resetGame(){
+    const mid = Math.floor(GRID/2);
+    snake = [{x:mid, y:mid}, {x:mid-1, y:mid}, {x:mid-2, y:mid}];
+    dir = {x:1, y:0};
+    pendingDir = null;
+    score = 0;
+    foodsEaten = 0;
+    stepMs = BASE_STEP_MS;
+    running = false;
+    gameOver = false;
+    lastStepAt = 0;
+    placeFood();
+    syncUI();
+    draw();
+    setOverlay(true, "Ready", "按 Start / 方向鍵開始");
+  }
+
+  function ensureInit(){
+    if(initialized) return;
+    resizeCanvas();
+    resetGame();
+    initialized = true;
+  }
+
+  function queueDir(dx, dy){
+    ensureInit();
+    const nd = {x:dx, y:dy};
+    if(isReverse(nd)) return;
+    pendingDir = nd;
+    if(!running && !gameOver) setRunning(true);
+  }
+
+  function setRunning(v){
+    if(gameOver && v) return;
+    running = v;
+    syncUI();
+    if(running){
+      setOverlay(false);
+      requestAnimationFrame(loop);
+    }else{
+      setOverlay(true, "Paused", "按 Start 繼續");
+    }
+  }
+
+  function applyDir(){
+    if(!pendingDir) return;
+    if(isReverse(pendingDir)) return;
+    dir = pendingDir;
+    pendingDir = null;
+  }
+
+  function endGame(){
+    running = false;
+    gameOver = true;
+    syncUI();
+    draw(true);
+    setOverlay(true, "Game Over", "按 Restart 重新開始");
+  }
+
+  function step(){
+    applyDir();
+
+    const head = snake[0];
+    const next = {x: head.x + dir.x, y: head.y + dir.y};
+
+    if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){ endGame(); return; }
+
+    const willEat = same(next, food);
+    const body = willEat ? snake : snake.slice(0, -1);
+    if(body.some(p => same(p, next))){ endGame(); return; }
+
+    snake.unshift(next);
+
+    if(willEat){
+      foodsEaten += 1;
+      score += 10;
+      if(score > best){
+        best = score;
+        localStorage.setItem(BEST_KEY, String(best));
       }
-      window.addEventListener("resize", () => {
-        resizeCanvas();
-        if (initialized) draw();
-      });
-
-      let snake, dir, pendingDir, food, score, foodsEaten;
-      let initialized = false;
-      let running = false;
-      let gameOver = false;
-      let stepMs = BASE_STEP_MS;
-      let lastStepAt = 0;
-
-      function randInt(n) { return Math.floor(Math.random() * n); }
-      function same(a, b) { return a.x === b.x && a.y === b.y; }
-      function isReverse(nd) { return !!dir && nd.x === -dir.x && nd.y === -dir.y; }
-
-      function setOverlay(show, title, text) {
-        if (show) {
-          ovTitle.textContent = title;
-          ovText.textContent = text;
-          overlay.classList.add("show");
-        } else {
-          overlay.classList.remove("show");
-        }
+      if(foodsEaten % SPEEDUP_EVERY === 0){
+        stepMs = Math.max(60, Math.floor(stepMs * SPEEDUP_FACTOR));
       }
+      placeFood();
+    }else{
+      snake.pop();
+    }
 
-      function syncUI() {
-        elScore.textContent = score;
-        elBest.textContent = best;
-        startBtn.textContent = running ? "Pause" : "Start";
-      }
+    syncUI();
+    draw();
+  }
 
-      function placeFood() {
-        while (true) {
-          const p = { x: randInt(GRID), y: randInt(GRID) };
-          if (!snake.some(s => same(s, p))) { food = p; return; }
-        }
-      }
+  function loop(t){
+    if(!running) return;
+    if(!lastStepAt) lastStepAt = t;
+    if(t - lastStepAt >= stepMs){
+      lastStepAt = t;
+      step();
+    }
+    requestAnimationFrame(loop);
+  }
 
-      function resetGame() {
-        const mid = Math.floor(GRID / 2);
-        snake = [{ x: mid, y: mid }, { x: mid - 1, y: mid }, { x: mid - 2, y: mid }];
-        dir = { x: 1, y: 0 };
-        pendingDir = null;
-        score = 0;
-        foodsEaten = 0;
-        stepMs = BASE_STEP_MS;
-        running = false;
-        gameOver = false;
-        lastStepAt = 0;
-        placeFood();
-        syncUI();
-        draw();
-        setOverlay(true, "Ready", "按 Start / 方向鍵開始");
-      }
+  function draw(isOver=false){
+    if(!snake || !food) return;
 
-      function ensureInit() {
-        if (initialized) return;
-        resizeCanvas();
-        resetGame();
-        initialized = true;
-      }
+    const w = sizeCss || 1;
+    const cell = w / GRID;
 
-      function queueDir(dx, dy) {
-        ensureInit();
-        const nd = { x: dx, y: dy };
-        if (isReverse(nd)) return;
-        pendingDir = nd;
-        if (!running && !gameOver) setRunning(true);
-      }
+    ctx.clearRect(0,0,w,w);
 
-      function setRunning(v) {
-        if (gameOver && v) return;
-        running = v;
-        syncUI();
-        if (running) {
-          setOverlay(false);
-          requestAnimationFrame(loop);
-        } else {
-          setOverlay(true, "Paused", "按 Start 繼續");
-        }
-      }
+    // grid
+    ctx.globalAlpha = 0.10;
+    ctx.beginPath();
+    for(let i=1;i<GRID;i++){
+      const p = i*cell;
+      ctx.moveTo(p, 0); ctx.lineTo(p, w);
+      ctx.moveTo(0, p); ctx.lineTo(w, p);
+    }
+    ctx.strokeStyle = "#e7eefc";
+    ctx.stroke();
+    ctx.globalAlpha = 1;
 
-      function applyDir() {
-        if (!pendingDir) return;
-        if (isReverse(pendingDir)) return;
-        dir = pendingDir;
-        pendingDir = null;
-      }
+    // food
+    ctx.fillStyle = "#ffcc66";
+    ctx.beginPath();
+    ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
+    ctx.fill();
 
-      function endGame() {
-        running = false;
-        gameOver = true;
-        syncUI();
-        draw(true);
-        setOverlay(true, "Game Over", "按 Restart 重新開始");
-      }
+    // snake
+    for(let i=snake.length-1;i>=0;i--){
+      const p = snake[i];
+      const x = p.x*cell, y = p.y*cell;
+      const r = cell*0.18;
+      ctx.fillStyle = (i===0) ? "#7cf7b6" : "#57b8ff";
+      roundRect(ctx, x+2, y+2, cell-4, cell-4, r);
+      ctx.fill();
+    }
 
-      function step() {
-        applyDir();
+    if(isOver){
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = "#ff668a";
+      ctx.fillRect(0,0,w,w);
+      ctx.globalAlpha = 1;
+    }
+  }
 
-        const head = snake[0];
-        const next = { x: head.x + dir.x, y: head.y + dir.y };
+  function roundRect(ctx, x, y, w, h, r){
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
 
-        if (next.x < 0 || next.x >= GRID || next.y < 0 || next.y >= GRID) { endGame(); return; }
+  // keyboard
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"," "].includes(k)) e.preventDefault();
 
-        const willEat = same(next, food);
-        const body = willEat ? snake : snake.slice(0, -1);
-        if (body.some(p => same(p, next))) { endGame(); return; }
+    if(k === " "){
+      ensureInit();
+      if(gameOver) return;
+      setRunning(!running);
+      return;
+    }
+    if(gameOver) return;
 
-        snake.unshift(next);
+    if(k==="arrowup"||k==="w") queueDir(0,-1);
+    else if(k==="arrowdown"||k==="s") queueDir(0,1);
+    else if(k==="arrowleft"||k==="a") queueDir(-1,0);
+    else if(k==="arrowright"||k==="d") queueDir(1,0);
+  }, {passive:false});
 
-        if (willEat) {
-          foodsEaten += 1;
-          score += 10;
-          if (score > best) {
-            best = score;
-            localStorage.setItem(BEST_KEY, String(best));
-          }
-          if (foodsEaten % SPEEDUP_EVERY === 0) {
-            stepMs = Math.max(60, Math.floor(stepMs * SPEEDUP_FACTOR));
-          }
-          placeFood();
-        } else {
-          snake.pop();
-        }
+  // dpad
+  document.querySelectorAll("[data-dir]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if(gameOver) return;
+      const d = btn.dataset.dir;
+      if(d==="U") queueDir(0,-1);
+      if(d==="D") queueDir(0,1);
+      if(d==="L") queueDir(-1,0);
+      if(d==="R") queueDir(1,0);
+    });
+  });
 
-        syncUI();
-        draw();
-      }
+  // start/pause
+  startBtn.addEventListener("click", () => {
+    ensureInit();
+    if(gameOver) return;
+    setRunning(!running);
+  });
 
-      function loop(t) {
-        if (!running) return;
-        if (!lastStepAt) lastStepAt = t;
-        if (t - lastStepAt >= stepMs) {
-          lastStepAt = t;
-          step();
-        }
-        requestAnimationFrame(loop);
-      }
+  // restart
+  restartBtn.addEventListener("click", () => {
+    resizeCanvas();
+    resetGame();
+    initialized = true;
+    setRunning(true);
+  });
 
-      function draw(isOver = false) {
-        if (!snake || !food) return;
+  // tap board: start/pause
+  board.addEventListener("click", () => {
+    ensureInit();
+    if(gameOver) return;
+    setRunning(!running);
+  });
 
-        const w = sizeCss || 1;
-        const cell = w / GRID;
-
-        ctx.clearRect(0, 0, w, w);
-
-        // grid
-        ctx.globalAlpha = 0.10;
-        ctx.beginPath();
-        for (let i = 1; i < GRID; i++) {
-          const p = i * cell;
-          ctx.moveTo(p, 0); ctx.lineTo(p, w);
-          ctx.moveTo(0, p); ctx.lineTo(w, p);
-        }
-        ctx.strokeStyle = "#e7eefc";
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-
-        // food
-        ctx.fillStyle = "#ffcc66";
-        ctx.beginPath();
-        ctx.arc((food.x + 0.5) * cell, (food.y + 0.5) * cell, cell * 0.36, 0, Math.PI * 2);
-        ctx.fill();
-
-        // snake
-        for (let i = snake.length - 1; i >= 0; i--) {
-          const p = snake[i];
-          const x = p.x * cell, y = p.y * cell;
-          const r = cell * 0.18;
-          ctx.fillStyle = (i === 0) ? "#7cf7b6" : "#57b8ff";
-          roundRect(ctx, x + 2, y + 2, cell - 4, cell - 4, r);
-          ctx.fill();
-        }
-
-        if (isOver) {
-          ctx.globalAlpha = 0.10;
-          ctx.fillStyle = "#ff668a";
-          ctx.fillRect(0, 0, w, w);
-          ctx.globalAlpha = 1;
-        }
-      }
-
-      function roundRect(ctx, x, y, w, h, r) {
-        r = Math.min(r, w / 2, h / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.arcTo(x + w, y, x + w, y + h, r);
-        ctx.arcTo(x + w, y + h, x, y + h, r);
-        ctx.arcTo(x, y + h, x, y, r);
-        ctx.arcTo(x, y, x + w, y, r);
-        ctx.closePath();
-      }
-
-      // keyboard
-      window.addEventListener("keydown", (e) => {
-        const k = e.key.toLowerCase();
-        if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d", " "].includes(k)) e.preventDefault();
-
-        if (k === " ") {
-          ensureInit();
-          if (gameOver) return;
-          setRunning(!running);
-          return;
-        }
-        if (gameOver) return;
-
-        if (k === "arrowup" || k === "w") queueDir(0, -1);
-        else if (k === "arrowdown" || k === "s") queueDir(0, 1);
-        else if (k === "arrowleft" || k === "a") queueDir(-1, 0);
-        else if (k === "arrowright" || k === "d") queueDir(1, 0);
-      }, { passive: false });
-
-      // dpad
-      document.querySelectorAll("[data-dir]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          if (gameOver) return;
-          const d = btn.dataset.dir;
-          if (d === "U") queueDir(0, -1);
-          if (d === "D") queueDir(0, 1);
-          if (d === "L") queueDir(-1, 0);
-          if (d === "R") queueDir(1, 0);
-        });
-      });
-
-      // start/pause
-      startBtn.addEventListener("click", () => {
-        ensureInit();
-        if (gameOver) return;
-        setRunning(!running);
-      });
-
-      // restart
-      restartBtn.addEventListener("click", () => {
-        resizeCanvas();
-        resetGame();
-        initialized = true;
-        setRunning(true);
-      });
-
-      // tap board: start/pause
-      board.addEventListener("click", () => {
-        ensureInit();
-        if (gameOver) return;
-        setRunning(!running);
-      });
-
-      // init
-      requestAnimationFrame(() => {
-        ensureInit();
-      });
-    })();
-  </script>
+  // init
+  requestAnimationFrame(() => {
+    ensureInit();
+  });
+})();
+</script>
 </body>
-
 </html>
