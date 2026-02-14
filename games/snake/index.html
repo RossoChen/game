@@ -18,9 +18,7 @@
       color-scheme: dark light;
       --homebar-guard: max(env(safe-area-inset-bottom), 34px);
       --homebar-extra: 18px;
-
       --maxw: 560px;
-      --radius: 18px;
     }
 
     html[data-theme="dark"]{
@@ -37,6 +35,7 @@
       --snakeHead:#7cf7b6;
       --snakeBody:#57b8ff;
       --danger:#ff668a;
+      --toast:#ff9ab0;
     }
 
     html[data-theme="light"]{
@@ -53,6 +52,7 @@
       --snakeHead:#1ea972;
       --snakeBody:#1e79c8;
       --danger:#d23a5a;
+      --toast:#d23a5a;
     }
 
     html, body{
@@ -84,6 +84,7 @@
       display:flex;
       flex-direction:column;
       gap:10px;
+      position:relative;
     }
 
     .hudTop{
@@ -129,6 +130,28 @@
     }
     .btn:active{ transform:scale(0.985); }
 
+    /* ✅ HUD toast：不蓋棋盤 */
+    .toast{
+      position:absolute;
+      left:50%;
+      top:-6px;
+      transform:translateX(-50%);
+      border:1px solid var(--border2);
+      background:var(--panel);
+      border-radius:999px;
+      padding:8px 10px;
+      font-size:13px;
+      font-weight:900;
+      white-space:nowrap;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .15s ease;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    }
+    .toast.show{ opacity:1; }
+    .toast b{ color:var(--toast); }
+
     .stage{
       width:min(var(--maxw), 96vw);
       flex:1;
@@ -165,28 +188,6 @@
     .overlay h2{ margin:0 0 8px; font-size:18px; }
     .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
-    /* ✅ 護盾觸發提示 */
-    .toast{
-      position:fixed;
-      left:50%;
-      top: calc(env(safe-area-inset-top) + 12px);
-      transform: translateX(-50%);
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--border2);
-      background:var(--panel);
-      color:var(--fg);
-      font-weight:900;
-      font-size:13px;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .15s ease;
-      backdrop-filter: blur(10px);
-      z-index:999;
-      white-space:nowrap;
-    }
-    .toast.show{ opacity:1; }
-
     .dpad{
       width:min(var(--maxw), 96vw);
       display:grid;
@@ -216,6 +217,7 @@
       .hudBottom{ grid-template-columns: 1fr 1fr; }
       #startBtn, #restartBtn, #backBtn, #themeBtn{ width:100%; }
       .hudTop{ flex-direction:column; align-items:stretch; }
+      .toast{ top:-10px; }
     }
 
     @media (max-height: 720px){
@@ -232,14 +234,14 @@
 </head>
 
 <body>
-  <div class="toast" id="toast">護盾擋下！</div>
-
   <div class="app">
     <div class="hud">
+      <div class="toast" id="toast"></div>
+
       <div class="hudTop">
         <button class="btn" id="backBtn">← Back</button>
         <button class="btn" id="themeBtn">主題：深色</button>
-        <div class="pill">效果：<strong id="effect">無</strong></div>
+        <div class="pill">狀態：<strong id="effect">無</strong></div>
       </div>
 
       <div class="hudBottom">
@@ -284,18 +286,38 @@
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
   const GRID = 22;
+
+  // 速度
   const BASE_STEP_MS = 140;
   const SPEEDUP_EVERY = 6;
   const SPEEDUP_FACTOR = 0.92;
 
+  // 道具生成（保留原本效果 + 新道具）
   const BONUS_EVERY_FOODS = 5;
+  const BONUS_SPAWN_CHANCE = 0.60;
   const BONUS_LIFE_STEPS = 70;
-  const EFFECT_LIFE_STEPS = 60;
-  const BONUS_TYPES = ["DOUBLE","SLOW","WRAP","SHIELD"];
 
+  // ✅ 保留：X2、減速、穿牆、護盾；新增：磁鐵、剪尾
+  const BONUS_TYPES = ["DOUBLE","SLOW","WRAP","SHIELD","MAGNET","SCISSORS"];
+
+  // 方向輸入 buffer
   const INPUT_BUFFER_MAX = 3;
 
-  const BEST_KEY = "snake_best_v6_bonus";
+  // 效果持續（步數）
+  const EFFECT_LIFE_STEPS = 60;
+
+  // 新道具參數
+  const MAGNET_STEPS = 42;
+  const SCISSORS_CUT = 3;
+  const SCISSORS_MIN_LEN = 3;
+
+  // 計分
+  const SCORE_FOOD = 10;
+  const SCORE_BONUS = 30; // 拿到道具基本加分
+  const SCORE_SCISSORS_EXTRA = 15; // 剪尾額外加分（總共 45）
+  const SCORE_MAGNET_EXTRA = 5;    // 磁鐵額外加分（總共 35）
+
+  const BEST_KEY = "snake_best_v9_keep_x2_wrap_plus_magnet_scissors";
   const THEME_KEY = "snake_theme_v1";
 
   const board = document.getElementById("board");
@@ -317,11 +339,11 @@
 
   const toast = document.getElementById("toast");
   let toastTimer = 0;
-  function showToast(text){
-    toast.textContent = text;
+  function showToast(html, ms=900){
+    toast.innerHTML = html;
     toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 420);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), ms);
   }
 
   // Theme
@@ -386,23 +408,31 @@
     if(initialized) draw();
   });
 
-  // Game state
+  // State
   let snake, dir, food;
   let score, foodsEaten;
   let initialized = false;
   let running = false;
   let gameOver = false;
 
-  let dirQueue = []; // input buffer
+  // ✅ 護盾停住狀態
+  let shieldHold = false;
 
-  let bonus = null;  // {x,y,type,ttl}
-  let effect = null; // {type, ttl}
-  let shieldCharges = 0;
+  // input queue
+  let dirQueue = [];
 
+  // items/effects
+  let bonus = null;         // {x,y,type,ttl}
+  let shieldCharges = 0;    // 可疊加
+  let magnetTTL = 0;        // 獨立倒數
+  let effect = null;        // {type:"DOUBLE"|"SLOW"|"WRAP", ttl}
+
+  // timing
   let baseStepMs = BASE_STEP_MS;
   let stepMs = BASE_STEP_MS;
   let lastStepAt = 0;
 
+  // utils
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
   function isReverse(a, b){ return a && b && a.x === -b.x && a.y === -b.y; }
@@ -417,21 +447,34 @@
     }
   }
 
-  function effectLabel(){
-    if(!effect) return "無";
-    const t = effect.type;
-    if(t==="DOUBLE") return "雙倍分數";
-    if(t==="SLOW") return "減速";
-    if(t==="WRAP") return "穿牆";
-    if(t==="SHIELD") return `護盾（${shieldCharges}）`;
-    return "未知";
+  function effectName(type){
+    if(type==="DOUBLE") return "X2";
+    if(type==="SLOW") return "減速";
+    if(type==="WRAP") return "穿牆";
+    return "";
+  }
+
+  function statusLabel(){
+    const parts = [];
+    if(effect) parts.push(`${effectName(effect.type)}(${effect.ttl})`);
+    if(magnetTTL>0) parts.push(`磁鐵(${magnetTTL})`);
+    if(shieldCharges>0) parts.push(`護盾(${shieldCharges})`);
+    return parts.length ? parts.join(" / ") : "無";
   }
 
   function syncUI(){
     elScore.textContent = score;
     elBest.textContent = best;
-    elEffect.textContent = effectLabel();
+    elEffect.textContent = statusLabel();
     startBtn.textContent = running ? "暫停" : "開始";
+  }
+
+  function gainScore(v){
+    score += v;
+    if(score > best){
+      best = score;
+      localStorage.setItem(BEST_KEY, String(best));
+    }
   }
 
   function placeFood(){
@@ -445,7 +488,8 @@
 
   function spawnBonus(){
     if(bonus) return;
-    if(Math.random() > 0.60) return;
+    if(Math.random() > BONUS_SPAWN_CHANCE) return;
+
     const type = BONUS_TYPES[randInt(BONUS_TYPES.length)];
     while(true){
       const p = {x:randInt(GRID), y:randInt(GRID)};
@@ -473,9 +517,12 @@
     gameOver = false;
     lastStepAt = 0;
 
+    shieldHold = false;
+
     bonus = null;
-    effect = null;
     shieldCharges = 0;
+    magnetTTL = 0;
+    effect = null;
 
     placeFood();
     syncUI();
@@ -498,15 +545,69 @@
       setOverlay(false);
       requestAnimationFrame(loop);
     }else{
-      setOverlay(true, "暫停中", "按「開始」繼續");
+      if(shieldHold){
+        setOverlay(false);
+      }else{
+        setOverlay(true, "暫停中", "按「開始」繼續");
+      }
     }
   }
 
-  function enqueueDir(dx, dy){
+  // ✅ 磁鐵：每步結束後，若同列/同行，食物向蛇頭靠近 1 格（不穿身體）
+  function magnetPullFood(){
+    if(magnetTTL <= 0) return;
+
+    const head = snake[0];
+    let tx = food.x, ty = food.y;
+
+    if(food.x === head.x){
+      const step = (head.y > food.y) ? 1 : -1;
+      ty = food.y + step;
+    }else if(food.y === head.y){
+      const step = (head.x > food.x) ? 1 : -1;
+      tx = food.x + step;
+    }else{
+      return;
+    }
+
+    if(tx < 0 || tx >= GRID || ty < 0 || ty >= GRID) return;
+
+    const blockedBySnake = snake.some(p => p.x === tx && p.y === ty);
+    const blockedByBonus = bonus && bonus.x === tx && bonus.y === ty;
+    if(blockedBySnake || blockedByBonus) return;
+
+    food = {x:tx, y:ty};
+  }
+
+  // ✅ 剪尾
+  function cutTail(n){
+    const keep = Math.max(SCISSORS_MIN_LEN, snake.length - n);
+    while(snake.length > keep) snake.pop();
+  }
+
+  // ✅ 方向輸入（支援 shieldHold：按方向立刻走一步）
+  function handleDirInput(dx, dy){
     ensureInit();
     const nd = {x:dx, y:dy};
-    const ref = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
 
+    if(shieldHold){
+      if(isReverse(nd, dir)) return;
+
+      shieldHold = false;
+      dirQueue = [];
+      dir = nd;
+
+      running = true;
+      syncUI();
+      setOverlay(false);
+      lastStepAt = 0;
+
+      step(true); // ✅ 立刻移動一格（resumeMove=true）
+      requestAnimationFrame(loop);
+      return;
+    }
+
+    const ref = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
     if(isReverse(nd, ref)) return;
     if(ref && nd.x === ref.x && nd.y === ref.y) return;
 
@@ -523,11 +624,19 @@
     dir = nd;
   }
 
-  function tryConsumeShield(){
+  function enterShieldHold(){
+    shieldHold = true;
+    running = false;
+    dirQueue = [];
+    syncUI();
+    setOverlay(false);
+    showToast(`<b>護盾擋下！</b> 按方向繼續`, 1000);
+  }
+
+  function tryConsumeShieldAndHold(){
     if(shieldCharges > 0){
       shieldCharges -= 1;
-      if(shieldCharges <= 0 && effect && effect.type==="SHIELD") effect = null;
-      showToast("護盾擋下！");
+      enterShieldHold();
       return true;
     }
     return false;
@@ -536,65 +645,79 @@
   function endGame(){
     running = false;
     gameOver = true;
+    shieldHold = false;
     syncUI();
     draw(true);
     setOverlay(true, "結束", "按「重來」重新開始");
   }
 
-  /* ✅ 這個 tick 原本放在 step() 開頭，會造成「最後一拍護盾被扣掉」的體感 bug
-     ✅ 改到 step() 最後才扣 TTL */
-  function applyEffectTick(){
+  function applyTick(){
     if(bonus){
       bonus.ttl -= 1;
       if(bonus.ttl <= 0) bonus = null;
     }
+    if(magnetTTL > 0) magnetTTL -= 1;
+
     if(effect){
       effect.ttl -= 1;
       if(effect.ttl <= 0){
-        if(effect.type==="SLOW") stepMs = baseStepMs;
-        if(effect.type==="SHIELD") shieldCharges = 0;
+        // effect 結束：還原速度（若是 SLOW）
+        if(effect.type === "SLOW") stepMs = baseStepMs;
         effect = null;
       }
     }
   }
 
-  function gainScore(base){
-    let v = base;
-    if(effect && effect.type==="DOUBLE") v *= 2;
-    score += v;
+  function setEffect(type){
+    // 只允許一個「時效效果」同時存在（X2/減速/穿牆）
+    effect = {type, ttl: EFFECT_LIFE_STEPS};
 
-    if(score > best){
-      best = score;
-      localStorage.setItem(BEST_KEY, String(best));
+    if(type === "SLOW"){
+      stepMs = Math.min(220, Math.floor(baseStepMs * 1.35));
     }
+
+    const n = effectName(type);
+    showToast(`取得 <b>${n}</b>（${EFFECT_LIFE_STEPS}）`);
   }
 
   function takeBonus(b){
-    const type = b.type;
+    // 基本加分
+    gainScore(SCORE_BONUS);
 
-    if(type === "DOUBLE"){
-      effect = {type:"DOUBLE", ttl: EFFECT_LIFE_STEPS};
-    }else if(type === "SLOW"){
-      effect = {type:"SLOW", ttl: EFFECT_LIFE_STEPS};
-      stepMs = Math.min(220, Math.floor(baseStepMs * 1.35));
-    }else if(type === "WRAP"){
-      effect = {type:"WRAP", ttl: EFFECT_LIFE_STEPS};
-    }else if(type === "SHIELD"){
-      effect = {type:"SHIELD", ttl: EFFECT_LIFE_STEPS};
+    if(b.type === "DOUBLE"){
+      setEffect("DOUBLE");
+    }else if(b.type === "SLOW"){
+      setEffect("SLOW");
+    }else if(b.type === "WRAP"){
+      setEffect("WRAP");
+    }else if(b.type === "SHIELD"){
       shieldCharges += 1;
+      showToast(`取得 <b>護盾</b>（+1）`);
+    }else if(b.type === "MAGNET"){
+      magnetTTL = Math.max(magnetTTL, MAGNET_STEPS);
+      gainScore(SCORE_MAGNET_EXTRA);
+      showToast(`取得 <b>磁鐵</b>（${MAGNET_STEPS}）`);
+    }else if(b.type === "SCISSORS"){
+      cutTail(SCISSORS_CUT);
+      gainScore(SCORE_SCISSORS_EXTRA);
+      showToast(`使用 <b>剪尾</b>（- ${SCISSORS_CUT}）`);
     }
 
-    gainScore(30);
     bonus = null;
   }
 
-  function step(){
-    applyDirFromQueue();
+  function step(resumeMove=false){
+    if(shieldHold) return;
+
+    // resumeMove=true 表示 shieldHold 復活那一步：不吃 queue（因為方向已指定）
+    if(!resumeMove) applyDirFromQueue();
 
     const head = snake[0];
     let next = {x: head.x + dir.x, y: head.y + dir.y};
 
-    const wrapping = !!(effect && effect.type==="WRAP");
+    const wrapping = !!(effect && effect.type === "WRAP");
+
+    // 撞牆
     if(wrapping){
       if(next.x < 0) next.x = GRID - 1;
       else if(next.x >= GRID) next.x = 0;
@@ -602,44 +725,50 @@
       else if(next.y >= GRID) next.y = 0;
     }else{
       if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){
-        if(tryConsumeShield()){
-          next.x = Math.min(GRID-1, Math.max(0, next.x));
-          next.y = Math.min(GRID-1, Math.max(0, next.y));
-        }else{
-          endGame(); return;
+        if(tryConsumeShieldAndHold()){
+          // 這次不移動，但仍當作一個「節拍」：道具倒數/bonus倒數照走
+          applyTick();
+          syncUI(); draw();
+          return;
         }
+        endGame(); return;
       }
     }
 
-    const willEatFood = same(next, food);
+    const willEatFood  = same(next, food);
     const willEatBonus = bonus && same(next, bonus);
 
     const body = (willEatFood || willEatBonus) ? snake : snake.slice(0, -1);
 
+    // 撞身體
     if(body.some(p => same(p, next))){
-      if(tryConsumeShield()){
-        syncUI();
-        draw();
-        applyEffectTick(); /* ✅ 也照樣扣時效（但不是在撞之前扣） */
+      if(tryConsumeShieldAndHold()){
+        applyTick();
+        syncUI(); draw();
         return;
-      }else{
-        endGame(); return;
       }
+      endGame(); return;
     }
 
     snake.unshift(next);
 
     if(willEatFood){
       foodsEaten += 1;
-      gainScore(10);
 
+      // 分數（X2）
+      const add = (effect && effect.type === "DOUBLE") ? (SCORE_FOOD * 2) : SCORE_FOOD;
+      gainScore(add);
+
+      // 逐步加速
       if(foodsEaten % SPEEDUP_EVERY === 0){
         baseStepMs = Math.max(60, Math.floor(baseStepMs * SPEEDUP_FACTOR));
-        if(!(effect && effect.type==="SLOW")){
+        // 若不是減速狀態，跟著加速
+        if(!(effect && effect.type === "SLOW")){
           stepMs = baseStepMs;
         }
       }
 
+      // 刷道具
       if(foodsEaten % BONUS_EVERY_FOODS === 0){
         spawnBonus();
       }
@@ -651,11 +780,12 @@
       snake.pop();
     }
 
+    // ✅ 磁鐵吸食（每步結束拉一次）
+    magnetPullFood();
+
+    applyTick();
     syncUI();
     draw();
-
-    /* ✅ 改到最後才扣 TTL：避免「護盾最後一拍先死」的體感 bug */
-    applyEffectTick();
   }
 
   function loop(t){
@@ -663,13 +793,9 @@
     if(!lastStepAt) lastStepAt = t;
     if(t - lastStepAt >= stepMs){
       lastStepAt = t;
-      step();
+      step(false);
     }
     requestAnimationFrame(loop);
-  }
-
-  function getCssVar(name){
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function draw(isOver=false){
@@ -680,6 +806,7 @@
 
     ctx.clearRect(0,0,w,w);
 
+    // grid
     ctx.globalAlpha = 0.10;
     ctx.beginPath();
     for(let i=1;i<GRID;i++){
@@ -691,21 +818,26 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
+    // food
     ctx.fillStyle = getCssVar("--food");
     ctx.beginPath();
     ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
     ctx.fill();
 
+    // bonus icon
     if(bonus){
       const cx = (bonus.x+0.5)*cell;
       const cy = (bonus.y+0.5)*cell;
-      const t = bonus.type;
 
       let ring = "#ffffff";
-      if(t==="DOUBLE") ring = "#ffd3ff";
-      else if(t==="SLOW") ring = "#8fe7ff";
-      else if(t==="WRAP") ring = "#c7ff8f";
-      else if(t==="SHIELD") ring = "#ff9ab0";
+      let icon = "?";
+      // 讓辨識直覺：舊 + 新
+      if(bonus.type==="DOUBLE"){ ring="#ffd3ff"; icon="×2"; }
+      else if(bonus.type==="SLOW"){ ring="#8fe7ff"; icon="⏱"; }
+      else if(bonus.type==="WRAP"){ ring="#c7ff8f"; icon="↺"; }
+      else if(bonus.type==="SHIELD"){ ring="#ff9ab0"; icon="🛡"; }
+      else if(bonus.type==="MAGNET"){ ring="#8fe7ff"; icon="🧲"; }
+      else if(bonus.type==="SCISSORS"){ ring="#ffd3ff"; icon="✂"; }
 
       const blink = (bonus.ttl < 18) ? (Math.floor(bonus.ttl/3) % 2 === 0) : true;
       if(blink){
@@ -721,15 +853,10 @@
       ctx.font = `${Math.max(10, cell*0.55)}px system-ui`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-
-      const icon = (t==="DOUBLE") ? "×2"
-                 : (t==="SLOW")   ? "⏱"
-                 : (t==="WRAP")   ? "↺"
-                 : (t==="SHIELD") ? "🛡"
-                 : "?";
       ctx.fillText(icon, cx, cy + 0.5);
     }
 
+    // snake
     for(let i=snake.length-1;i>=0;i--){
       const p = snake[i];
       const x = p.x*cell, y = p.y*cell;
@@ -739,24 +866,16 @@
       ctx.fill();
     }
 
-    if(effect){
-      ctx.globalAlpha = 0.05;
-      let tint = "#ffffff";
-      if(effect.type==="DOUBLE") tint = "#ffd3ff";
-      else if(effect.type==="SLOW") tint = "#8fe7ff";
-      else if(effect.type==="WRAP") tint = "#c7ff8f";
-      else if(effect.type==="SHIELD") tint = "#ff9ab0";
-      ctx.fillStyle = tint;
-      ctx.fillRect(0,0,w,w);
-      ctx.globalAlpha = 1;
-    }
-
     if(isOver){
       ctx.globalAlpha = 0.10;
       ctx.fillStyle = getCssVar("--danger");
       ctx.fillRect(0,0,w,w);
       ctx.globalAlpha = 1;
     }
+  }
+
+  function getCssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function roundRect(ctx, x, y, w, h, r){
@@ -770,7 +889,7 @@
     ctx.closePath();
   }
 
-  // keyboard
+  // Controls
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if(["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"," "].includes(k)) e.preventDefault();
@@ -778,39 +897,38 @@
     if(k === " "){
       ensureInit();
       if(gameOver) return;
+      if(shieldHold) return; // shieldHold 必須用方向解除
       setRunning(!running);
       return;
     }
     if(gameOver) return;
 
-    if(k==="arrowup"||k==="w") enqueueDir(0,-1);
-    else if(k==="arrowdown"||k==="s") enqueueDir(0,1);
-    else if(k==="arrowleft"||k==="a") enqueueDir(-1,0);
-    else if(k==="arrowright"||k==="d") enqueueDir(1,0);
+    if(k==="arrowup"||k==="w") handleDirInput(0,-1);
+    else if(k==="arrowdown"||k==="s") handleDirInput(0,1);
+    else if(k==="arrowleft"||k==="a") handleDirInput(-1,0);
+    else if(k==="arrowright"||k==="d") handleDirInput(1,0);
   }, {passive:false});
 
-  // dpad
   document.querySelectorAll("[data-dir]").forEach(btn => {
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       if(gameOver) return;
       const d = btn.dataset.dir;
-      if(d==="U") enqueueDir(0,-1);
-      if(d==="D") enqueueDir(0,1);
-      if(d==="L") enqueueDir(-1,0);
-      if(d==="R") enqueueDir(1,0);
+      if(d==="U") handleDirInput(0,-1);
+      if(d==="D") handleDirInput(0,1);
+      if(d==="L") handleDirInput(-1,0);
+      if(d==="R") handleDirInput(1,0);
     }, {passive:false});
   });
 
-  // start / pause
   startBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureInit();
     if(gameOver) return;
+    if(shieldHold) return;
     setRunning(!running);
   }, {passive:false});
 
-  // restart
   restartBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     resizeCanvas();
@@ -819,7 +937,7 @@
     setRunning(true);
   }, {passive:false});
 
-  // swipe
+  // Swipe
   let sx=0, sy=0, moved=false;
   const SWIPE_MIN = 18;
 
@@ -839,11 +957,11 @@
     moved = true;
 
     if(Math.abs(dx) > Math.abs(dy)){
-      if(dx > 0) enqueueDir(1,0);
-      else enqueueDir(-1,0);
+      if(dx > 0) handleDirInput(1,0);
+      else handleDirInput(-1,0);
     }else{
-      if(dy > 0) enqueueDir(0,1);
-      else enqueueDir(0,-1);
+      if(dy > 0) handleDirInput(0,1);
+      else handleDirInput(0,-1);
     }
 
     sx = e.clientX; sy = e.clientY;
@@ -851,6 +969,7 @@
 
   board.addEventListener("pointerup", () => {
     if(gameOver) return;
+    if(shieldHold) return;
     if(!moved){
       setRunning(!running);
     }
