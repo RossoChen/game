@@ -290,9 +290,9 @@
   const GRID = 22;
 
   // 速度
-  const BASE_STEP_MS = 140;
-  const SPEEDUP_EVERY = 6;
-  const SPEEDUP_FACTOR = 0.92;
+  const BASE_STEP_MS = 200;
+  const SPEEDUP_EVERY = 10;
+  const SPEEDUP_FACTOR = 0.99;
 
   // 道具生成（保留原本效果 + 新道具）
   const BONUS_EVERY_FOODS = 5;
@@ -612,7 +612,7 @@
     gainScore(add);
 
     if(foodsEaten % SPEEDUP_EVERY === 0){
-      baseStepMs = Math.max(60, Math.floor(baseStepMs * SPEEDUP_FACTOR));
+      baseStepMs = Math.max(30, Math.floor(baseStepMs * SPEEDUP_FACTOR));
       if(!(effect && effect.type === "SLOW")){
         stepMs = baseStepMs;
       }
