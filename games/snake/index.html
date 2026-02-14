@@ -5,61 +5,54 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
   <title>Snake</title>
 
-  <!-- iOS standalone (Add to Home Screen) -->
   <meta name="theme-color" content="#0b1220" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Snake" />
 
-  <!-- 仍使用入口(Hub)的 manifest：確保只會有一個主畫面 icon -->
   <link rel="manifest" href="/game/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
 
   <style>
     :root{
       color-scheme: dark light;
-
-      /* ✅ iOS Home Indicator 防撞：
-         standalone 下 env() 可能偏小或偶發為 0，所以用「保守固定值」當下限 */
       --homebar-guard: max(env(safe-area-inset-bottom), 34px);
-      --homebar-extra: 18px; /* 再加一圈保險，讓 ▼ 永遠不踩雷 */
+      --homebar-extra: 18px;
 
-      /* UI sizing */
       --maxw: 560px;
       --radius: 18px;
     }
 
-    /* Theme variables */
     html[data-theme="dark"]{
-      --bg: #0b1220;
-      --panel: rgba(255,255,255,.08);
-      --panel2: rgba(255,255,255,.06);
-      --border: rgba(255,255,255,.18);
-      --border2: rgba(255,255,255,.14);
-      --fg: #e7eefc;
-      --muted: rgba(231,238,252,.86);
-      --board: #0a0f1c;
-      --grid: #e7eefc;
-      --food: #ffcc66;
-      --snakeHead: #7cf7b6;
-      --snakeBody: #57b8ff;
-      --danger: #ff668a;
+      --bg:#0b1220;
+      --panel:rgba(255,255,255,.08);
+      --panel2:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.18);
+      --border2:rgba(255,255,255,.14);
+      --fg:#e7eefc;
+      --muted:rgba(231,238,252,.86);
+      --board:#0a0f1c;
+      --grid:#e7eefc;
+      --food:#ffcc66;
+      --snakeHead:#7cf7b6;
+      --snakeBody:#57b8ff;
+      --danger:#ff668a;
     }
 
     html[data-theme="light"]{
-      --bg: #f6f7fb;
-      --panel: rgba(0,0,0,.06);
-      --panel2: rgba(0,0,0,.04);
-      --border: rgba(0,0,0,.12);
-      --border2: rgba(0,0,0,.10);
-      --fg: #0b1220;
-      --muted: rgba(11,18,32,.78);
-      --board: #ffffff;
-      --grid: #0b1220;
-      --food: #d9822b;
-      --snakeHead: #1ea972;
-      --snakeBody: #1e79c8;
-      --danger: #d23a5a;
+      --bg:#f6f7fb;
+      --panel:rgba(0,0,0,.06);
+      --panel2:rgba(0,0,0,.04);
+      --border:rgba(0,0,0,.12);
+      --border2:rgba(0,0,0,.10);
+      --fg:#0b1220;
+      --muted:rgba(11,18,32,.78);
+      --board:#ffffff;
+      --grid:#0b1220;
+      --food:#d9822b;
+      --snakeHead:#1ea972;
+      --snakeBody:#1e79c8;
+      --danger:#d23a5a;
     }
 
     html, body{
@@ -78,7 +71,7 @@
       height:100svh;
       padding-top: calc(env(safe-area-inset-top) + 14px);
       padding-right: calc(env(safe-area-inset-right) + 12px);
-      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra)); /* ✅ 強化底部保護 */
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
       padding-left: calc(env(safe-area-inset-left) + 12px);
       display:flex;
       flex-direction:column;
@@ -172,14 +165,33 @@
     .overlay h2{ margin:0 0 8px; font-size:18px; }
     .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
-    /* ✅ 大按鍵 D-Pad：更大、更厚、間距更舒服 */
+    /* ✅ 護盾觸發提示 */
+    .toast{
+      position:fixed;
+      left:50%;
+      top: calc(env(safe-area-inset-top) + 12px);
+      transform: translateX(-50%);
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background:var(--panel);
+      color:var(--fg);
+      font-weight:900;
+      font-size:13px;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .15s ease;
+      backdrop-filter: blur(10px);
+      z-index:999;
+      white-space:nowrap;
+    }
+    .toast.show{ opacity:1; }
+
     .dpad{
       width:min(var(--maxw), 96vw);
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap:12px;
-
-      /* ✅ 再補一層：D-pad 自己也吃到底部安全區 */
       padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
     }
 
@@ -193,14 +205,13 @@
       font-weight:1000;
       cursor:pointer;
       -webkit-tap-highlight-color:transparent;
-      min-height:64px; /* ✅ 再大一點，降低 miss */
+      min-height:64px;
       touch-action:manipulation;
       backdrop-filter: blur(8px);
     }
     .pad:active{ transform:scale(0.985); }
     .blank{ opacity:0; pointer-events:none; }
 
-    /* ✅ 小手機：HUD 自動換行，不爆版 */
     @media (max-width: 360px){
       .hudBottom{ grid-template-columns: 1fr 1fr; }
       #startBtn, #restartBtn, #backBtn, #themeBtn{ width:100%; }
@@ -221,12 +232,14 @@
 </head>
 
 <body>
+  <div class="toast" id="toast">護盾擋下！</div>
+
   <div class="app">
     <div class="hud">
       <div class="hudTop">
         <button class="btn" id="backBtn">← Back</button>
         <button class="btn" id="themeBtn">主題：深色</button>
-        <div class="pill" id="effectPill">效果：<strong id="effect">無</strong></div>
+        <div class="pill">效果：<strong id="effect">無</strong></div>
       </div>
 
       <div class="hudBottom">
@@ -268,27 +281,22 @@
 
 <script>
 (() => {
-  // 固定頁面：防 iOS 彈跳/滑動
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
   const GRID = 22;
-
-  // 速度 / 節奏
   const BASE_STEP_MS = 140;
   const SPEEDUP_EVERY = 6;
   const SPEEDUP_FACTOR = 0.92;
 
-  // Bonus 設定
   const BONUS_EVERY_FOODS = 5;
   const BONUS_LIFE_STEPS = 70;
   const EFFECT_LIFE_STEPS = 60;
   const BONUS_TYPES = ["DOUBLE","SLOW","WRAP","SHIELD"];
 
-  // ✅ 輸入緩衝：解決「連按第二個方向沒反應」
   const INPUT_BUFFER_MAX = 3;
 
   const BEST_KEY = "snake_best_v6_bonus";
-  const THEME_KEY = "snake_theme_v1"; // "dark" / "light" / "system"
+  const THEME_KEY = "snake_theme_v1";
 
   const board = document.getElementById("board");
   const cv = document.getElementById("cv");
@@ -307,49 +315,47 @@
   const ovTitle = document.getElementById("ovTitle");
   const ovText  = document.getElementById("ovText");
 
-  // -------- Theme (dark/light + remember + follow system default) --------
+  const toast = document.getElementById("toast");
+  let toastTimer = 0;
+  function showToast(text){
+    toast.textContent = text;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 420);
+  }
+
+  // Theme
   function systemTheme(){
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   }
-
   function applyTheme(mode){
-    // mode: "dark" | "light" | "system"
     const final = (mode === "system") ? systemTheme() : mode;
     document.documentElement.dataset.theme = final;
 
-    // 同步 meta theme-color（iOS 狀態列顏色比較一致）
     const meta = document.querySelector('meta[name="theme-color"]');
-    if(meta){
-      meta.setAttribute("content", final === "light" ? "#f6f7fb" : "#0b1220");
-    }
+    if(meta) meta.setAttribute("content", final === "light" ? "#f6f7fb" : "#0b1220");
 
     themeBtn.textContent = `主題：${final === "light" ? "淺色" : "深色"}`;
   }
-
   function getThemeMode(){
     return localStorage.getItem(THEME_KEY) || "system";
   }
-
   function setThemeMode(mode){
     localStorage.setItem(THEME_KEY, mode);
     applyTheme(mode);
   }
-
-  // init theme
   applyTheme(getThemeMode());
   if(window.matchMedia){
     window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
       if(getThemeMode() === "system") applyTheme("system");
     });
   }
-
   themeBtn.addEventListener("click", () => {
-    // 企業級 UX：一鍵在 dark/light 間切換（不搞三態，降低心智成本）
     const cur = document.documentElement.dataset.theme;
     setThemeMode(cur === "light" ? "dark" : "light");
   });
 
-  // -------- Back --------
+  // Back
   backBtn.addEventListener("click", () => {
     const hub = "/game/";
     try{
@@ -360,14 +366,13 @@
     }
   });
 
-  // -------- Best score --------
+  // Best
   let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
   elBest.textContent = best;
 
-  // -------- Canvas sizing --------
+  // Canvas sizing
   let dpr = 1;
   let sizeCss = 1;
-
   function resizeCanvas(){
     const rect = board.getBoundingClientRect();
     sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
@@ -376,40 +381,31 @@
     cv.height = Math.floor(sizeCss * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-
   window.addEventListener("resize", () => {
     resizeCanvas();
     if(initialized) draw();
   });
 
-  // -------- Game state --------
+  // Game state
   let snake, dir, food;
   let score, foodsEaten;
   let initialized = false;
   let running = false;
   let gameOver = false;
 
-  // input queue
-  let dirQueue = []; // [{x,y}, ...]
+  let dirQueue = []; // input buffer
 
-  // bonus / effect
-  let bonus = null; // {x,y,type,ttl}
+  let bonus = null;  // {x,y,type,ttl}
   let effect = null; // {type, ttl}
   let shieldCharges = 0;
 
-  // timing
   let baseStepMs = BASE_STEP_MS;
   let stepMs = BASE_STEP_MS;
   let lastStepAt = 0;
 
-  // utils
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
-
-  function isReverse(a, b){
-    // a 是新方向，b 是參考方向
-    return a && b && a.x === -b.x && a.y === -b.y;
-  }
+  function isReverse(a, b){ return a && b && a.x === -b.x && a.y === -b.y; }
 
   function setOverlay(show, title, text){
     if(show){
@@ -450,7 +446,6 @@
   function spawnBonus(){
     if(bonus) return;
     if(Math.random() > 0.60) return;
-
     const type = BONUS_TYPES[randInt(BONUS_TYPES.length)];
     while(true){
       const p = {x:randInt(GRID), y:randInt(GRID)};
@@ -507,21 +502,14 @@
     }
   }
 
-  // ✅ 方向輸入：進佇列（最多 3 格），不丟第二下
   function enqueueDir(dx, dy){
     ensureInit();
     const nd = {x:dx, y:dy};
-
-    // 參考方向：若 queue 有東西，以最後一個為準；否則以當前 dir 為準
     const ref = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
 
-    // 不允許直接反向（避免玩家手滑瞬間自殺）
     if(isReverse(nd, ref)) return;
-
-    // 避免重複塞一樣方向
     if(ref && nd.x === ref.x && nd.y === ref.y) return;
 
-    // buffer 滿了就丟掉最舊的（保留最近的操作意圖）
     if(dirQueue.length >= INPUT_BUFFER_MAX) dirQueue.shift();
     dirQueue.push(nd);
 
@@ -530,9 +518,8 @@
 
   function applyDirFromQueue(){
     if(!dirQueue.length) return;
-
     const nd = dirQueue.shift();
-    if(isReverse(nd, dir)) return; // 再保險一次
+    if(isReverse(nd, dir)) return;
     dir = nd;
   }
 
@@ -540,6 +527,7 @@
     if(shieldCharges > 0){
       shieldCharges -= 1;
       if(shieldCharges <= 0 && effect && effect.type==="SHIELD") effect = null;
+      showToast("護盾擋下！");
       return true;
     }
     return false;
@@ -553,6 +541,8 @@
     setOverlay(true, "結束", "按「重來」重新開始");
   }
 
+  /* ✅ 這個 tick 原本放在 step() 開頭，會造成「最後一拍護盾被扣掉」的體感 bug
+     ✅ 改到 step() 最後才扣 TTL */
   function applyEffectTick(){
     if(bonus){
       bonus.ttl -= 1;
@@ -599,9 +589,7 @@
   }
 
   function step(){
-    // ✅ 每一步只吃一個方向，連按也不會丟
     applyDirFromQueue();
-    applyEffectTick();
 
     const head = snake[0];
     let next = {x: head.x + dir.x, y: head.y + dir.y};
@@ -632,6 +620,7 @@
       if(tryConsumeShield()){
         syncUI();
         draw();
+        applyEffectTick(); /* ✅ 也照樣扣時效（但不是在撞之前扣） */
         return;
       }else{
         endGame(); return;
@@ -664,6 +653,9 @@
 
     syncUI();
     draw();
+
+    /* ✅ 改到最後才扣 TTL：避免「護盾最後一拍先死」的體感 bug */
+    applyEffectTick();
   }
 
   function loop(t){
@@ -676,6 +668,10 @@
     requestAnimationFrame(loop);
   }
 
+  function getCssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   function draw(isOver=false){
     if(!snake || !food) return;
 
@@ -684,7 +680,6 @@
 
     ctx.clearRect(0,0,w,w);
 
-    // grid
     ctx.globalAlpha = 0.10;
     ctx.beginPath();
     for(let i=1;i<GRID;i++){
@@ -696,13 +691,11 @@
     ctx.stroke();
     ctx.globalAlpha = 1;
 
-    // food
     ctx.fillStyle = getCssVar("--food");
     ctx.beginPath();
     ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
     ctx.fill();
 
-    // bonus item
     if(bonus){
       const cx = (bonus.x+0.5)*cell;
       const cy = (bonus.y+0.5)*cell;
@@ -724,7 +717,6 @@
         ctx.globalAlpha = 1;
       }
 
-      // icon
       ctx.fillStyle = getCssVar("--bg");
       ctx.font = `${Math.max(10, cell*0.55)}px system-ui`;
       ctx.textAlign = "center";
@@ -738,7 +730,6 @@
       ctx.fillText(icon, cx, cy + 0.5);
     }
 
-    // snake
     for(let i=snake.length-1;i>=0;i--){
       const p = snake[i];
       const x = p.x*cell, y = p.y*cell;
@@ -748,7 +739,6 @@
       ctx.fill();
     }
 
-    // effect tint
     if(effect){
       ctx.globalAlpha = 0.05;
       let tint = "#ffffff";
@@ -767,10 +757,6 @@
       ctx.fillRect(0,0,w,w);
       ctx.globalAlpha = 1;
     }
-  }
-
-  function getCssVar(name){
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function roundRect(ctx, x, y, w, h, r){
@@ -803,7 +789,7 @@
     else if(k==="arrowright"||k==="d") enqueueDir(1,0);
   }, {passive:false});
 
-  // D-pad：pointerdown 更即時
+  // dpad
   document.querySelectorAll("[data-dir]").forEach(btn => {
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
@@ -816,7 +802,7 @@
     }, {passive:false});
   });
 
-  // start/pause
+  // start / pause
   startBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureInit();
@@ -833,7 +819,7 @@
     setRunning(true);
   }, {passive:false});
 
-  // Swipe 控制：在棋盤滑動即可轉向
+  // swipe
   let sx=0, sy=0, moved=false;
   const SWIPE_MIN = 18;
 
