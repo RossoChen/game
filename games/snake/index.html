@@ -310,17 +310,19 @@
 
   // 新道具參數
   const MAGNET_STEPS = 42;
-  const MAGNET_RANGE = 2;           // ✅ 5×5 = 中心±2
+  const MAGNET_RANGE = 2; // 5×5 = 中心±2
+  const MAGNET_FLY_MS = 180;
+
   const SCISSORS_CUT = 3;
   const SCISSORS_MIN_LEN = 3;
 
   // 計分
   const SCORE_FOOD = 10;
-  const SCORE_BONUS = 30;           // 拿到道具基本加分
-  const SCORE_SCISSORS_EXTRA = 15;  // 剪尾額外加分（總共 45）
-  const SCORE_MAGNET_EXTRA = 5;     // 磁鐵額外加分（總共 35）
+  const SCORE_BONUS = 30;
+  const SCORE_SCISSORS_EXTRA = 15;
+  const SCORE_MAGNET_EXTRA = 5;
 
-  const BEST_KEY = "snake_best_v10_magnet_5x5_autoEat";
+  const BEST_KEY = "snake_best_v11_magnet_fly";
   const THEME_KEY = "snake_theme_v1";
 
   const board = document.getElementById("board");
@@ -418,22 +420,21 @@
   let running = false;
   let gameOver = false;
 
-  // ✅ 護盾停住狀態
   let shieldHold = false;
-
-  // input queue
   let dirQueue = [];
 
-  // items/effects
   let bonus = null;         // {x,y,type,ttl}
   let shieldCharges = 0;    // 可疊加
-  let magnetTTL = 0;        // 獨立倒數
-  let effect = null;        // {type:"DOUBLE"|"SLOW"|"WRAP", ttl}
+  let magnetTTL = 0;
+  let effect = null;        // {type, ttl}
 
-  // timing
   let baseStepMs = BASE_STEP_MS;
   let stepMs = BASE_STEP_MS;
   let lastStepAt = 0;
+
+  // ✅ 磁鐵吸取動畫
+  let magnetFly = null;     // {fx,fy, tx,ty, t0, dur}
+  let magnetFlyRAF = 0;
 
   // utils
   function randInt(n){ return Math.floor(Math.random() * n); }
@@ -527,6 +528,10 @@
     magnetTTL = 0;
     effect = null;
 
+    magnetFly = null;
+    if(magnetFlyRAF) cancelAnimationFrame(magnetFlyRAF);
+    magnetFlyRAF = 0;
+
     placeFood();
     syncUI();
     draw();
@@ -556,13 +561,40 @@
     }
   }
 
-  // ✅ 剪尾
   function cutTail(n){
     const keep = Math.max(SCISSORS_MIN_LEN, snake.length - n);
     while(snake.length > keep) snake.pop();
   }
 
-  // ✅ 磁鐵：以蛇頭為中心 5×5 範圍內直接獲得食物（不移位、不改蛇位置）
+  function startMagnetFly(fromCell, toCell){
+    const now = performance.now();
+    magnetFly = {
+      fx: fromCell.x, fy: fromCell.y,
+      tx: toCell.x,   ty: toCell.y,
+      t0: now,
+      dur: MAGNET_FLY_MS
+    };
+
+    if(magnetFlyRAF) cancelAnimationFrame(magnetFlyRAF);
+
+    const tick = () => {
+      if(!magnetFly) return;
+      const t = performance.now();
+      const p = (t - magnetFly.t0) / magnetFly.dur;
+      if(p >= 1){
+        magnetFly = null;
+        magnetFlyRAF = 0;
+        draw();
+        return;
+      }
+      draw();
+      magnetFlyRAF = requestAnimationFrame(tick);
+    };
+
+    magnetFlyRAF = requestAnimationFrame(tick);
+  }
+
+  // ✅ 磁鐵：5×5 內直接獲得，並播放飛行動畫
   function magnetAutoEat(ateThisStep){
     if(magnetTTL <= 0) return;
     if(ateThisStep) return;
@@ -572,7 +604,8 @@
     const dy = Math.abs(food.y - head.y);
     if(dx > MAGNET_RANGE || dy > MAGNET_RANGE) return;
 
-    // 直接視為吃到一顆食物
+    startMagnetFly({x: food.x, y: food.y}, {x: head.x, y: head.y});
+
     foodsEaten += 1;
 
     const add = (effect && effect.type === "DOUBLE") ? (SCORE_FOOD * 2) : SCORE_FOOD;
@@ -592,7 +625,6 @@
     placeFood();
   }
 
-  // ✅ 方向輸入（支援 shieldHold：按方向立刻走一步）
   function handleDirInput(dx, dy){
     ensureInit();
     const nd = {x:dx, y:dy};
@@ -609,7 +641,7 @@
       setOverlay(false);
       lastStepAt = 0;
 
-      step(true); // resumeMove=true：立刻走一步
+      step(true);
       requestAnimationFrame(loop);
       return;
     }
@@ -719,7 +751,6 @@
 
     const wrapping = !!(effect && effect.type === "WRAP");
 
-    // 撞牆
     if(wrapping){
       if(next.x < 0) next.x = GRID - 1;
       else if(next.x >= GRID) next.x = 0;
@@ -742,7 +773,6 @@
 
     const body = (willEatFood || willEatBonus) ? snake : snake.slice(0, -1);
 
-    // 撞身體
     if(body.some(p => same(p, next))){
       if(tryConsumeShieldAndHold()){
         applyTick();
@@ -779,7 +809,7 @@
       snake.pop();
     }
 
-    // ✅ 磁鐵：5×5 內直接獲得（不搬食物）
+    // ✅ 磁鐵：5×5 內直接獲得（並飛向蛇頭）
     magnetAutoEat(ateThisStep);
 
     applyTick();
@@ -862,6 +892,38 @@
       ctx.fillStyle = (i===0) ? getCssVar("--snakeHead") : getCssVar("--snakeBody");
       roundRect(ctx, x+2, y+2, cell-4, cell-4, r);
       ctx.fill();
+    }
+
+    // ✅ magnet fly animation：畫在最上層，避免被蛇/格線蓋住
+    if(magnetFly){
+      const t = performance.now();
+      let p = (t - magnetFly.t0) / magnetFly.dur;
+      if(p < 0) p = 0;
+      if(p > 1) p = 1;
+
+      const ease = 1 - Math.pow(1 - p, 3);
+
+      const x = (magnetFly.fx + (magnetFly.tx - magnetFly.fx) * ease + 0.5) * cell;
+      const y = (magnetFly.fy + (magnetFly.ty - magnetFly.fy) * ease + 0.5) * cell;
+
+      ctx.save();
+      ctx.globalAlpha = 0.95 - ease * 0.65;
+
+      // 拖影線
+      ctx.strokeStyle = getCssVar("--food");
+      ctx.lineWidth = Math.max(2, cell * 0.10);
+      ctx.beginPath();
+      ctx.moveTo((magnetFly.fx+0.5)*cell, (magnetFly.fy+0.5)*cell);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      // 飛行中的食物球
+      ctx.fillStyle = getCssVar("--food");
+      ctx.beginPath();
+      ctx.arc(x, y, cell * (0.34 - ease * 0.10), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
     }
 
     if(isOver){
