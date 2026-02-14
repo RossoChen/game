@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
@@ -17,16 +17,57 @@
 
   <style>
     :root{
-      color-scheme: dark;
-      /* ✅ iOS Home Indicator 防撞：standalone 下 env() 有時偏小，保守加碼 */
-      --homebar-guard: max(env(safe-area-inset-bottom), 18px);
+      color-scheme: dark light;
+
+      /* ✅ iOS Home Indicator 防撞：
+         standalone 下 env() 可能偏小或偶發為 0，所以用「保守固定值」當下限 */
+      --homebar-guard: max(env(safe-area-inset-bottom), 34px);
+      --homebar-extra: 18px; /* 再加一圈保險，讓 ▼ 永遠不踩雷 */
+
+      /* UI sizing */
+      --maxw: 560px;
+      --radius: 18px;
+    }
+
+    /* Theme variables */
+    html[data-theme="dark"]{
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,.08);
+      --panel2: rgba(255,255,255,.06);
+      --border: rgba(255,255,255,.18);
+      --border2: rgba(255,255,255,.14);
+      --fg: #e7eefc;
+      --muted: rgba(231,238,252,.86);
+      --board: #0a0f1c;
+      --grid: #e7eefc;
+      --food: #ffcc66;
+      --snakeHead: #7cf7b6;
+      --snakeBody: #57b8ff;
+      --danger: #ff668a;
+    }
+
+    html[data-theme="light"]{
+      --bg: #f6f7fb;
+      --panel: rgba(0,0,0,.06);
+      --panel2: rgba(0,0,0,.04);
+      --border: rgba(0,0,0,.12);
+      --border2: rgba(0,0,0,.10);
+      --fg: #0b1220;
+      --muted: rgba(11,18,32,.78);
+      --board: #ffffff;
+      --grid: #0b1220;
+      --food: #d9822b;
+      --snakeHead: #1ea972;
+      --snakeBody: #1e79c8;
+      --danger: #d23a5a;
     }
 
     html, body{
       margin:0; height:100%;
       overflow:hidden;
       overscroll-behavior:none;
-      background:#0b1220; color:#e7eefc;
+      background:var(--bg);
+      color:var(--fg);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
       -webkit-user-select:none; user-select:none;
       touch-action:none;
@@ -37,8 +78,7 @@
       height:100svh;
       padding-top: calc(env(safe-area-inset-top) + 14px);
       padding-right: calc(env(safe-area-inset-right) + 12px);
-      /* ✅ 改這裡：底部安全距離加大，避免 Home 條遮住按鍵 */
-      padding-bottom: calc(var(--homebar-guard) + 18px);
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra)); /* ✅ 強化底部保護 */
       padding-left: calc(env(safe-area-inset-left) + 12px);
       display:flex;
       flex-direction:column;
@@ -46,19 +86,20 @@
       align-items:center;
     }
 
-    /* HUD */
     .hud{
-      width:min(560px, 96vw);
+      width:min(var(--maxw), 96vw);
       display:flex;
       flex-direction:column;
       gap:10px;
     }
+
     .hudTop{
       display:flex;
       justify-content:space-between;
       align-items:center;
       gap:10px;
     }
+
     .hudBottom{
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -67,20 +108,21 @@
     }
 
     .pill{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
+      border:1px solid var(--border2);
+      background:var(--panel2);
       border-radius:999px;
       padding:12px 14px;
       font-size:14px;
       text-align:center;
       white-space:nowrap;
+      backdrop-filter: blur(8px);
     }
     .pill strong{ font-weight:900; }
 
     .btn{
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
-      color:#e7eefc;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
       border-radius:16px;
       padding:12px 14px;
       font-size:15px;
@@ -88,13 +130,14 @@
       cursor:pointer;
       -webkit-tap-highlight-color:transparent;
       white-space:nowrap;
-      min-height:48px;          /* ✅ iOS 友善點擊區 */
+      min-height:48px;
       touch-action:manipulation;
+      backdrop-filter: blur(8px);
     }
     .btn:active{ transform:scale(0.985); }
 
     .stage{
-      width:min(560px, 96vw);
+      width:min(var(--maxw), 96vw);
       flex:1;
       display:flex;
       flex-direction:column;
@@ -105,11 +148,11 @@
     }
 
     .board{
-      width: min(560px, 96vw, 54svh);
-      height:min(560px, 96vw, 54svh);
+      width: min(var(--maxw), 96vw, 54svh);
+      height:min(var(--maxw), 96vw, 54svh);
       border-radius:18px;
-      border:1px solid rgba(255,255,255,.12);
-      background:#0a0f1c;
+      border:1px solid var(--border2);
+      background:var(--board);
       position:relative;
       overflow:hidden;
     }
@@ -121,35 +164,38 @@
       align-items:center; justify-content:center;
       text-align:center;
       padding:16px;
-      background:rgba(0,0,0,.55);
-      backdrop-filter:blur(6px);
+      background:rgba(0,0,0,.35);
+      backdrop-filter:blur(8px);
     }
+    html[data-theme="light"] .overlay{ background:rgba(255,255,255,.55); }
     .overlay.show{ display:flex; }
     .overlay h2{ margin:0 0 8px; font-size:18px; }
-    .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; }
+    .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
     /* ✅ 大按鍵 D-Pad：更大、更厚、間距更舒服 */
     .dpad{
-      width:min(560px, 96vw);
+      width:min(var(--maxw), 96vw);
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
       gap:12px;
 
-      /* ✅ 核心：讓 D-pad 自己也吃到底部安全區，防止 Home 條蓋到 ▼ */
-      padding-bottom: calc(var(--homebar-guard) + 10px);
+      /* ✅ 再補一層：D-pad 自己也吃到底部安全區 */
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
     }
+
     .pad{
-      border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.08);
-      color:#e7eefc;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
       border-radius:18px;
       padding:18px 0;
       font-size:22px;
       font-weight:1000;
       cursor:pointer;
       -webkit-tap-highlight-color:transparent;
-      min-height:60px;
+      min-height:64px; /* ✅ 再大一點，降低 miss */
       touch-action:manipulation;
+      backdrop-filter: blur(8px);
     }
     .pad:active{ transform:scale(0.985); }
     .blank{ opacity:0; pointer-events:none; }
@@ -157,17 +203,17 @@
     /* ✅ 小手機：HUD 自動換行，不爆版 */
     @media (max-width: 360px){
       .hudBottom{ grid-template-columns: 1fr 1fr; }
-      #startBtn, #restartBtn, #backBtn{ width:100%; }
+      #startBtn, #restartBtn, #backBtn, #themeBtn{ width:100%; }
       .hudTop{ flex-direction:column; align-items:stretch; }
     }
 
     @media (max-height: 720px){
-      .pad{ padding:16px 0; min-height:56px; }
+      .pad{ padding:16px 0; min-height:60px; }
       .pill{ padding:10px 12px; }
       .btn{ padding:11px 12px; min-height:46px; }
       .board{
-        width: min(560px, 96vw, 50svh);
-        height:min(560px, 96vw, 50svh);
+        width: min(var(--maxw), 96vw, 50svh);
+        height:min(var(--maxw), 96vw, 50svh);
       }
       .stage{ gap:12px; }
     }
@@ -179,15 +225,16 @@
     <div class="hud">
       <div class="hudTop">
         <button class="btn" id="backBtn">← Back</button>
-        <div class="pill" id="effectPill">效果：<strong id="effect">None</strong></div>
+        <button class="btn" id="themeBtn">主題：深色</button>
+        <div class="pill" id="effectPill">效果：<strong id="effect">無</strong></div>
       </div>
 
       <div class="hudBottom">
         <div class="pill">分數：<strong id="score">0</strong></div>
         <div class="pill">最高：<strong id="best">0</strong></div>
         <div style="display:flex; gap:10px; justify-content:flex-end;">
-          <button class="btn" id="startBtn" style="flex:1;">Start</button>
-          <button class="btn" id="restartBtn" style="flex:1;">Restart</button>
+          <button class="btn" id="startBtn" style="flex:1;">開始</button>
+          <button class="btn" id="restartBtn" style="flex:1;">重來</button>
         </div>
       </div>
     </div>
@@ -197,8 +244,8 @@
         <canvas id="cv"></canvas>
         <div class="overlay show" id="overlay">
           <div>
-            <h2 id="ovTitle">Ready</h2>
-            <p id="ovText">按 Start / 方向鍵 / 在棋盤滑動開始</p>
+            <h2 id="ovTitle">準備</h2>
+            <p id="ovText">按「開始」/ 方向鍵 / 在棋盤滑動開始</p>
           </div>
         </div>
       </div>
@@ -237,7 +284,11 @@
   const EFFECT_LIFE_STEPS = 60;
   const BONUS_TYPES = ["DOUBLE","SLOW","WRAP","SHIELD"];
 
-  const BEST_KEY = "snake_best_v5_bonus";
+  // ✅ 輸入緩衝：解決「連按第二個方向沒反應」
+  const INPUT_BUFFER_MAX = 3;
+
+  const BEST_KEY = "snake_best_v6_bonus";
+  const THEME_KEY = "snake_theme_v1"; // "dark" / "light" / "system"
 
   const board = document.getElementById("board");
   const cv = document.getElementById("cv");
@@ -246,15 +297,59 @@
   const elScore = document.getElementById("score");
   const elBest  = document.getElementById("best");
   const elEffect = document.getElementById("effect");
+
   const startBtn   = document.getElementById("startBtn");
   const restartBtn = document.getElementById("restartBtn");
   const backBtn    = document.getElementById("backBtn");
+  const themeBtn   = document.getElementById("themeBtn");
 
   const overlay = document.getElementById("overlay");
   const ovTitle = document.getElementById("ovTitle");
   const ovText  = document.getElementById("ovText");
 
-  // Back：優先回 Hub；有 referrer 才用 history.back
+  // -------- Theme (dark/light + remember + follow system default) --------
+  function systemTheme(){
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+
+  function applyTheme(mode){
+    // mode: "dark" | "light" | "system"
+    const final = (mode === "system") ? systemTheme() : mode;
+    document.documentElement.dataset.theme = final;
+
+    // 同步 meta theme-color（iOS 狀態列顏色比較一致）
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta){
+      meta.setAttribute("content", final === "light" ? "#f6f7fb" : "#0b1220");
+    }
+
+    themeBtn.textContent = `主題：${final === "light" ? "淺色" : "深色"}`;
+  }
+
+  function getThemeMode(){
+    return localStorage.getItem(THEME_KEY) || "system";
+  }
+
+  function setThemeMode(mode){
+    localStorage.setItem(THEME_KEY, mode);
+    applyTheme(mode);
+  }
+
+  // init theme
+  applyTheme(getThemeMode());
+  if(window.matchMedia){
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
+      if(getThemeMode() === "system") applyTheme("system");
+    });
+  }
+
+  themeBtn.addEventListener("click", () => {
+    // 企業級 UX：一鍵在 dark/light 間切換（不搞三態，降低心智成本）
+    const cur = document.documentElement.dataset.theme;
+    setThemeMode(cur === "light" ? "dark" : "light");
+  });
+
+  // -------- Back --------
   backBtn.addEventListener("click", () => {
     const hub = "/game/";
     try{
@@ -265,9 +360,11 @@
     }
   });
 
+  // -------- Best score --------
   let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
   elBest.textContent = best;
 
+  // -------- Canvas sizing --------
   let dpr = 1;
   let sizeCss = 1;
 
@@ -285,12 +382,15 @@
     if(initialized) draw();
   });
 
-  // 遊戲狀態
-  let snake, dir, pendingDir, food;
+  // -------- Game state --------
+  let snake, dir, food;
   let score, foodsEaten;
   let initialized = false;
   let running = false;
   let gameOver = false;
+
+  // input queue
+  let dirQueue = []; // [{x,y}, ...]
 
   // bonus / effect
   let bonus = null; // {x,y,type,ttl}
@@ -305,7 +405,11 @@
   // utils
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
-  function isReverse(nd){ return !!dir && nd.x===-dir.x && nd.y===-dir.y; }
+
+  function isReverse(a, b){
+    // a 是新方向，b 是參考方向
+    return a && b && a.x === -b.x && a.y === -b.y;
+  }
 
   function setOverlay(show, title, text){
     if(show){
@@ -318,20 +422,20 @@
   }
 
   function effectLabel(){
-    if(!effect) return "None";
+    if(!effect) return "無";
     const t = effect.type;
-    if(t==="DOUBLE") return "Double x2";
-    if(t==="SLOW") return "Slow";
-    if(t==="WRAP") return "Wrap";
-    if(t==="SHIELD") return `Shield (${shieldCharges})`;
-    return t;
+    if(t==="DOUBLE") return "雙倍分數";
+    if(t==="SLOW") return "減速";
+    if(t==="WRAP") return "穿牆";
+    if(t==="SHIELD") return `護盾（${shieldCharges}）`;
+    return "未知";
   }
 
   function syncUI(){
     elScore.textContent = score;
     elBest.textContent = best;
     elEffect.textContent = effectLabel();
-    startBtn.textContent = running ? "Pause" : "Start";
+    startBtn.textContent = running ? "暫停" : "開始";
   }
 
   function placeFood(){
@@ -362,7 +466,7 @@
     const mid = Math.floor(GRID/2);
     snake = [{x:mid, y:mid}, {x:mid-1, y:mid}, {x:mid-2, y:mid}];
     dir = {x:1, y:0};
-    pendingDir = null;
+    dirQueue = [];
 
     score = 0;
     foodsEaten = 0;
@@ -381,7 +485,7 @@
     placeFood();
     syncUI();
     draw();
-    setOverlay(true, "Ready", "按 Start / 方向鍵 / 在棋盤滑動開始");
+    setOverlay(true, "準備", "按「開始」/ 方向鍵 / 在棋盤滑動開始");
   }
 
   function ensureInit(){
@@ -399,23 +503,37 @@
       setOverlay(false);
       requestAnimationFrame(loop);
     }else{
-      setOverlay(true, "Paused", "按 Start 繼續");
+      setOverlay(true, "暫停中", "按「開始」繼續");
     }
   }
 
-  function queueDir(dx, dy){
+  // ✅ 方向輸入：進佇列（最多 3 格），不丟第二下
+  function enqueueDir(dx, dy){
     ensureInit();
     const nd = {x:dx, y:dy};
-    if(isReverse(nd)) return;
-    pendingDir = nd;
+
+    // 參考方向：若 queue 有東西，以最後一個為準；否則以當前 dir 為準
+    const ref = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
+
+    // 不允許直接反向（避免玩家手滑瞬間自殺）
+    if(isReverse(nd, ref)) return;
+
+    // 避免重複塞一樣方向
+    if(ref && nd.x === ref.x && nd.y === ref.y) return;
+
+    // buffer 滿了就丟掉最舊的（保留最近的操作意圖）
+    if(dirQueue.length >= INPUT_BUFFER_MAX) dirQueue.shift();
+    dirQueue.push(nd);
+
     if(!running && !gameOver) setRunning(true);
   }
 
-  function applyDir(){
-    if(!pendingDir) return;
-    if(isReverse(pendingDir)) return;
-    dir = pendingDir;
-    pendingDir = null;
+  function applyDirFromQueue(){
+    if(!dirQueue.length) return;
+
+    const nd = dirQueue.shift();
+    if(isReverse(nd, dir)) return; // 再保險一次
+    dir = nd;
   }
 
   function tryConsumeShield(){
@@ -432,7 +550,7 @@
     gameOver = true;
     syncUI();
     draw(true);
-    setOverlay(true, "Game Over", "按 Restart 重新開始");
+    setOverlay(true, "結束", "按「重來」重新開始");
   }
 
   function applyEffectTick(){
@@ -443,12 +561,8 @@
     if(effect){
       effect.ttl -= 1;
       if(effect.ttl <= 0){
-        if(effect.type==="SLOW"){
-          stepMs = baseStepMs;
-        }
-        if(effect.type==="SHIELD"){
-          shieldCharges = 0;
-        }
+        if(effect.type==="SLOW") stepMs = baseStepMs;
+        if(effect.type==="SHIELD") shieldCharges = 0;
         effect = null;
       }
     }
@@ -485,7 +599,8 @@
   }
 
   function step(){
-    applyDir();
+    // ✅ 每一步只吃一個方向，連按也不會丟
+    applyDirFromQueue();
     applyEffectTick();
 
     const head = snake[0];
@@ -577,12 +692,12 @@
       ctx.moveTo(p, 0); ctx.lineTo(p, w);
       ctx.moveTo(0, p); ctx.lineTo(w, p);
     }
-    ctx.strokeStyle = "#e7eefc";
+    ctx.strokeStyle = getCssVar("--grid");
     ctx.stroke();
     ctx.globalAlpha = 1;
 
     // food
-    ctx.fillStyle = "#ffcc66";
+    ctx.fillStyle = getCssVar("--food");
     ctx.beginPath();
     ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
     ctx.fill();
@@ -591,24 +706,26 @@
     if(bonus){
       const cx = (bonus.x+0.5)*cell;
       const cy = (bonus.y+0.5)*cell;
-
       const t = bonus.type;
-      if(t==="DOUBLE") ctx.fillStyle = "#ffd3ff";
-      else if(t==="SLOW") ctx.fillStyle = "#8fe7ff";
-      else if(t==="WRAP") ctx.fillStyle = "#c7ff8f";
-      else if(t==="SHIELD") ctx.fillStyle = "#ff9ab0";
-      else ctx.fillStyle = "#ffffff";
+
+      let ring = "#ffffff";
+      if(t==="DOUBLE") ring = "#ffd3ff";
+      else if(t==="SLOW") ring = "#8fe7ff";
+      else if(t==="WRAP") ring = "#c7ff8f";
+      else if(t==="SHIELD") ring = "#ff9ab0";
 
       const blink = (bonus.ttl < 18) ? (Math.floor(bonus.ttl/3) % 2 === 0) : true;
       if(blink){
-        ctx.globalAlpha = 0.90;
+        ctx.globalAlpha = 0.92;
+        ctx.fillStyle = ring;
         ctx.beginPath();
         ctx.arc(cx, cy, cell*0.38, 0, Math.PI*2);
         ctx.fill();
         ctx.globalAlpha = 1;
       }
 
-      ctx.fillStyle = "#0b1220";
+      // icon
+      ctx.fillStyle = getCssVar("--bg");
       ctx.font = `${Math.max(10, cell*0.55)}px system-ui`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -626,28 +743,34 @@
       const p = snake[i];
       const x = p.x*cell, y = p.y*cell;
       const r = cell*0.20;
-      ctx.fillStyle = (i===0) ? "#7cf7b6" : "#57b8ff";
+      ctx.fillStyle = (i===0) ? getCssVar("--snakeHead") : getCssVar("--snakeBody");
       roundRect(ctx, x+2, y+2, cell-4, cell-4, r);
       ctx.fill();
     }
 
+    // effect tint
     if(effect){
       ctx.globalAlpha = 0.05;
-      if(effect.type==="DOUBLE") ctx.fillStyle = "#ffd3ff";
-      else if(effect.type==="SLOW") ctx.fillStyle = "#8fe7ff";
-      else if(effect.type==="WRAP") ctx.fillStyle = "#c7ff8f";
-      else if(effect.type==="SHIELD") ctx.fillStyle = "#ff9ab0";
-      else ctx.fillStyle = "#ffffff";
+      let tint = "#ffffff";
+      if(effect.type==="DOUBLE") tint = "#ffd3ff";
+      else if(effect.type==="SLOW") tint = "#8fe7ff";
+      else if(effect.type==="WRAP") tint = "#c7ff8f";
+      else if(effect.type==="SHIELD") tint = "#ff9ab0";
+      ctx.fillStyle = tint;
       ctx.fillRect(0,0,w,w);
       ctx.globalAlpha = 1;
     }
 
     if(isOver){
       ctx.globalAlpha = 0.10;
-      ctx.fillStyle = "#ff668a";
+      ctx.fillStyle = getCssVar("--danger");
       ctx.fillRect(0,0,w,w);
       ctx.globalAlpha = 1;
     }
+  }
+
+  function getCssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function roundRect(ctx, x, y, w, h, r){
@@ -674,22 +797,22 @@
     }
     if(gameOver) return;
 
-    if(k==="arrowup"||k==="w") queueDir(0,-1);
-    else if(k==="arrowdown"||k==="s") queueDir(0,1);
-    else if(k==="arrowleft"||k==="a") queueDir(-1,0);
-    else if(k==="arrowright"||k==="d") queueDir(1,0);
+    if(k==="arrowup"||k==="w") enqueueDir(0,-1);
+    else if(k==="arrowdown"||k==="s") enqueueDir(0,1);
+    else if(k==="arrowleft"||k==="a") enqueueDir(-1,0);
+    else if(k==="arrowright"||k==="d") enqueueDir(1,0);
   }, {passive:false});
 
-  // ✅ D-pad：pointerdown 更即時
+  // D-pad：pointerdown 更即時
   document.querySelectorAll("[data-dir]").forEach(btn => {
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       if(gameOver) return;
       const d = btn.dataset.dir;
-      if(d==="U") queueDir(0,-1);
-      if(d==="D") queueDir(0,1);
-      if(d==="L") queueDir(-1,0);
-      if(d==="R") queueDir(1,0);
+      if(d==="U") enqueueDir(0,-1);
+      if(d==="D") enqueueDir(0,1);
+      if(d==="L") enqueueDir(-1,0);
+      if(d==="R") enqueueDir(1,0);
     }, {passive:false});
   });
 
@@ -710,7 +833,7 @@
     setRunning(true);
   }, {passive:false});
 
-  // ✅ Swipe 控制：在棋盤滑動即可轉向
+  // Swipe 控制：在棋盤滑動即可轉向
   let sx=0, sy=0, moved=false;
   const SWIPE_MIN = 18;
 
@@ -730,11 +853,11 @@
     moved = true;
 
     if(Math.abs(dx) > Math.abs(dy)){
-      if(dx > 0) queueDir(1,0);
-      else queueDir(-1,0);
+      if(dx > 0) enqueueDir(1,0);
+      else enqueueDir(-1,0);
     }else{
-      if(dy > 0) queueDir(0,1);
-      else queueDir(0,-1);
+      if(dy > 0) enqueueDir(0,1);
+      else enqueueDir(0,-1);
     }
 
     sx = e.clientX; sy = e.clientY;
