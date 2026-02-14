@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
   <title>Snake</title>
 
+  <!-- iOS standalone -->
   <meta name="theme-color" content="#0b1220" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Snake" />
 
+  <!-- 用 Hub 的 manifest：確保只會有一個主畫面 icon -->
   <link rel="manifest" href="/game/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
 
@@ -130,7 +132,7 @@
     }
     .btn:active{ transform:scale(0.985); }
 
-    /* ✅ HUD toast：不蓋棋盤 */
+    /* HUD toast：不蓋棋盤 */
     .toast{
       position:absolute;
       left:50%;
@@ -308,16 +310,17 @@
 
   // 新道具參數
   const MAGNET_STEPS = 42;
+  const MAGNET_RANGE = 2;           // ✅ 5×5 = 中心±2
   const SCISSORS_CUT = 3;
   const SCISSORS_MIN_LEN = 3;
 
   // 計分
   const SCORE_FOOD = 10;
-  const SCORE_BONUS = 30; // 拿到道具基本加分
-  const SCORE_SCISSORS_EXTRA = 15; // 剪尾額外加分（總共 45）
-  const SCORE_MAGNET_EXTRA = 5;    // 磁鐵額外加分（總共 35）
+  const SCORE_BONUS = 30;           // 拿到道具基本加分
+  const SCORE_SCISSORS_EXTRA = 15;  // 剪尾額外加分（總共 45）
+  const SCORE_MAGNET_EXTRA = 5;     // 磁鐵額外加分（總共 35）
 
-  const BEST_KEY = "snake_best_v9_keep_x2_wrap_plus_magnet_scissors";
+  const BEST_KEY = "snake_best_v10_magnet_5x5_autoEat";
   const THEME_KEY = "snake_theme_v1";
 
   const board = document.getElementById("board");
@@ -553,36 +556,40 @@
     }
   }
 
-  // ✅ 磁鐵：每步結束後，若同列/同行，食物向蛇頭靠近 1 格（不穿身體）
-  function magnetPullFood(){
-    if(magnetTTL <= 0) return;
-
-    const head = snake[0];
-    let tx = food.x, ty = food.y;
-
-    if(food.x === head.x){
-      const step = (head.y > food.y) ? 1 : -1;
-      ty = food.y + step;
-    }else if(food.y === head.y){
-      const step = (head.x > food.x) ? 1 : -1;
-      tx = food.x + step;
-    }else{
-      return;
-    }
-
-    if(tx < 0 || tx >= GRID || ty < 0 || ty >= GRID) return;
-
-    const blockedBySnake = snake.some(p => p.x === tx && p.y === ty);
-    const blockedByBonus = bonus && bonus.x === tx && bonus.y === ty;
-    if(blockedBySnake || blockedByBonus) return;
-
-    food = {x:tx, y:ty};
-  }
-
   // ✅ 剪尾
   function cutTail(n){
     const keep = Math.max(SCISSORS_MIN_LEN, snake.length - n);
     while(snake.length > keep) snake.pop();
+  }
+
+  // ✅ 磁鐵：以蛇頭為中心 5×5 範圍內直接獲得食物（不移位、不改蛇位置）
+  function magnetAutoEat(ateThisStep){
+    if(magnetTTL <= 0) return;
+    if(ateThisStep) return;
+
+    const head = snake[0];
+    const dx = Math.abs(food.x - head.x);
+    const dy = Math.abs(food.y - head.y);
+    if(dx > MAGNET_RANGE || dy > MAGNET_RANGE) return;
+
+    // 直接視為吃到一顆食物
+    foodsEaten += 1;
+
+    const add = (effect && effect.type === "DOUBLE") ? (SCORE_FOOD * 2) : SCORE_FOOD;
+    gainScore(add);
+
+    if(foodsEaten % SPEEDUP_EVERY === 0){
+      baseStepMs = Math.max(60, Math.floor(baseStepMs * SPEEDUP_FACTOR));
+      if(!(effect && effect.type === "SLOW")){
+        stepMs = baseStepMs;
+      }
+    }
+
+    if(foodsEaten % BONUS_EVERY_FOODS === 0){
+      spawnBonus();
+    }
+
+    placeFood();
   }
 
   // ✅ 方向輸入（支援 shieldHold：按方向立刻走一步）
@@ -602,7 +609,7 @@
       setOverlay(false);
       lastStepAt = 0;
 
-      step(true); // ✅ 立刻移動一格（resumeMove=true）
+      step(true); // resumeMove=true：立刻走一步
       requestAnimationFrame(loop);
       return;
     }
@@ -661,7 +668,6 @@
     if(effect){
       effect.ttl -= 1;
       if(effect.ttl <= 0){
-        // effect 結束：還原速度（若是 SLOW）
         if(effect.type === "SLOW") stepMs = baseStepMs;
         effect = null;
       }
@@ -669,19 +675,16 @@
   }
 
   function setEffect(type){
-    // 只允許一個「時效效果」同時存在（X2/減速/穿牆）
     effect = {type, ttl: EFFECT_LIFE_STEPS};
 
     if(type === "SLOW"){
       stepMs = Math.min(220, Math.floor(baseStepMs * 1.35));
     }
 
-    const n = effectName(type);
-    showToast(`取得 <b>${n}</b>（${EFFECT_LIFE_STEPS}）`);
+    showToast(`取得 <b>${effectName(type)}</b>（${EFFECT_LIFE_STEPS}）`);
   }
 
   function takeBonus(b){
-    // 基本加分
     gainScore(SCORE_BONUS);
 
     if(b.type === "DOUBLE"){
@@ -709,7 +712,6 @@
   function step(resumeMove=false){
     if(shieldHold) return;
 
-    // resumeMove=true 表示 shieldHold 復活那一步：不吃 queue（因為方向已指定）
     if(!resumeMove) applyDirFromQueue();
 
     const head = snake[0];
@@ -726,7 +728,6 @@
     }else{
       if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){
         if(tryConsumeShieldAndHold()){
-          // 這次不移動，但仍當作一個「節拍」：道具倒數/bonus倒數照走
           applyTick();
           syncUI(); draw();
           return;
@@ -737,6 +738,7 @@
 
     const willEatFood  = same(next, food);
     const willEatBonus = bonus && same(next, bonus);
+    let ateThisStep = false;
 
     const body = (willEatFood || willEatBonus) ? snake : snake.slice(0, -1);
 
@@ -753,22 +755,19 @@
     snake.unshift(next);
 
     if(willEatFood){
+      ateThisStep = true;
       foodsEaten += 1;
 
-      // 分數（X2）
       const add = (effect && effect.type === "DOUBLE") ? (SCORE_FOOD * 2) : SCORE_FOOD;
       gainScore(add);
 
-      // 逐步加速
       if(foodsEaten % SPEEDUP_EVERY === 0){
         baseStepMs = Math.max(60, Math.floor(baseStepMs * SPEEDUP_FACTOR));
-        // 若不是減速狀態，跟著加速
         if(!(effect && effect.type === "SLOW")){
           stepMs = baseStepMs;
         }
       }
 
-      // 刷道具
       if(foodsEaten % BONUS_EVERY_FOODS === 0){
         spawnBonus();
       }
@@ -780,8 +779,8 @@
       snake.pop();
     }
 
-    // ✅ 磁鐵吸食（每步結束拉一次）
-    magnetPullFood();
+    // ✅ 磁鐵：5×5 內直接獲得（不搬食物）
+    magnetAutoEat(ateThisStep);
 
     applyTick();
     syncUI();
@@ -824,14 +823,13 @@
     ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
     ctx.fill();
 
-    // bonus icon
+    // bonus
     if(bonus){
       const cx = (bonus.x+0.5)*cell;
       const cy = (bonus.y+0.5)*cell;
 
       let ring = "#ffffff";
       let icon = "?";
-      // 讓辨識直覺：舊 + 新
       if(bonus.type==="DOUBLE"){ ring="#ffd3ff"; icon="×2"; }
       else if(bonus.type==="SLOW"){ ring="#8fe7ff"; icon="⏱"; }
       else if(bonus.type==="WRAP"){ ring="#c7ff8f"; icon="↺"; }
@@ -897,7 +895,7 @@
     if(k === " "){
       ensureInit();
       if(gameOver) return;
-      if(shieldHold) return; // shieldHold 必須用方向解除
+      if(shieldHold) return;
       setRunning(!running);
       return;
     }
