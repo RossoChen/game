@@ -37,24 +37,26 @@
       padding-left: calc(env(safe-area-inset-left) + 12px);
       display:flex;
       flex-direction:column;
-      gap:10px;
+      gap:12px;
       align-items:center;
     }
 
-    /* ✅ HUD 改成兩排：第一排 Back；第二排 分數/最高/Start/Restart */
+    /* HUD */
     .hud{
-      width:min(520px, 96vw);
+      width:min(560px, 96vw);
       display:flex;
       flex-direction:column;
       gap:10px;
     }
     .hudTop{
       display:flex;
-      justify-content:flex-start;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
     }
     .hudBottom{
       display:grid;
-      grid-template-columns: 1fr 1fr auto auto;
+      grid-template-columns: 1fr 1fr 1fr;
       gap:10px;
       align-items:center;
     }
@@ -63,42 +65,44 @@
       border:1px solid rgba(255,255,255,.14);
       background:rgba(255,255,255,.06);
       border-radius:999px;
-      padding:10px 12px;
+      padding:12px 14px;
       font-size:14px;
       text-align:center;
       white-space:nowrap;
     }
-    .pill strong{ font-weight:800; }
+    .pill strong{ font-weight:900; }
 
     .btn{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
       color:#e7eefc;
-      border-radius:14px;
-      padding:10px 12px;
-      font-size:14px;
-      font-weight:800;
+      border-radius:16px;
+      padding:12px 14px;
+      font-size:15px;
+      font-weight:900;
       cursor:pointer;
       -webkit-tap-highlight-color:transparent;
       white-space:nowrap;
+      min-height:48px;          /* ✅ iOS 友善點擊區 */
+      touch-action:manipulation;
     }
     .btn:active{ transform:scale(0.985); }
 
     .stage{
-      width:min(520px, 96vw);
+      width:min(560px, 96vw);
       flex:1;
       display:flex;
       flex-direction:column;
       align-items:center;
       justify-content:center;
-      gap:12px;
+      gap:14px;
       min-height:0;
     }
 
     .board{
-      width: min(520px, 96vw, 54svh);
-      height:min(520px, 96vw, 54svh);
-      border-radius:16px;
+      width: min(560px, 96vw, 54svh);
+      height:min(560px, 96vw, 54svh);
+      border-radius:18px;
       border:1px solid rgba(255,255,255,.12);
       background:#0a0f1c;
       position:relative;
@@ -116,43 +120,48 @@
       backdrop-filter:blur(6px);
     }
     .overlay.show{ display:flex; }
-    .overlay h2{ margin:0 0 6px; font-size:18px; }
-    .overlay p{ margin:0; opacity:.85; font-size:13px; line-height:1.4; }
+    .overlay h2{ margin:0 0 8px; font-size:18px; }
+    .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; }
 
+    /* ✅ 大按鍵 D-Pad：更大、更厚、間距更舒服 */
     .dpad{
-      width:min(520px, 96vw);
+      width:min(560px, 96vw);
       display:grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap:10px;
+      gap:12px;
     }
     .pad{
-      border:1px solid rgba(255,255,255,.14);
-      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.08);
       color:#e7eefc;
-      border-radius:14px;
-      padding:14px 0;
-      font-size:18px;
-      font-weight:900;
+      border-radius:18px;
+      padding:18px 0;          /* ✅ 方向鍵變大 */
+      font-size:22px;
+      font-weight:1000;
       cursor:pointer;
       -webkit-tap-highlight-color:transparent;
+      min-height:60px;         /* ✅ 明確點擊區 */
+      touch-action:manipulation;
     }
+    .pad:active{ transform:scale(0.985); }
     .blank{ opacity:0; pointer-events:none; }
 
-    /* ✅ 小手機：第二排變 2 欄，Start/Restart 會自動換行，避免跑出螢幕 */
+    /* ✅ 小手機：HUD 按鈕自動換行，不爆版 */
     @media (max-width: 360px){
       .hudBottom{ grid-template-columns: 1fr 1fr; }
-      #startBtn, #restartBtn{ width:100%; }
+      #startBtn, #restartBtn, #backBtn{ width:100%; }
+      .hudTop{ flex-direction:column; align-items:stretch; }
     }
 
     @media (max-height: 720px){
-      .pad{ padding:12px 0; }
-      .pill{ padding:9px 10px; }
-      .btn{ padding:9px 10px; }
+      .pad{ padding:16px 0; min-height:56px; }
+      .pill{ padding:10px 12px; }
+      .btn{ padding:11px 12px; min-height:46px; }
       .board{
-        width: min(520px, 96vw, 50svh);
-        height:min(520px, 96vw, 50svh);
+        width: min(560px, 96vw, 50svh);
+        height:min(560px, 96vw, 50svh);
       }
-      .stage{ gap:10px; }
+      .stage{ gap:12px; }
     }
   </style>
 </head>
@@ -162,28 +171,31 @@
     <div class="hud">
       <div class="hudTop">
         <button class="btn" id="backBtn">← Back</button>
+        <div class="pill" id="effectPill">效果：<strong id="effect">None</strong></div>
       </div>
 
       <div class="hudBottom">
         <div class="pill">分數：<strong id="score">0</strong></div>
         <div class="pill">最高：<strong id="best">0</strong></div>
-        <button class="btn" id="startBtn">Start</button>
-        <button class="btn" id="restartBtn">Restart</button>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn" id="startBtn" style="flex:1;">Start</button>
+          <button class="btn" id="restartBtn" style="flex:1;">Restart</button>
+        </div>
       </div>
     </div>
 
     <div class="stage">
-      <div class="board" id="board">
+      <div class="board" id="board" aria-label="Snake Board">
         <canvas id="cv"></canvas>
         <div class="overlay show" id="overlay">
           <div>
             <h2 id="ovTitle">Ready</h2>
-            <p id="ovText">按 Start / 方向鍵開始</p>
+            <p id="ovText">按 Start / 方向鍵 / 在棋盤滑動開始</p>
           </div>
         </div>
       </div>
 
-      <div class="dpad">
+      <div class="dpad" aria-label="DPad">
         <button class="pad blank"> </button>
         <button class="pad" data-dir="U">▲</button>
         <button class="pad blank"> </button>
@@ -205,10 +217,25 @@
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
   const GRID = 22;
+
+  // 速度 / 節奏
   const BASE_STEP_MS = 140;
   const SPEEDUP_EVERY = 6;
   const SPEEDUP_FACTOR = 0.92;
-  const BEST_KEY = "snake_best_v4";
+
+  // ✅ Bonus：每吃幾個普通食物刷一次道具
+  const BONUS_EVERY_FOODS = 5;
+  const BONUS_LIFE_STEPS = 70;     // 道具出現後存在幾步（沒吃到就消失）
+  const EFFECT_LIFE_STEPS = 60;    // 吃到效果持續幾步
+
+  // 道具種類（效果）
+  // - DOUBLE: 分數加倍（吃任何食物得分 x2）
+  // - SLOW: 速度變慢（比較好操作）
+  // - WRAP: 穿牆（撞牆不死，從另一邊出來）
+  // - SHIELD: 一次免死（撞牆或撞到自己時抵消一次）
+  const BONUS_TYPES = ["DOUBLE","SLOW","WRAP","SHIELD"];
+
+  const BEST_KEY = "snake_best_v5_bonus";
 
   const board = document.getElementById("board");
   const cv = document.getElementById("cv");
@@ -216,6 +243,7 @@
 
   const elScore = document.getElementById("score");
   const elBest  = document.getElementById("best");
+  const elEffect = document.getElementById("effect");
   const startBtn   = document.getElementById("startBtn");
   const restartBtn = document.getElementById("restartBtn");
   const backBtn    = document.getElementById("backBtn");
@@ -224,7 +252,7 @@
   const ovTitle = document.getElementById("ovTitle");
   const ovText  = document.getElementById("ovText");
 
-  // ✅ Back：優先回 Hub；有 referrer 才用 history.back
+  // Back：優先回 Hub；有 referrer 才用 history.back
   backBtn.addEventListener("click", () => {
     const hub = "/game/";
     try{
@@ -248,20 +276,31 @@
     cv.width  = Math.floor(sizeCss * dpr);
     cv.height = Math.floor(sizeCss * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // NOTE: 不要在這裡 draw()，避免 snake/food 還沒初始化就炸掉
   }
+
   window.addEventListener("resize", () => {
     resizeCanvas();
     if(initialized) draw();
   });
 
-  let snake, dir, pendingDir, food, score, foodsEaten;
+  // 遊戲狀態
+  let snake, dir, pendingDir, food;
+  let score, foodsEaten;
   let initialized = false;
   let running = false;
   let gameOver = false;
+
+  // bonus / effect
+  let bonus = null; // {x,y,type,ttl}
+  let effect = null; // {type, ttl}
+  let shieldCharges = 0;
+
+  // timing
+  let baseStepMs = BASE_STEP_MS;
   let stepMs = BASE_STEP_MS;
   let lastStepAt = 0;
 
+  // utils
   function randInt(n){ return Math.floor(Math.random() * n); }
   function same(a,b){ return a.x===b.x && a.y===b.y; }
   function isReverse(nd){ return !!dir && nd.x===-dir.x && nd.y===-dir.y; }
@@ -276,16 +315,47 @@
     }
   }
 
+  function effectLabel(){
+    if(!effect) return "None";
+    const t = effect.type;
+    if(t==="DOUBLE") return "Double x2";
+    if(t==="SLOW") return "Slow";
+    if(t==="WRAP") return "Wrap";
+    if(t==="SHIELD") return `Shield (${shieldCharges})`;
+    return t;
+  }
+
   function syncUI(){
     elScore.textContent = score;
     elBest.textContent = best;
+    elEffect.textContent = effectLabel();
     startBtn.textContent = running ? "Pause" : "Start";
   }
 
   function placeFood(){
     while(true){
       const p = {x:randInt(GRID), y:randInt(GRID)};
-      if(!snake.some(s => same(s,p))){ food=p; return; }
+      if(!snake.some(s => same(s,p)) && !(bonus && same(bonus,p))){
+        food = p; return;
+      }
+    }
+  }
+
+  function spawnBonus(){
+    // 避免同時存在兩個 bonus
+    if(bonus) return;
+
+    // 60% 機率刷，避免畫面太吵（也比較像「事件」）
+    if(Math.random() > 0.60) return;
+
+    const type = BONUS_TYPES[randInt(BONUS_TYPES.length)];
+    while(true){
+      const p = {x:randInt(GRID), y:randInt(GRID)};
+      const conflict = snake.some(s => same(s,p)) || same(food,p);
+      if(!conflict){
+        bonus = {x:p.x, y:p.y, type, ttl: BONUS_LIFE_STEPS};
+        return;
+      }
     }
   }
 
@@ -294,16 +364,25 @@
     snake = [{x:mid, y:mid}, {x:mid-1, y:mid}, {x:mid-2, y:mid}];
     dir = {x:1, y:0};
     pendingDir = null;
+
     score = 0;
     foodsEaten = 0;
+
+    baseStepMs = BASE_STEP_MS;
     stepMs = BASE_STEP_MS;
+
     running = false;
     gameOver = false;
     lastStepAt = 0;
+
+    bonus = null;
+    effect = null;
+    shieldCharges = 0;
+
     placeFood();
     syncUI();
     draw();
-    setOverlay(true, "Ready", "按 Start / 方向鍵開始");
+    setOverlay(true, "Ready", "按 Start / 方向鍵 / 在棋盤滑動開始");
   }
 
   function ensureInit(){
@@ -311,14 +390,6 @@
     resizeCanvas();
     resetGame();
     initialized = true;
-  }
-
-  function queueDir(dx, dy){
-    ensureInit();
-    const nd = {x:dx, y:dy};
-    if(isReverse(nd)) return;
-    pendingDir = nd;
-    if(!running && !gameOver) setRunning(true);
   }
 
   function setRunning(v){
@@ -333,11 +404,28 @@
     }
   }
 
+  function queueDir(dx, dy){
+    ensureInit();
+    const nd = {x:dx, y:dy};
+    if(isReverse(nd)) return;
+    pendingDir = nd;
+    if(!running && !gameOver) setRunning(true);
+  }
+
   function applyDir(){
     if(!pendingDir) return;
     if(isReverse(pendingDir)) return;
     dir = pendingDir;
     pendingDir = null;
+  }
+
+  function tryConsumeShield(){
+    if(shieldCharges > 0){
+      shieldCharges -= 1;
+      if(shieldCharges <= 0 && effect && effect.type==="SHIELD") effect = null;
+      return true;
+    }
+    return false;
   }
 
   function endGame(){
@@ -348,31 +436,135 @@
     setOverlay(true, "Game Over", "按 Restart 重新開始");
   }
 
+  function applyEffectTick(){
+    // bonus TTL
+    if(bonus){
+      bonus.ttl -= 1;
+      if(bonus.ttl <= 0) bonus = null;
+    }
+
+    // effect TTL
+    if(effect){
+      effect.ttl -= 1;
+      if(effect.ttl <= 0){
+        if(effect.type==="SLOW"){
+          stepMs = baseStepMs;
+        }
+        if(effect.type==="WRAP"){
+          // no-op (state controlled by effect presence)
+        }
+        if(effect.type==="DOUBLE"){
+          // no-op
+        }
+        if(effect.type==="SHIELD"){
+          // shield charges can outlive TTL? 這裡設計成 TTL 到了也清
+          shieldCharges = 0;
+        }
+        effect = null;
+      }
+    }
+  }
+
+  function gainScore(base){
+    let v = base;
+    if(effect && effect.type==="DOUBLE") v *= 2;
+    score += v;
+
+    if(score > best){
+      best = score;
+      localStorage.setItem(BEST_KEY, String(best));
+    }
+  }
+
+  function takeBonus(b){
+    // 吃到道具：上效果
+    const type = b.type;
+
+    if(type === "DOUBLE"){
+      effect = {type:"DOUBLE", ttl: EFFECT_LIFE_STEPS};
+    }else if(type === "SLOW"){
+      effect = {type:"SLOW", ttl: EFFECT_LIFE_STEPS};
+      stepMs = Math.min(220, Math.floor(baseStepMs * 1.35));
+    }else if(type === "WRAP"){
+      effect = {type:"WRAP", ttl: EFFECT_LIFE_STEPS};
+    }else if(type === "SHIELD"){
+      effect = {type:"SHIELD", ttl: EFFECT_LIFE_STEPS};
+      shieldCharges += 1; // 疊一層
+    }
+
+    // 立即給一點分數獎勵（讓玩家覺得「有賺」）
+    gainScore(30);
+
+    bonus = null;
+  }
+
   function step(){
     applyDir();
 
+    applyEffectTick();
+
     const head = snake[0];
-    const next = {x: head.x + dir.x, y: head.y + dir.y};
+    let next = {x: head.x + dir.x, y: head.y + dir.y};
 
-    if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){ endGame(); return; }
+    // 穿牆效果
+    const wrapping = !!(effect && effect.type==="WRAP");
+    if(wrapping){
+      if(next.x < 0) next.x = GRID - 1;
+      else if(next.x >= GRID) next.x = 0;
+      if(next.y < 0) next.y = GRID - 1;
+      else if(next.y >= GRID) next.y = 0;
+    }else{
+      // 正常撞牆
+      if(next.x<0 || next.x>=GRID || next.y<0 || next.y>=GRID){
+        if(tryConsumeShield()){
+          // 免死一次：把 next 夾回邊界內，避免卡死
+          next.x = Math.min(GRID-1, Math.max(0, next.x));
+          next.y = Math.min(GRID-1, Math.max(0, next.y));
+        }else{
+          endGame(); return;
+        }
+      }
+    }
 
-    const willEat = same(next, food);
-    const body = willEat ? snake : snake.slice(0, -1);
-    if(body.some(p => same(p, next))){ endGame(); return; }
+    const willEatFood = same(next, food);
+    const willEatBonus = bonus && same(next, bonus);
+
+    const body = (willEatFood || willEatBonus) ? snake : snake.slice(0, -1);
+
+    if(body.some(p => same(p, next))){
+      if(tryConsumeShield()){
+        // 抵消一次碰撞：不前進，等同這步「空轉」避免直接死亡
+        syncUI();
+        draw();
+        return;
+      }else{
+        endGame(); return;
+      }
+    }
 
     snake.unshift(next);
 
-    if(willEat){
+    if(willEatFood){
       foodsEaten += 1;
-      score += 10;
-      if(score > best){
-        best = score;
-        localStorage.setItem(BEST_KEY, String(best));
-      }
+      gainScore(10);
+
+      // 速度漸增（基礎速度）
       if(foodsEaten % SPEEDUP_EVERY === 0){
-        stepMs = Math.max(60, Math.floor(stepMs * SPEEDUP_FACTOR));
+        baseStepMs = Math.max(60, Math.floor(baseStepMs * SPEEDUP_FACTOR));
+        // 若沒在 SLOW 狀態，就同步到 stepMs
+        if(!(effect && effect.type==="SLOW")){
+          stepMs = baseStepMs;
+        }
       }
+
+      // bonus 觸發
+      if(foodsEaten % BONUS_EVERY_FOODS === 0){
+        spawnBonus();
+      }
+
       placeFood();
+    }else if(willEatBonus){
+      takeBonus(bonus);
     }else{
       snake.pop();
     }
@@ -417,14 +609,63 @@
     ctx.arc((food.x+0.5)*cell, (food.y+0.5)*cell, cell*0.36, 0, Math.PI*2);
     ctx.fill();
 
+    // bonus item
+    if(bonus){
+      const cx = (bonus.x+0.5)*cell;
+      const cy = (bonus.y+0.5)*cell;
+
+      // 依 type 畫不同符號
+      const t = bonus.type;
+      if(t==="DOUBLE") ctx.fillStyle = "#ffd3ff";
+      else if(t==="SLOW") ctx.fillStyle = "#8fe7ff";
+      else if(t==="WRAP") ctx.fillStyle = "#c7ff8f";
+      else if(t==="SHIELD") ctx.fillStyle = "#ff9ab0";
+      else ctx.fillStyle = "#ffffff";
+
+      // 外圈閃爍（ttl 越少越急）
+      const blink = (bonus.ttl < 18) ? (Math.floor(bonus.ttl/3) % 2 === 0) : true;
+      if(blink){
+        ctx.globalAlpha = 0.90;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell*0.38, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // 中心小圖示
+      ctx.fillStyle = "#0b1220";
+      ctx.font = `${Math.max(10, cell*0.55)}px system-ui`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      const icon = (t==="DOUBLE") ? "×2"
+                 : (t==="SLOW")   ? "⏱"
+                 : (t==="WRAP")   ? "↺"
+                 : (t==="SHIELD") ? "🛡"
+                 : "?";
+      ctx.fillText(icon, cx, cy + 0.5);
+    }
+
     // snake
     for(let i=snake.length-1;i>=0;i--){
       const p = snake[i];
       const x = p.x*cell, y = p.y*cell;
-      const r = cell*0.18;
+      const r = cell*0.20;
       ctx.fillStyle = (i===0) ? "#7cf7b6" : "#57b8ff";
       roundRect(ctx, x+2, y+2, cell-4, cell-4, r);
       ctx.fill();
+    }
+
+    // effect hint overlay (subtle)
+    if(effect){
+      ctx.globalAlpha = 0.05;
+      if(effect.type==="DOUBLE") ctx.fillStyle = "#ffd3ff";
+      else if(effect.type==="SLOW") ctx.fillStyle = "#8fe7ff";
+      else if(effect.type==="WRAP") ctx.fillStyle = "#c7ff8f";
+      else if(effect.type==="SHIELD") ctx.fillStyle = "#ff9ab0";
+      else ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0,0,w,w);
+      ctx.globalAlpha = 1;
     }
 
     if(isOver){
@@ -465,44 +706,84 @@
     else if(k==="arrowright"||k==="d") queueDir(1,0);
   }, {passive:false});
 
-  // dpad
+  // ✅ 方向鍵：用 pointerdown（比 click 更即時、更不容易 miss）
   document.querySelectorAll("[data-dir]").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
       if(gameOver) return;
       const d = btn.dataset.dir;
       if(d==="U") queueDir(0,-1);
       if(d==="D") queueDir(0,1);
       if(d==="L") queueDir(-1,0);
       if(d==="R") queueDir(1,0);
-    });
+    }, {passive:false});
   });
 
   // start/pause
-  startBtn.addEventListener("click", () => {
+  startBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
     ensureInit();
     if(gameOver) return;
     setRunning(!running);
-  });
+  }, {passive:false});
 
   // restart
-  restartBtn.addEventListener("click", () => {
+  restartBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
     resizeCanvas();
     resetGame();
     initialized = true;
     setRunning(true);
-  });
+  }, {passive:false});
 
-  // tap board: start/pause
-  board.addEventListener("click", () => {
+  // tap board: start/pause（但你大多會用 swipe）
+  board.addEventListener("pointerdown", (e) => {
+    // 若使用者其實要滑動，不要在 pointerdown 就切 pause
+    // 交給 swipe 判斷；pointerup 如果沒滑動再 toggle
+  }, {passive:true});
+
+  // ✅ Swipe 控制：在棋盤滑動即可轉向（大幅降低「沒按到」死法）
+  let sx=0, sy=0, moved=false;
+  const SWIPE_MIN = 18;
+
+  board.addEventListener("pointerdown", (e) => {
     ensureInit();
     if(gameOver) return;
-    setRunning(!running);
-  });
+    sx = e.clientX; sy = e.clientY;
+    moved = false;
+  }, {passive:true});
+
+  board.addEventListener("pointermove", (e) => {
+    if(gameOver) return;
+    const dx = e.clientX - sx;
+    const dy = e.clientY - sy;
+    if(Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+
+    moved = true;
+
+    // 決定方向（以較大軸為準）
+    if(Math.abs(dx) > Math.abs(dy)){
+      if(dx > 0) queueDir(1,0);
+      else queueDir(-1,0);
+    }else{
+      if(dy > 0) queueDir(0,1);
+      else queueDir(0,-1);
+    }
+
+    // 更新起點：連續滑可以連續轉
+    sx = e.clientX; sy = e.clientY;
+  }, {passive:true});
+
+  board.addEventListener("pointerup", (e) => {
+    if(gameOver) return;
+    // 沒滑動才視為「點一下切換 Start/Pause」
+    if(!moved){
+      setRunning(!running);
+    }
+  }, {passive:true});
 
   // init
-  requestAnimationFrame(() => {
-    ensureInit();
-  });
+  requestAnimationFrame(() => ensureInit());
 })();
 </script>
 </body>
