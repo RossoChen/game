@@ -16,8 +16,13 @@
   <style>
     :root{
       color-scheme: dark light;
-      --homebar: max(env(safe-area-inset-bottom), 34px);
-      --maxw: 900px;
+      --maxw: 920px;
+      --safeTop: env(safe-area-inset-top);
+      --safeBot: env(safe-area-inset-bottom);
+      --safeL: env(safe-area-inset-left);
+      --safeR: env(safe-area-inset-right);
+      --pad: 12px;
+      --actionH: 76px; /* 底部控制列高度(含padding) */
     }
 
     html[data-theme="dark"]{
@@ -51,30 +56,33 @@
 
     html, body{
       margin:0; height:100%;
-      overflow:hidden;
       background:var(--bg);
       color:var(--text);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
       -webkit-user-select:none; user-select:none;
       touch-action: manipulation;
+      overscroll-behavior: none;
     }
-    body{ position:fixed; inset:0; }
+
+    /* ✅ 不鎖 body：讓頁面可滑 */
+    body{ overflow:auto; }
 
     .app{
-      height:100svh;
-      padding-top: calc(env(safe-area-inset-top) + 12px);
-      padding-left: calc(env(safe-area-inset-left) + 12px);
-      padding-right: calc(env(safe-area-inset-right) + 12px);
-      padding-bottom: calc(var(--homebar) + 12px);
+      min-height:100svh;
+      padding-top: calc(var(--safeTop) + var(--pad));
+      padding-left: calc(var(--safeL) + var(--pad));
+      padding-right: calc(var(--safeR) + var(--pad));
+      padding-bottom: calc(var(--safeBot) + var(--pad) + var(--actionH)); /* ✅ 預留底部控制列 */
       display:flex;
       justify-content:center;
+      box-sizing:border-box;
     }
+
     .wrap{
       width:min(var(--maxw), 96vw);
       display:flex;
       flex-direction:column;
       gap:12px;
-      min-height:0;
     }
 
     .top{
@@ -123,9 +131,9 @@
 
     .grid{
       display:grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1.1fr 0.9fr;
       gap:12px;
-      min-height:0;
+      align-items:start;
     }
     @media (max-width: 860px){
       .grid{ grid-template-columns:1fr; }
@@ -136,39 +144,41 @@
       background:var(--card);
       border-radius:16px;
       padding:14px;
-      min-height:0;
+      box-sizing:border-box;
     }
-    .card h2{ margin:0 0 8px; font-size:16px; letter-spacing:.2px; }
-    .sub{ margin:0 0 12px; color:var(--muted); font-size:13px; line-height:1.45; }
+    .card h2{
+      margin:0 0 10px;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
 
     .kpi{
       display:grid;
       grid-template-columns: 1fr 1fr;
       gap:10px;
-      margin-bottom:12px;
     }
     @media (max-width: 420px){
       .kpi{ grid-template-columns:1fr; }
     }
+
     .kpiBox{
       border:1px solid var(--border);
       background:var(--card2);
       border-radius:14px;
       padding:12px;
     }
-    .kpiBox .label{ font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:800; }
-    .kpiBox .value{ font-size:18px; font-weight:1000; }
-
-    .actions{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
+    .kpiBox .label{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:6px;
+      font-weight:800;
     }
-    @media (max-width: 420px){
-      .actions{ grid-template-columns:1fr; }
+    .kpiBox .value{
+      font-size:18px;
+      font-weight:1000;
     }
 
-    .miniRow{
+    .row{
       display:flex;
       gap:10px;
       flex-wrap:wrap;
@@ -191,9 +201,12 @@
       background:var(--card2);
       border-radius:14px;
       padding:10px;
+      box-sizing:border-box;
+
+      /* ✅ 讓紀錄區在桌面/大螢幕也不會無限拉長 */
+      max-height: 52svh;
       overflow:auto;
       -webkit-overflow-scrolling:touch;
-      max-height: 52svh;
     }
     .logItem{
       border-bottom:1px solid var(--border);
@@ -212,12 +225,53 @@
       line-height:1.35;
     }
 
+    /* ✅ 底部固定控制列：永遠看得到 */
+    .actionsBar{
+      position:fixed;
+      left:0; right:0;
+      bottom:0;
+      padding-left: calc(var(--safeL) + var(--pad));
+      padding-right: calc(var(--safeR) + var(--pad));
+      padding-bottom: calc(var(--safeBot) + var(--pad));
+      padding-top: 10px;
+      background: linear-gradient(to top, color-mix(in oklab, var(--bg), #000 12%) 0%, rgba(0,0,0,0) 100%);
+      box-sizing:border-box;
+      z-index:999;
+    }
+    .actionsInner{
+      width:min(var(--maxw), 96vw);
+      margin:0 auto;
+      display:grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 420px){
+      .actionsInner{ grid-template-columns: 1fr; }
+    }
+    .bigBtn{
+      border:1px solid var(--border);
+      background:var(--btn2);
+      color:var(--text);
+      border-radius:16px;
+      padding:16px 14px;
+      font-size:16px;
+      font-weight:1000;
+      min-height:56px;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      white-space:nowrap;
+    }
+    .bigBtn:active{ transform:scale(.985); }
+    .bigBtn.primary{ border-color: color-mix(in oklab, var(--accent), var(--border) 55%); }
+    .bigBtn.warn{ border-color: color-mix(in oklab, var(--warn), var(--border) 55%); }
+    .bigBtn.good{ border-color: color-mix(in oklab, var(--good), var(--border) 55%); }
+
     .toast{
       position:fixed;
       left:50%;
-      top: calc(env(safe-area-inset-top) + 10px);
+      top: calc(var(--safeTop) + 10px);
       transform:translateX(-50%);
-      z-index:999;
+      z-index:1000;
       border:1px solid var(--border);
       background:var(--card);
       border-radius:999px;
@@ -263,6 +317,7 @@
       font-size:13px;
       line-height:1.4;
       outline:none;
+      box-sizing:border-box;
     }
     .dlgFoot{
       padding:14px;
@@ -296,12 +351,10 @@
 
       <div class="grid">
         <div class="card">
-          <h2>釣魚作業面板</h2>
-          <p class="sub">派遣 → 等待 → 結算 → 賣魚升級。離線也會算。</p>
-
+          <h2>狀態</h2>
           <div class="kpi">
             <div class="kpiBox">
-              <div class="label">狀態</div>
+              <div class="label">任務</div>
               <div class="value" id="status">待命</div>
             </div>
             <div class="kpiBox">
@@ -313,39 +366,23 @@
               <div class="value"><span id="bag">0</span>/<span id="bagCap">30</span></div>
             </div>
             <div class="kpiBox">
-              <div class="label">魚圖鑑</div>
+              <div class="label">圖鑑</div>
               <div class="value"><span id="dex">0</span>/<span id="dexAll">0</span></div>
             </div>
           </div>
 
-          <div class="actions">
-            <button class="btn primary" id="castBtn">🎣 開始釣魚</button>
-            <button class="btn primary" id="claimBtn">✅ 結算收魚</button>
-            <button class="btn" id="sellBtn">💰 全部賣掉</button>
-            <button class="btn" id="helpBtn">❓ 說明</button>
-          </div>
-
-          <div class="card" style="margin-top:12px; background:var(--card2);">
-            <h2 style="margin:0 0 10px; font-size:15px;">升級與解鎖</h2>
-            <div class="miniRow">
-              <div class="pill">釣竿升級費：<b id="rodCost">—</b></div>
-              <button class="btn primary" id="rodUpBtn">⬆️ 升級釣竿</button>
-              <div class="pill">水域解鎖費：<b id="zoneCost">—</b></div>
-              <button class="btn primary" id="zoneUpBtn">🌊 解鎖下一水域</button>
-            </div>
-            <p class="sub" style="margin:10px 0 0;">
-              釣竿：縮短等待、略提升稀有。水域：魚種與價格上限更高。
-            </p>
+          <div class="row">
+            <div class="pill">釣竿升級費：<b id="rodCost">—</b></div>
+            <button class="btn primary" id="rodUpBtn">升級釣竿</button>
+            <div class="pill">水域解鎖費：<b id="zoneCost">—</b></div>
+            <button class="btn primary" id="zoneUpBtn">解鎖水域</button>
           </div>
         </div>
 
         <div class="card">
-          <h2>作業紀錄</h2>
-          <p class="sub">你不是在釣魚，你是在跑一個隨機產出流程（很企業，舒服）。</p>
-
+          <h2>紀錄</h2>
           <div class="list" id="log"></div>
-
-          <div class="miniRow">
+          <div class="row">
             <div class="pill">總釣獲：<b id="totalCatch">0</b></div>
             <div class="pill">總賣出：<b id="totalSold">0</b></div>
             <div class="pill">累積金幣：<b id="totalGold">0</b></div>
@@ -355,18 +392,24 @@
     </div>
   </div>
 
+  <!-- ✅ 底部固定按鍵（以加入主畫面為基準） -->
+  <div class="actionsBar">
+    <div class="actionsInner">
+      <button class="bigBtn primary" id="castBtn">🎣 開始釣魚</button>
+      <button class="bigBtn good" id="claimBtn">✅ 結算</button>
+      <button class="bigBtn warn" id="sellBtn">💰 賣光</button>
+    </div>
+  </div>
+
   <!-- 存檔碼 -->
   <dialog id="dlgSave">
     <div class="dlgHead">
-      <h3>存檔碼（防清除/可換機）</h3>
+      <h3>存檔碼</h3>
       <button class="btn" id="closeSave">關閉</button>
     </div>
     <div class="dlgBody">
-      <div class="sub" style="margin:0;">
-        本機會自動存，但你清 Safari 網站資料就會沒。存檔碼是你的備援。
-      </div>
-      <textarea id="saveText" spellcheck="false" placeholder="這裡會顯示存檔碼…"></textarea>
-      <div class="miniRow">
+      <textarea id="saveText" spellcheck="false" placeholder="存檔碼…"></textarea>
+      <div class="row">
         <button class="btn primary" id="btnExport">匯出</button>
         <button class="btn" id="btnCopy">複製</button>
         <button class="btn primary" id="btnImport">匯入（覆蓋）</button>
@@ -385,7 +428,7 @@
       <button class="btn" id="closeBag">關閉</button>
     </div>
     <div class="dlgBody">
-      <div class="miniRow">
+      <div class="row">
         <div class="pill">背包：<b id="bag2">0</b>/<b id="bagCap2">30</b></div>
         <div class="pill">圖鑑：<b id="dex2">0</b>/<b id="dexAll2">0</b></div>
       </div>
@@ -393,26 +436,6 @@
     </div>
     <div class="dlgFoot">
       <button class="btn primary" id="closeBag2">OK</button>
-    </div>
-  </dialog>
-
-  <!-- 說明 -->
-  <dialog id="dlgHelp">
-    <div class="dlgHead">
-      <h3>玩法說明</h3>
-      <button class="btn" id="closeHelp">關閉</button>
-    </div>
-    <div class="dlgBody">
-      <div class="sub" style="margin:0;">
-        1) 按「開始釣魚」派遣。<br>
-        2) 時間到後按「結算收魚」。<br>
-        3) 背包滿了就「全部賣掉」換金幣。<br>
-        4) 升級釣竿縮短時間、略提高稀有；解鎖水域提高價值與魚種。<br>
-        5) 擔心清除資料：去「存檔碼」匯出備份。
-      </div>
-    </div>
-    <div class="dlgFoot">
-      <button class="btn primary" id="closeHelp2">OK</button>
     </div>
   </dialog>
 
@@ -433,7 +456,7 @@
   }
 
   // Theme
-  const THEME_KEY = "idle_fishing_theme_clean_v1";
+  const THEME_KEY = "idle_fishing_theme_clean_v2";
   function systemTheme(){
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   }
@@ -509,9 +532,8 @@
   $("dexAll2").textContent = ALL_FISH_IDS.length;
 
   // Save
-  const SAVE_KEY = "idle_fishing_clean_save_v1";
+  const SAVE_KEY = "idle_fishing_clean_save_v2";
   const SAVE_VER = 1;
-
   let S = null;
 
   function defaultState(){
@@ -549,7 +571,7 @@
     renderLog();
   }
 
-  // Save code (backup)
+  // Save code
   function b64encode(str){
     const bytes = new TextEncoder().encode(str);
     let bin = "";
@@ -580,13 +602,13 @@
     if(!m) throw new Error("格式不正確");
     const b64 = m[2];
     const chk = m[3].toUpperCase();
-    if(checksum(b64) !== chk) throw new Error("校驗失敗（可能貼錯）");
+    if(checksum(b64) !== chk) throw new Error("校驗失敗");
     const obj = JSON.parse(b64decode(b64));
     if(!obj || obj.v !== SAVE_VER) throw new Error("版本不相容");
     return obj;
   }
 
-  // Gameplay helpers
+  // Helpers
   function curZone(){ return ZONES[clamp(S.zoneIdx, 0, ZONES.length-1)]; }
   function nextZone(){ return ZONES[S.zoneIdx + 1] || null; }
   function bagCount(){ return S.bag.reduce((a,x)=>a+x.q, 0); }
@@ -599,7 +621,6 @@
     }
     return null;
   }
-
   function priceOfFish(fish){
     const r = RAR[fish.rar] || RAR.C;
     const zoneMult = 1 + (S.zoneIdx * 0.18);
@@ -660,20 +681,20 @@
   }
 
   function startJob(){
-    if(S.job.active){ showToast(`目前釣魚中，先結算`, 900); return; }
+    if(S.job.active){ showToast(`釣魚中`, 800); return; }
     const planned = planCatch();
-    if(!bagHasSpace(planned.length)){ showToast(`<b>背包滿了</b>，先賣掉`, 1000); return; }
+    if(!bagHasSpace(planned.length)){ showToast(`<b>背包滿</b>`, 900); return; }
     const sec = rodTimeSec();
     const t0 = now();
     S.job = { active:true, zoneIdx:S.zoneIdx, startAt:t0, endAt:t0 + sec*1000, planned };
-    pushLog(`🎣 開始釣魚（${curZone().name}）預計 ${sec}s，目標 ${planned.length} 條`);
+    pushLog(`🎣 開始（${curZone().name}，${sec}s，${planned.length}條）`);
     saveLocal();
     renderAll();
   }
 
   function settleJob(force=false){
-    if(!S.job.active){ showToast(`沒有任務`, 700); return; }
-    if(now() < S.job.endAt && !force){ showToast(`還沒釣完`, 650); return; }
+    if(!S.job.active){ showToast(`無任務`, 700); return; }
+    if(now() < S.job.endAt && !force){ showToast(`未完成`, 700); return; }
 
     const got = S.job.planned.slice();
     for(const p of got){
@@ -683,17 +704,17 @@
     S.totalCatch += got.length;
 
     const names = got.map(p => fishById(p.id)?.name || p.id).join("、");
-    pushLog(`✅ 結算：${names}（+${got.length}）`);
+    pushLog(`✅ 結算（${names}）`);
     S.job = { active:false, zoneIdx:S.zoneIdx, startAt:0, endAt:0, planned:[] };
 
     saveLocal();
     renderAll();
-    showToast(`收魚完成：<b>+${got.length}</b>`, 900);
+    showToast(`+${got.length}`, 800);
   }
 
   function sellAll(){
     const cnt = bagCount();
-    if(cnt <= 0){ showToast(`背包空的`, 800); return; }
+    if(cnt <= 0){ showToast(`背包空`, 700); return; }
     let gold = 0;
     for(const it of S.bag){
       const f = fishById(it.id);
@@ -705,10 +726,10 @@
     S.totalGold += gold;
     S.totalSold += cnt;
 
-    pushLog(`💰 賣出 ${cnt} 條 → +${gold} 金幣`);
+    pushLog(`💰 賣出 ${cnt}條 +${gold}`);
     saveLocal();
     renderAll();
-    showToast(`賣出完成：<b>+${gold}</b>`, 900);
+    showToast(`+${gold}`, 900);
   }
 
   function rodUpCost(){
@@ -717,33 +738,31 @@
   }
   function upgradeRod(){
     const cost = rodUpCost();
-    if(S.gold < cost){ showToast(`金幣不足（需要 <b>${cost}</b>）`, 900); return; }
+    if(S.gold < cost){ showToast(`金幣不足`, 900); return; }
     S.gold -= cost;
     S.rodLv += 1;
-    pushLog(`⬆️ 釣竿升級：Lv ${S.rodLv}（-${cost}）`);
+    pushLog(`⬆️ 釣竿 Lv${S.rodLv}`);
     saveLocal();
     renderAll();
-    showToast(`升級成功：<b>Lv ${S.rodLv}</b>`, 900);
   }
 
   function unlockNextZone(){
     const nz = nextZone();
-    if(!nz){ showToast(`已到最後水域`, 900); return; }
-    if(S.job.active){ showToast(`先結算任務`, 900); return; }
-    if(S.gold < nz.unlockGold){ showToast(`金幣不足（需要 <b>${nz.unlockGold}</b>）`, 900); return; }
+    if(!nz){ showToast(`無下一水域`, 900); return; }
+    if(S.job.active){ showToast(`先結算`, 900); return; }
+    if(S.gold < nz.unlockGold){ showToast(`金幣不足`, 900); return; }
     S.gold -= nz.unlockGold;
     S.zoneIdx += 1;
-    pushLog(`🌊 解鎖水域：${curZone().name}（-${nz.unlockGold}）`);
+    pushLog(`🌊 解鎖 ${curZone().name}`);
     saveLocal();
     renderAll();
-    showToast(`解鎖成功：<b>${curZone().name}</b>`, 900);
   }
 
   function applyOfflineSettlement(){
     if(!S.job.active) return;
     if(now() >= S.job.endAt){
       settleJob(true);
-      showToast(`離線結算完成 ✅`, 850);
+      showToast(`離線結算`, 800);
     }
   }
 
@@ -778,11 +797,7 @@
     }
     $("status").textContent = "釣魚中";
     const r = Math.max(0, S.job.endAt - now());
-    if(r <= 0){
-      $("remain").textContent = "可結算";
-    }else{
-      $("remain").textContent = `${Math.ceil(r/1000)}s`;
-    }
+    $("remain").textContent = (r<=0) ? "可結算" : `${Math.ceil(r/1000)}s`;
   }
 
   function renderLog(){
@@ -791,7 +806,7 @@
     if(!S.log.length){
       const div = document.createElement("div");
       div.className = "logItem";
-      div.innerHTML = `<div class="logM" style="color:var(--muted); font-weight:800;">還沒開始。按「開始釣魚」先跑一單。</div>`;
+      div.innerHTML = `<div class="logM" style="color:var(--muted); font-weight:800;">尚無紀錄</div>`;
       box.appendChild(div);
       return;
     }
@@ -811,7 +826,7 @@
     if(!bagSorted.length){
       const div = document.createElement("div");
       div.className = "logItem";
-      div.innerHTML = `<div class="logM" style="color:var(--muted); font-weight:800;">背包空的，去釣幾條再來。</div>`;
+      div.innerHTML = `<div class="logM" style="color:var(--muted); font-weight:800;">背包空</div>`;
       box.appendChild(div);
     }else{
       for(const it of bagSorted){
@@ -820,16 +835,14 @@
         const price = f ? priceOfFish(f) : 0;
         const div = document.createElement("div");
         div.className = "logItem";
-        div.innerHTML = `
-          <div class="logM">${f ? f.name : it.id}（${rar}）x ${it.q}　｜　單價 ${price}　｜　小計 ${price*it.q}</div>
-        `;
+        div.innerHTML = `<div class="logM">${f ? f.name : it.id}（${rar}）x${it.q}　單價${price}　小計${price*it.q}</div>`;
         box.appendChild(div);
       }
     }
 
     const div2 = document.createElement("div");
     div2.className = "logItem";
-    div2.innerHTML = `<div class="logT">圖鑑（✅ 已解鎖 / — 未解鎖）</div>`;
+    div2.innerHTML = `<div class="logT">圖鑑</div>`;
     box.appendChild(div2);
 
     const dexWrap = document.createElement("div");
@@ -856,7 +869,7 @@
     renderLog();
   }
 
-  // UI events
+  // UI
   $("castBtn").addEventListener("click", () => startJob());
   $("claimBtn").addEventListener("click", () => settleJob(false));
   $("sellBtn").addEventListener("click", () => sellAll());
@@ -874,40 +887,40 @@
 
   $("btnExport").addEventListener("click", () => {
     $("saveText").value = exportCode();
-    showToast(`已產生存檔碼`, 750);
+    showToast(`已匯出`, 700);
   });
   $("btnCopy").addEventListener("click", async () => {
     const txt = $("saveText").value.trim();
-    if(!txt){ showToast(`沒有內容可複製`, 700); return; }
+    if(!txt){ showToast(`空`, 700); return; }
     try{
       await navigator.clipboard.writeText(txt);
-      showToast(`已複製 ✅`, 750);
+      showToast(`已複製`, 700);
     }catch(_){
       $("saveText").focus();
       $("saveText").select();
-      showToast(`已選取，手動複製`, 900);
+      showToast(`已選取`, 900);
     }
   });
   $("btnImport").addEventListener("click", () => {
     const txt = $("saveText").value.trim();
-    if(!txt){ showToast(`請貼上存檔碼`, 850); return; }
+    if(!txt){ showToast(`請貼上`, 850); return; }
     try{
       S = importCode(txt);
       saveLocal();
       applyOfflineSettlement();
       renderAll();
-      pushLog(`📥 匯入存檔完成`);
-      showToast(`<b>匯入成功</b>`, 900);
+      pushLog(`📥 匯入`);
+      showToast(`匯入成功`, 800);
     }catch(e){
-      showToast(`<b>匯入失敗</b>：${e.message}`, 1200);
+      showToast(`匯入失敗`, 1000);
     }
   });
   $("btnReset").addEventListener("click", () => {
     S = defaultState();
     saveLocal();
     renderAll();
-    pushLog(`🧨 存檔已重置`);
-    showToast(`<b>已重置</b>`, 900);
+    pushLog(`🧨 重置`);
+    showToast(`已重置`, 800);
   });
 
   const dlgBag = $("dlgBag");
@@ -917,11 +930,6 @@
   });
   $("closeBag").addEventListener("click", () => dlgBag.close());
   $("closeBag2").addEventListener("click", () => dlgBag.close());
-
-  const dlgHelp = $("dlgHelp");
-  $("helpBtn").addEventListener("click", () => dlgHelp.showModal());
-  $("closeHelp").addEventListener("click", () => dlgHelp.close());
-  $("closeHelp2").addEventListener("click", () => dlgHelp.close());
 
   // boot
   function boot(){
@@ -939,10 +947,6 @@
       renderJob();
       saveLocal();
     }, 1000);
-
-    if(S.totalCatch === 0 && !S.job.active){
-      showToast(`按「<b>開始釣魚</b>」先跑一單`, 1200);
-    }
   }
   boot();
 })();
