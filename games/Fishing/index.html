@@ -22,9 +22,7 @@
       --safeL: env(safe-area-inset-left);
       --safeR: env(safe-area-inset-right);
       --pad: 12px;
-      --actionH: 76px; /* 底部控制列高度(含padding) */
     }
-
     html[data-theme="dark"]{
       --bg:#0b1220;
       --card:#121b2e;
@@ -63,8 +61,6 @@
       touch-action: manipulation;
       overscroll-behavior: none;
     }
-
-    /* ✅ 不鎖 body：讓頁面可滑 */
     body{ overflow:auto; }
 
     .app{
@@ -72,12 +68,11 @@
       padding-top: calc(var(--safeTop) + var(--pad));
       padding-left: calc(var(--safeL) + var(--pad));
       padding-right: calc(var(--safeR) + var(--pad));
-      padding-bottom: calc(var(--safeBot) + var(--pad) + var(--actionH)); /* ✅ 預留底部控制列 */
+      padding-bottom: calc(var(--safeBot) + var(--pad) + 90px); /* 預留右下角浮動鈕 */
       display:flex;
       justify-content:center;
       box-sizing:border-box;
     }
-
     .wrap{
       width:min(var(--maxw), 96vw);
       display:flex;
@@ -146,11 +141,7 @@
       padding:14px;
       box-sizing:border-box;
     }
-    .card h2{
-      margin:0 0 10px;
-      font-size:16px;
-      letter-spacing:.2px;
-    }
+    .card h2{ margin:0 0 10px; font-size:16px; letter-spacing:.2px; }
 
     .kpi{
       display:grid;
@@ -196,14 +187,25 @@
     }
     .pill b{ color:var(--accent); }
 
+    .bar{
+      height:10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--card2);
+      overflow:hidden;
+    }
+    .bar > div{
+      height:100%;
+      width:0%;
+      background: color-mix(in oklab, var(--accent), #fff 18%);
+    }
+
     .list{
       border:1px solid var(--border);
       background:var(--card2);
       border-radius:14px;
       padding:10px;
       box-sizing:border-box;
-
-      /* ✅ 讓紀錄區在桌面/大螢幕也不會無限拉長 */
       max-height: 52svh;
       overflow:auto;
       -webkit-overflow-scrolling:touch;
@@ -225,47 +227,6 @@
       line-height:1.35;
     }
 
-    /* ✅ 底部固定控制列：永遠看得到 */
-    .actionsBar{
-      position:fixed;
-      left:0; right:0;
-      bottom:0;
-      padding-left: calc(var(--safeL) + var(--pad));
-      padding-right: calc(var(--safeR) + var(--pad));
-      padding-bottom: calc(var(--safeBot) + var(--pad));
-      padding-top: 10px;
-      background: linear-gradient(to top, color-mix(in oklab, var(--bg), #000 12%) 0%, rgba(0,0,0,0) 100%);
-      box-sizing:border-box;
-      z-index:999;
-    }
-    .actionsInner{
-      width:min(var(--maxw), 96vw);
-      margin:0 auto;
-      display:grid;
-      grid-template-columns: 1.2fr 1fr 1fr;
-      gap:10px;
-    }
-    @media (max-width: 420px){
-      .actionsInner{ grid-template-columns: 1fr; }
-    }
-    .bigBtn{
-      border:1px solid var(--border);
-      background:var(--btn2);
-      color:var(--text);
-      border-radius:16px;
-      padding:16px 14px;
-      font-size:16px;
-      font-weight:1000;
-      min-height:56px;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-      white-space:nowrap;
-    }
-    .bigBtn:active{ transform:scale(.985); }
-    .bigBtn.primary{ border-color: color-mix(in oklab, var(--accent), var(--border) 55%); }
-    .bigBtn.warn{ border-color: color-mix(in oklab, var(--warn), var(--border) 55%); }
-    .bigBtn.good{ border-color: color-mix(in oklab, var(--good), var(--border) 55%); }
-
     .toast{
       position:fixed;
       left:50%;
@@ -286,6 +247,26 @@
     .toast.show{ opacity:1; transform:translateX(-50%) translateY(6px); }
     .toast b{ color:var(--accent); }
 
+    /* ✅ 右下角控制鈕：不擋 */
+    .fab{
+      position:fixed;
+      right: calc(var(--safeR) + 14px);
+      bottom: calc(var(--safeBot) + 14px);
+      z-index:1100;
+      border:1px solid var(--border);
+      background:var(--btn2);
+      color:var(--text);
+      border-radius:999px;
+      padding:14px 16px;
+      font-size:15px;
+      font-weight:1000;
+      min-height:52px;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      box-shadow: 0 10px 28px rgba(0,0,0,.25);
+    }
+    .fab:active{ transform:scale(.985); }
+
     dialog{
       width:min(860px, 94vw);
       border:1px solid var(--border);
@@ -305,6 +286,50 @@
     }
     .dlgHead h3{ margin:0; font-size:15px; }
     .dlgBody{ padding:14px; display:flex; flex-direction:column; gap:10px; }
+    .dlgFoot{
+      padding:14px;
+      border-top:1px solid var(--border);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+    .opt{
+      border:1px solid var(--border);
+      background:var(--card);
+      border-radius:14px;
+      padding:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .opt .l{ display:flex; flex-direction:column; gap:4px; }
+    .opt .t{ font-weight:1000; }
+    .opt .d{ font-size:12px; color:var(--muted); font-weight:800; }
+    .seg{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .seg button{
+      border:1px solid var(--border);
+      background:var(--btn);
+      color:var(--text);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:1000;
+      min-height:40px;
+      cursor:pointer;
+    }
+    .seg button.active{
+      background:var(--btn2);
+      border-color: color-mix(in oklab, var(--accent), var(--border) 60%);
+    }
+    .toggle{
+      display:flex; align-items:center; gap:10px;
+    }
+    .toggle input{ width:20px; height:20px; }
     textarea{
       width:100%;
       min-height:120px;
@@ -318,14 +343,6 @@
       line-height:1.4;
       outline:none;
       box-sizing:border-box;
-    }
-    .dlgFoot{
-      padding:14px;
-      border-top:1px solid var(--border);
-      display:flex;
-      gap:10px;
-      justify-content:flex-end;
-      flex-wrap:wrap;
     }
   </style>
 </head>
@@ -354,7 +371,7 @@
           <h2>狀態</h2>
           <div class="kpi">
             <div class="kpiBox">
-              <div class="label">任務</div>
+              <div class="label">派遣</div>
               <div class="value" id="status">待命</div>
             </div>
             <div class="kpiBox">
@@ -372,10 +389,20 @@
           </div>
 
           <div class="row">
+            <div class="pill">本輪產出：<b id="cycleOut">—</b></div>
+            <div class="pill">自動賣出：<b id="autoSellView">開</b></div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
             <div class="pill">釣竿升級費：<b id="rodCost">—</b></div>
             <button class="btn primary" id="rodUpBtn">升級釣竿</button>
             <div class="pill">水域解鎖費：<b id="zoneCost">—</b></div>
             <button class="btn primary" id="zoneUpBtn">解鎖水域</button>
+          </div>
+
+          <div style="margin-top:12px;">
+            <div class="pill" style="display:inline-flex;">進度</div>
+            <div class="bar" style="margin-top:8px;"><div id="prog"></div></div>
           </div>
         </div>
 
@@ -392,14 +419,64 @@
     </div>
   </div>
 
-  <!-- ✅ 底部固定按鍵（以加入主畫面為基準） -->
-  <div class="actionsBar">
-    <div class="actionsInner">
-      <button class="bigBtn primary" id="castBtn">🎣 開始釣魚</button>
-      <button class="bigBtn good" id="claimBtn">✅ 結算</button>
-      <button class="bigBtn warn" id="sellBtn">💰 賣光</button>
+  <!-- ✅ 不擋畫面的控制入口 -->
+  <button class="fab" id="ctrlBtn">⚙ 控制</button>
+
+  <!-- 控制面板 -->
+  <dialog id="dlgCtrl">
+    <div class="dlgHead">
+      <h3>控制</h3>
+      <button class="btn" id="closeCtrl">關閉</button>
     </div>
-  </div>
+    <div class="dlgBody">
+      <div class="opt">
+        <div class="l">
+          <div class="t">派遣時長</div>
+          <div class="d">到時自動停止</div>
+        </div>
+        <div class="seg" id="durSeg">
+          <button data-min="5">5分</button>
+          <button data-min="15" class="active">15分</button>
+          <button data-min="60">60分</button>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="l">
+          <div class="t">自動賣出</div>
+          <div class="d">背包滿了就自動賣，真正放置</div>
+        </div>
+        <div class="toggle">
+          <input type="checkbox" id="autoSell">
+          <label for="autoSell" style="font-weight:1000;">開</label>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="l">
+          <div class="t">派遣控制</div>
+          <div class="d">開始後會自動循環產出</div>
+        </div>
+        <div class="seg">
+          <button class="active" id="startBtn">開始</button>
+          <button id="stopBtn">停止</button>
+        </div>
+      </div>
+
+      <div class="opt">
+        <div class="l">
+          <div class="t">手動操作</div>
+          <div class="d">需要時再用，不用一直按</div>
+        </div>
+        <div class="seg">
+          <button id="sellBtn">賣光</button>
+        </div>
+      </div>
+    </div>
+    <div class="dlgFoot">
+      <button class="btn primary" id="closeCtrl2">OK</button>
+    </div>
+  </dialog>
 
   <!-- 存檔碼 -->
   <dialog id="dlgSave">
@@ -443,8 +520,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
-  const fmt = (n) => (Math.floor(n) === n ? String(n) : n.toFixed(2));
   const now = () => Date.now();
+  const fmtInt = (n) => String(Math.floor(n));
 
   const toast = $("toast");
   let toastTimer = 0;
@@ -456,7 +533,7 @@
   }
 
   // Theme
-  const THEME_KEY = "idle_fishing_theme_clean_v2";
+  const THEME_KEY = "idle_fishing_theme_v3";
   function systemTheme(){
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   }
@@ -470,11 +547,6 @@
   function getThemeMode(){ return localStorage.getItem(THEME_KEY) || "system"; }
   function setThemeMode(mode){ localStorage.setItem(THEME_KEY, mode); applyTheme(mode); }
   applyTheme(getThemeMode());
-  if(window.matchMedia){
-    window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
-      if(getThemeMode() === "system") applyTheme("system");
-    });
-  }
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.dataset.theme;
     setThemeMode(cur === "light" ? "dark" : "light");
@@ -501,7 +573,7 @@
   };
 
   const ZONES = [
-    { id:"pond", name:"新手池", unlockGold:0, baseTimeSec:18,
+    { id:"pond", name:"新手池", unlockGold:0, baseCycleSec:18,
       fish:[
         {id:"minnow",  name:"小銀魚", base: 6,  rar:"C", w:60},
         {id:"carp",    name:"鯉魚",   base:10,  rar:"C", w:45},
@@ -509,7 +581,7 @@
         {id:"eel",     name:"鰻魚",   base:22,  rar:"R", w:10},
         {id:"koi",     name:"錦鯉",   base:40,  rar:"E", w:4},
       ]},
-    { id:"river", name:"溪流", unlockGold:600, baseTimeSec:24,
+    { id:"river", name:"溪流", unlockGold:600, baseCycleSec:24,
       fish:[
         {id:"trout",   name:"鱒魚",   base:18,  rar:"C", w:55},
         {id:"bass",    name:"鱸魚",   base:26,  rar:"U", w:28},
@@ -517,7 +589,7 @@
         {id:"golden",  name:"金鱗魚", base:60,  rar:"E", w:4},
         {id:"spirit",  name:"靈水魚", base:95,  rar:"L", w:1},
       ]},
-    { id:"lake", name:"深湖", unlockGold:2600, baseTimeSec:30,
+    { id:"lake", name:"深湖", unlockGold:2600, baseCycleSec:30,
       fish:[
         {id:"perch",    name:"河鱸",   base:28,  rar:"C", w:52},
         {id:"tilapia",  name:"吳郭魚", base:34,  rar:"U", w:30},
@@ -532,8 +604,9 @@
   $("dexAll2").textContent = ALL_FISH_IDS.length;
 
   // Save
-  const SAVE_KEY = "idle_fishing_clean_save_v2";
+  const SAVE_KEY = "idle_fishing_save_v3";
   const SAVE_VER = 1;
+
   let S = null;
 
   function defaultState(){
@@ -548,8 +621,21 @@
       bagCap: 30,
       bag: [],
       dex: {},
-      job: { active:false, zoneIdx:0, startAt:0, endAt:0, planned:[] },
-      log: []
+      log: [],
+      settings: {
+        autoSell: true,
+        dispatchMin: 15
+      },
+      // ✅ 派遣（真正放置）
+      dispatch: {
+        active: false,
+        startAt: 0,
+        endAt: 0,
+        zoneIdx: 0,
+        cycleSec: 18,
+        nextTickAt: 0,   // 下一次產出時間
+        lastCycleOut: 0  // 最近一輪產出數量
+      }
     };
   }
 
@@ -627,13 +713,6 @@
     return Math.round(fish.base * r.mult * zoneMult);
   }
 
-  function rodTimeSec(){
-    const base = curZone().baseTimeSec;
-    const factor = Math.pow(0.92, S.rodLv - 1);
-    return Math.max(7, Math.round(base * factor));
-  }
-  function rodQualityBonus(){ return Math.min(0.55, (S.rodLv - 1) * 0.035); }
-
   function weightedPick(list){
     const total = list.reduce((a,x)=>a + x.w, 0);
     let r = Math.random() * total;
@@ -643,6 +722,8 @@
     }
     return list[list.length-1];
   }
+
+  function rodQualityBonus(){ return Math.min(0.55, (S.rodLv - 1) * 0.035); }
 
   function makeZoneFishTable(){
     const z = curZone();
@@ -664,6 +745,7 @@
     else S.bag.push({id: fishId, q: qty});
   }
 
+  // ✅ 一輪產出：1~3條（釣竿影響多抓機率）
   function planCatch(){
     const extraChance = clamp((S.rodLv-1) * 0.12, 0, 0.55);
     let n = 1;
@@ -680,41 +762,16 @@
     return planned;
   }
 
-  function startJob(){
-    if(S.job.active){ showToast(`釣魚中`, 800); return; }
-    const planned = planCatch();
-    if(!bagHasSpace(planned.length)){ showToast(`<b>背包滿</b>`, 900); return; }
-    const sec = rodTimeSec();
-    const t0 = now();
-    S.job = { active:true, zoneIdx:S.zoneIdx, startAt:t0, endAt:t0 + sec*1000, planned };
-    pushLog(`🎣 開始（${curZone().name}，${sec}s，${planned.length}條）`);
-    saveLocal();
-    renderAll();
-  }
-
-  function settleJob(force=false){
-    if(!S.job.active){ showToast(`無任務`, 700); return; }
-    if(now() < S.job.endAt && !force){ showToast(`未完成`, 700); return; }
-
-    const got = S.job.planned.slice();
-    for(const p of got){
-      addToBag(p.id, p.q);
-      S.dex[p.id] = true;
-    }
-    S.totalCatch += got.length;
-
-    const names = got.map(p => fishById(p.id)?.name || p.id).join("、");
-    pushLog(`✅ 結算（${names}）`);
-    S.job = { active:false, zoneIdx:S.zoneIdx, startAt:0, endAt:0, planned:[] };
-
-    saveLocal();
-    renderAll();
-    showToast(`+${got.length}`, 800);
+  // ✅ 派遣每輪的秒數：釣竿會縮短
+  function cycleSec(){
+    const base = curZone().baseCycleSec;
+    const factor = Math.pow(0.92, S.rodLv - 1);
+    return Math.max(7, Math.round(base * factor));
   }
 
   function sellAll(){
     const cnt = bagCount();
-    if(cnt <= 0){ showToast(`背包空`, 700); return; }
+    if(cnt <= 0) return 0;
     let gold = 0;
     for(const it of S.bag){
       const f = fishById(it.id);
@@ -725,13 +782,113 @@
     S.gold += gold;
     S.totalGold += gold;
     S.totalSold += cnt;
-
-    pushLog(`💰 賣出 ${cnt}條 +${gold}`);
-    saveLocal();
-    renderAll();
-    showToast(`+${gold}`, 900);
+    return gold;
   }
 
+  // ✅ 執行一輪：自動入背包；滿了就 autoSell or pause
+  function runOneCycle(){
+    const got = planCatch();
+    const need = got.length;
+
+    if(!bagHasSpace(need)){
+      if(S.settings.autoSell){
+        const g = sellAll();
+        if(g > 0) pushLog(`💰 自動賣出 +${g}`);
+      }else{
+        // 暫停派遣
+        S.dispatch.active = false;
+        pushLog(`⏸ 背包滿（已暫停）`);
+        showToast(`<b>背包滿</b>（已暫停）`, 1100);
+        return;
+      }
+    }
+
+    // 再檢查一次空間（autoSell後應該有）
+    if(!bagHasSpace(need)){
+      S.dispatch.active = false;
+      pushLog(`⏸ 背包滿（已暫停）`);
+      return;
+    }
+
+    for(const p of got){
+      addToBag(p.id, p.q);
+      S.dex[p.id] = true;
+    }
+    S.totalCatch += got.length;
+    S.dispatch.lastCycleOut = got.length;
+  }
+
+  function startDispatch(){
+    if(S.dispatch.active){
+      showToast(`已在派遣`, 800);
+      return;
+    }
+    const mins = S.settings.dispatchMin || 15;
+    const t0 = now();
+    S.dispatch = {
+      active: true,
+      startAt: t0,
+      endAt: t0 + mins*60*1000,
+      zoneIdx: S.zoneIdx,
+      cycleSec: cycleSec(),
+      nextTickAt: t0 + cycleSec()*1000,
+      lastCycleOut: 0
+    };
+    pushLog(`▶ 派遣開始（${mins}分）`);
+    showToast(`派遣開始`, 800);
+    saveLocal();
+    renderAll();
+  }
+
+  function stopDispatch(){
+    if(!S.dispatch.active){
+      showToast(`未派遣`, 700);
+      return;
+    }
+    S.dispatch.active = false;
+    pushLog(`■ 派遣停止`);
+    showToast(`已停止`, 800);
+    saveLocal();
+    renderAll();
+  }
+
+  // ✅ 離線補算：計算經過的 cycles 次數
+  function applyOffline(){
+    if(!S.dispatch || !S.dispatch.startAt) return;
+
+    const t = now();
+
+    // 若之前已結束但沒回來處理：照 endAt 補算到 endAt
+    const capEnd = S.dispatch.active ? Math.min(t, S.dispatch.endAt) : Math.min(t, S.dispatch.endAt || t);
+    if(capEnd <= S.dispatch.startAt) return;
+
+    // 依照 nextTickAt 推算還要補幾輪
+    let cycles = 0;
+    let next = S.dispatch.nextTickAt || (S.dispatch.startAt + (S.dispatch.cycleSec||cycleSec())*1000);
+
+    const maxCycles = 2000; // 防爆
+    while(next <= capEnd && cycles < maxCycles){
+      runOneCycle();
+      cycles++;
+      next += (S.dispatch.cycleSec || cycleSec()) * 1000;
+      if(!S.dispatch.active && !S.settings.autoSell) break; // 背包滿暫停
+    }
+
+    S.dispatch.nextTickAt = next;
+
+    // 到期就停
+    if(S.dispatch.active && t >= S.dispatch.endAt){
+      S.dispatch.active = false;
+      pushLog(`■ 派遣完成`);
+      showToast(`派遣完成`, 900);
+    }
+
+    if(cycles > 0){
+      pushLog(`⏱ 補算 ${cycles} 輪`);
+    }
+  }
+
+  // Upgrades
   function rodUpCost(){
     const lv = S.rodLv;
     return Math.round(180 * Math.pow(1.55, lv-1));
@@ -742,6 +899,10 @@
     S.gold -= cost;
     S.rodLv += 1;
     pushLog(`⬆️ 釣竿 Lv${S.rodLv}`);
+    // 如果派遣中，更新 cycleSec（下一輪開始生效）
+    if(S.dispatch.active){
+      S.dispatch.cycleSec = cycleSec();
+    }
     saveLocal();
     renderAll();
   }
@@ -749,7 +910,7 @@
   function unlockNextZone(){
     const nz = nextZone();
     if(!nz){ showToast(`無下一水域`, 900); return; }
-    if(S.job.active){ showToast(`先結算`, 900); return; }
+    if(S.dispatch.active){ showToast(`派遣中不可切水域`, 1100); return; }
     if(S.gold < nz.unlockGold){ showToast(`金幣不足`, 900); return; }
     S.gold -= nz.unlockGold;
     S.zoneIdx += 1;
@@ -758,17 +919,9 @@
     renderAll();
   }
 
-  function applyOfflineSettlement(){
-    if(!S.job.active) return;
-    if(now() >= S.job.endAt){
-      settleJob(true);
-      showToast(`離線結算`, 800);
-    }
-  }
-
   // Render
   function renderHeader(){
-    $("gold").textContent = fmt(S.gold);
+    $("gold").textContent = fmtInt(S.gold);
     $("rodLv").textContent = S.rodLv;
     $("zoneName").textContent = curZone().name;
 
@@ -781,23 +934,36 @@
     $("dex").textContent = dexCount;
     $("dex2").textContent = dexCount;
 
-    $("totalCatch").textContent = fmt(S.totalCatch);
-    $("totalSold").textContent = fmt(S.totalSold);
-    $("totalGold").textContent = fmt(S.totalGold);
+    $("totalCatch").textContent = fmtInt(S.totalCatch);
+    $("totalSold").textContent = fmtInt(S.totalSold);
+    $("totalGold").textContent = fmtInt(S.totalGold);
 
     $("rodCost").textContent = rodUpCost();
     $("zoneCost").textContent = nextZone() ? nextZone().unlockGold : "—";
+
+    $("autoSellView").textContent = S.settings.autoSell ? "開" : "關";
+    $("cycleOut").textContent = S.dispatch.lastCycleOut ? `${S.dispatch.lastCycleOut}條` : "—";
   }
 
-  function renderJob(){
-    if(!S.job.active){
+  function renderStatus(){
+    const prog = $("prog");
+    if(!S.dispatch.active){
       $("status").textContent = "待命";
       $("remain").textContent = "—";
+      prog.style.width = "0%";
       return;
     }
-    $("status").textContent = "釣魚中";
-    const r = Math.max(0, S.job.endAt - now());
-    $("remain").textContent = (r<=0) ? "可結算" : `${Math.ceil(r/1000)}s`;
+    $("status").textContent = "派遣中";
+    const t = now();
+    const r = Math.max(0, S.dispatch.endAt - t);
+    $("remain").textContent = `${Math.ceil(r/1000)}s`;
+
+    // 進度條：顯示「距離下一輪」的進度
+    const cycle = (S.dispatch.cycleSec || cycleSec()) * 1000;
+    const next = S.dispatch.nextTickAt || (t + cycle);
+    const elapsed = clamp(cycle - Math.max(0, next - t), 0, cycle);
+    const pct = cycle ? (elapsed / cycle) * 100 : 0;
+    prog.style.width = `${pct.toFixed(1)}%`;
   }
 
   function renderLog(){
@@ -865,18 +1031,73 @@
 
   function renderAll(){
     renderHeader();
-    renderJob();
+    renderStatus();
     renderLog();
   }
 
-  // UI
-  $("castBtn").addEventListener("click", () => startJob());
-  $("claimBtn").addEventListener("click", () => settleJob(false));
-  $("sellBtn").addEventListener("click", () => sellAll());
-  $("rodUpBtn").addEventListener("click", () => upgradeRod());
-  $("zoneUpBtn").addEventListener("click", () => unlockNextZone());
+  // ✅ 每秒 tick：補算到現在（含前景/背景）
+  function tick(){
+    const t = now();
 
-  // dialogs
+    if(S.dispatch.active){
+      // 若到期
+      if(t >= S.dispatch.endAt){
+        S.dispatch.active = false;
+        pushLog(`■ 派遣完成`);
+        showToast(`派遣完成`, 900);
+      }
+      // 產出輪次
+      while(S.dispatch.active && S.dispatch.nextTickAt && t >= S.dispatch.nextTickAt){
+        runOneCycle();
+        S.dispatch.nextTickAt += (S.dispatch.cycleSec || cycleSec()) * 1000;
+      }
+    }
+
+    renderAll();
+    saveLocal();
+  }
+
+  // Control dialog
+  const dlgCtrl = $("dlgCtrl");
+  $("ctrlBtn").addEventListener("click", () => dlgCtrl.showModal());
+  $("closeCtrl").addEventListener("click", () => dlgCtrl.close());
+  $("closeCtrl2").addEventListener("click", () => dlgCtrl.close());
+
+  // duration segment
+  function setDispatchMin(min){
+    S.settings.dispatchMin = min;
+    document.querySelectorAll("#durSeg button").forEach(b => {
+      b.classList.toggle("active", Number(b.dataset.min) === min);
+    });
+    saveLocal();
+  }
+  document.querySelectorAll("#durSeg button").forEach(b => {
+    b.addEventListener("click", () => setDispatchMin(Number(b.dataset.min)));
+  });
+
+  // autoSell toggle
+  const autoSell = $("autoSell");
+  autoSell.addEventListener("change", () => {
+    S.settings.autoSell = !!autoSell.checked;
+    $("autoSellView").textContent = S.settings.autoSell ? "開" : "關";
+    saveLocal();
+  });
+
+  $("startBtn").addEventListener("click", () => startDispatch());
+  $("stopBtn").addEventListener("click", () => stopDispatch());
+  $("sellBtn").addEventListener("click", () => {
+    const g = sellAll();
+    if(g > 0){
+      pushLog(`💰 賣光 +${g}`);
+      showToast(`+${g}`, 900);
+    }else{
+      showToast(`背包空`, 700);
+    }
+    saveLocal();
+    renderAll();
+  });
+
+  // Save dialog
   const dlgSave = $("dlgSave");
   $("saveBtn").addEventListener("click", () => {
     $("saveText").value = exportCode();
@@ -884,7 +1105,6 @@
   });
   $("closeSave").addEventListener("click", () => dlgSave.close());
   $("closeSave2").addEventListener("click", () => dlgSave.close());
-
   $("btnExport").addEventListener("click", () => {
     $("saveText").value = exportCode();
     showToast(`已匯出`, 700);
@@ -907,11 +1127,11 @@
     try{
       S = importCode(txt);
       saveLocal();
-      applyOfflineSettlement();
+      applyOffline();
       renderAll();
       pushLog(`📥 匯入`);
       showToast(`匯入成功`, 800);
-    }catch(e){
+    }catch(_){
       showToast(`匯入失敗`, 1000);
     }
   });
@@ -923,6 +1143,7 @@
     showToast(`已重置`, 800);
   });
 
+  // Bag dialog
   const dlgBag = $("dlgBag");
   $("bagBtn").addEventListener("click", () => {
     renderBagDialog();
@@ -931,22 +1152,28 @@
   $("closeBag").addEventListener("click", () => dlgBag.close());
   $("closeBag2").addEventListener("click", () => dlgBag.close());
 
+  // Upgrades / zone
+  $("rodUpBtn").addEventListener("click", () => upgradeRod());
+  $("zoneUpBtn").addEventListener("click", () => unlockNextZone());
+
   // boot
   function boot(){
     S = loadLocal() || defaultState();
     if(!S.v) S.v = SAVE_VER;
     if(!S.dex) S.dex = {};
     if(!Array.isArray(S.bag)) S.bag = [];
-    if(!S.job) S.job = { active:false, zoneIdx:0, startAt:0, endAt:0, planned:[] };
     if(!Array.isArray(S.log)) S.log = [];
+    if(!S.settings) S.settings = { autoSell:true, dispatchMin:15 };
+    if(!S.dispatch) S.dispatch = defaultState().dispatch;
 
-    applyOfflineSettlement();
+    // UI sync
+    autoSell.checked = !!S.settings.autoSell;
+    setDispatchMin(S.settings.dispatchMin || 15);
+
+    applyOffline();
     renderAll();
 
-    setInterval(() => {
-      renderJob();
-      saveLocal();
-    }, 1000);
+    setInterval(tick, 1000);
   }
   boot();
 })();
