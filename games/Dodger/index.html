@@ -550,7 +550,7 @@
 
   function spawnBullet(){
     if(bullets.length >= BULLET_MAX) return;
-    const r = rand(10, 18);
+    const r = rand(15, 30);
     bullets.push({
       x: rand(r, WORLD_W-r),
       y: -r-10,
