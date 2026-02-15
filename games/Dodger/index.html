@@ -185,7 +185,7 @@
     .overlay h2{ margin:0 0 8px; font-size:18px; }
     .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
-    /* ✅ Touchpad：相對控制（像搖桿） */
+    /* ✅ Touchpad：Trackpad（相對位移） */
     .touchpad{
       width:min(var(--maxw), 96vw);
       border-radius:18px;
@@ -295,13 +295,13 @@
         <div class="overlay show" id="overlay">
           <div>
             <h2 id="ovTitle">準備</h2>
-            <p id="ovText">在下方觸控板左右拖曳移動</p>
+            <p id="ovText">在下方觸控板左右滑動控制（不會瞬移）</p>
           </div>
         </div>
       </div>
 
       <div class="touchpad" id="pad">
-        <div class="touchpadHint" id="padHint">在這裡左右拖曳控制（相對搖桿）</div>
+        <div class="touchpadHint" id="padHint">觸控板左右平移控制（Trackpad）</div>
         <div class="touchpadBar"></div>
         <div class="knob" id="knob">↔</div>
       </div>
@@ -312,12 +312,16 @@
 (() => {
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
-  // ====== 調難度改這區 ======
+  // ====== 你要調手感，就改這 2 個 ======
+  const PAD_SENS = 1.15;        // ✅ 觸控板位移倍率（>1 更靈敏，<1 更精準）
+  const PAD_DEAD_PX = 0.5;      // ✅ 抖動死區（px），避免細微震動也在移動
+
+  // ====== 遊戲參數 ======
   const WORLD_W = 1000;
   const WORLD_H = 1000;
 
   const PLAYER_Y = 900;
-  const PLAYER_SPEED = 1000;  // 角色最大左右速度（越大越靈敏）
+  const PLAYER_MAX_STEP_PER_FRAME = 120; // ✅ 單幀最大位移，防某些裝置事件爆衝
 
   const BULLET_BASE_SPD = 520;
   const BULLET_SPD_GROW = 18;
@@ -339,12 +343,7 @@
   const MAGNET_RADIUS = 150;
   const MAGNET_PULL = 1400;
 
-  // ✅ Touchpad 參數（相對搖桿手感）
-  const PAD_DEADZONE_PX = 10;      // 小抖動忽略
-  const PAD_FULLSCALE_PX = 999;    // 拖到這距離 = 100% 速度
-  const PAD_AXIS_SMOOTH = 0.99;    // 0~1，越大越「跟手」，越小越「滑」
-
-  const BEST_KEY = "dodger_best_v4_relative_pad";
+  const BEST_KEY = "dodger_best_v5_trackpad";
   const THEME_KEY = "dodger_theme_v1";
 
   // ====== DOM ======
@@ -433,7 +432,6 @@
 
   // State
   let initialized=false, running=false, gameOver=false;
-
   let tSurvive=0;
   let lastT=0;
 
@@ -441,12 +439,11 @@
   let bullets = [];
   let items = [];
 
-  // ✅ Touchpad axis（相對控制）
+  // ✅ Trackpad：累積位移（世界座標）
   let padActive=false;
-  let padDownX=0;
-  let padAxisTarget=0;  // 目標 axis
-  let padAxis=0;        // 平滑後 axis（實際用）
+  let padLastX=0;
   let padMoved=false;
+  let pendingDxWorld = 0;
 
   // hold/shield
   let hold=false;
@@ -500,10 +497,9 @@
     items = [];
 
     padActive=false;
-    padDownX=0;
-    padAxisTarget=0;
-    padAxis=0;
+    padLastX=0;
     padMoved=false;
+    pendingDxWorld=0;
 
     hold=false;
     hitFreezeUntil=0;
@@ -521,7 +517,7 @@
 
     syncUI();
     draw();
-    setOverlay(true, "準備", "在下方觸控板左右拖曳移動");
+    setOverlay(true, "準備", "在下方觸控板左右滑動控制（不會瞬移）");
   }
 
   function ensureInit(){
@@ -578,31 +574,11 @@
   }
 
   function applyItem(type){
-    if(type==="SHIELD"){
-      shield += 1;
-      showToast(`取得 <b>護盾</b>（+1）`);
-      return;
-    }
-    if(type==="SLOW"){
-      slowT = Math.max(slowT, SLOW_T);
-      showToast(`取得 <b>減速</b>（${SLOW_T}s）`);
-      return;
-    }
-    if(type==="CLEAR"){
-      bullets = [];
-      showToast(`啟動 <b>清場</b>`);
-      return;
-    }
-    if(type==="MAGNET"){
-      magnetT = Math.max(magnetT, MAGNET_T);
-      showToast(`取得 <b>吸附</b>（${MAGNET_T}s）`);
-      return;
-    }
-    if(type==="SHRINK"){
-      shrinkT = Math.max(shrinkT, SHRINK_T);
-      showToast(`取得 <b>縮小</b>（${SHRINK_T}s）`);
-      return;
-    }
+    if(type==="SHIELD"){ shield += 1; showToast(`取得 <b>護盾</b>（+1）`); return; }
+    if(type==="SLOW"){ slowT = Math.max(slowT, SLOW_T); showToast(`取得 <b>減速</b>（${SLOW_T}s）`); return; }
+    if(type==="CLEAR"){ bullets = []; showToast(`啟動 <b>清場</b>`); return; }
+    if(type==="MAGNET"){ magnetT = Math.max(magnetT, MAGNET_T); showToast(`取得 <b>吸附</b>（${MAGNET_T}s）`); return; }
+    if(type==="SHRINK"){ shrinkT = Math.max(shrinkT, SHRINK_T); showToast(`取得 <b>縮小</b>（${SHRINK_T}s）`); return; }
   }
 
   function consumeShieldHold(){
@@ -611,7 +587,7 @@
       hold = true;
       running = true;
       hitFreezeUntil = performance.now() + HIT_GRACE_MS;
-      showToast(`<b>護盾擋下！</b> 觸控板拖一下繼續`, 1100);
+      showToast(`<b>護盾擋下！</b> 觸控板滑一下繼續`, 1100);
       syncUI();
       setOverlay(false);
       lastT = 0;
@@ -627,31 +603,31 @@
   }
 
   function update(dt){
-    // effects
     if(slowT>0) slowT = Math.max(0, slowT - dt);
     if(shrinkT>0) shrinkT = Math.max(0, shrinkT - dt);
     if(magnetT>0) magnetT = Math.max(0, magnetT - dt);
 
-    // player radius smoothing
     const targetR = (shrinkT>0) ? 18 : 26;
     player.r += (targetR - player.r) * 0.22;
 
-    // axis smoothing
-    padAxis += (padAxisTarget - padAxis) * PAD_AXIS_SMOOTH;
-
-    // hold: 必須「真的拖曳」才解除
+    // hold：只要真的滑動就解除
     if(hold){
       if(padActive && padMoved){
         hold = false;
         showToast(`繼續！`, 450);
         lastT = 0;
+        pendingDxWorld = 0; // ✅ 避免解除瞬間吃到累積位移
       }else{
         return;
       }
     }
 
-    // ✅ 相對控制：只靠 axis 左右移動（完全不會瞬移到落點）
-    player.x += padAxis * PLAYER_SPEED * dt;
+    // ✅ Trackpad：把「手指位移」套用到角色（速度自然跟手指速度走）
+    if(pendingDxWorld !== 0){
+      const step = clamp(pendingDxWorld, -PLAYER_MAX_STEP_PER_FRAME, PLAYER_MAX_STEP_PER_FRAME);
+      player.x += step;
+      pendingDxWorld = 0;
+    }
     player.x = clamp(player.x, player.r, WORLD_W - player.r);
 
     // spawn bullets
@@ -846,7 +822,6 @@
     requestAnimationFrame(loop);
   }
 
-  // ====== Relative Touchpad Input ======
   function ensureLoopRunning(){
     ensureInit();
     if(gameOver) return;
@@ -858,12 +833,12 @@
     }
   }
 
-  function axisFromDeltaPx(dx){
-    const adx = Math.abs(dx);
-    if(adx <= PAD_DEADZONE_PX) return 0;
-    const sign = Math.sign(dx);
-    const scaled = clamp((adx - PAD_DEADZONE_PX) / PAD_FULLSCALE_PX, 0, 1);
-    return sign * scaled;
+  // ====== Trackpad Input ======
+  // 核心：只吃 pointermove 的 delta，不吃 pointerdown 的落點 → 100% 不會瞬移
+  function pxToWorldScale(){
+    const rect = pad.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    return (WORLD_W / w) * PAD_SENS;
   }
 
   pad.addEventListener("pointerdown", (e) => {
@@ -874,13 +849,12 @@
     pad.setPointerCapture?.(e.pointerId);
     padActive = true;
     padMoved = false;
-    padDownX = e.clientX;
+    padLastX = e.clientX;
 
-    padAxisTarget = 0; // ✅ down 不動
     knob.classList.add("show");
     padHint.style.opacity = "0.40";
 
-    // knob 先放在按下點
+    // knob 先放在按下點（視覺而已，不影響角色）
     const rect = pad.getBoundingClientRect();
     const x = clamp((e.clientX - rect.left), 16, rect.width - 16);
     knob.style.left = `${x}px`;
@@ -892,12 +866,16 @@
   pad.addEventListener("pointermove", (e) => {
     if(!padActive || gameOver) return;
 
-    const dx = e.clientX - padDownX;
-    if(Math.abs(dx) > PAD_DEADZONE_PX) padMoved = true;
+    const dxPx = e.clientX - padLastX;
+    padLastX = e.clientX;
 
-    padAxisTarget = axisFromDeltaPx(dx);
+    if(Math.abs(dxPx) >= PAD_DEAD_PX) padMoved = true;
 
-    // knob 跟著手指（視覺用）
+    // 累積位移（世界座標）
+    const scale = pxToWorldScale();
+    pendingDxWorld += dxPx * scale;
+
+    // knob 跟著手指
     const rect = pad.getBoundingClientRect();
     const x = clamp((e.clientX - rect.left), 16, rect.width - 16);
     knob.style.left = `${x}px`;
@@ -907,7 +885,6 @@
   function padUp(){
     padActive = false;
     padMoved = false;
-    padAxisTarget = 0;   // ✅ 放開就停
     knob.classList.remove("show");
     padHint.style.opacity = "0.72";
   }
