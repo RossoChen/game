@@ -166,8 +166,7 @@
       background:var(--board);
       position:relative;
       overflow:hidden;
-      /* ✅ 棋盤不吃控制，避免點擊瞬移/遮畫面 */
-      pointer-events:none;
+      pointer-events:none; /* ✅ 棋盤不吃控制 */
     }
     canvas{ width:100%; height:100%; display:block; }
 
@@ -186,7 +185,7 @@
     .overlay h2{ margin:0 0 8px; font-size:18px; }
     .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
-    /* ✅ Touchpad：專用輸入區 */
+    /* ✅ Touchpad：相對控制（像搖桿） */
     .touchpad{
       width:min(var(--maxw), 96vw);
       border-radius:18px;
@@ -229,7 +228,7 @@
     }
     .knob{
       position:absolute;
-      width:42px; height:42px;
+      width:44px; height:44px;
       border-radius:999px;
       border:1px solid var(--border2);
       background: rgba(255,255,255,.10);
@@ -241,7 +240,7 @@
       transform: translate(-50%, -50%);
       left:50%; top:50%;
       pointer-events:none;
-      opacity:.0;
+      opacity:0;
       transition: opacity .12s ease;
     }
     .knob.show{ opacity:1; }
@@ -290,7 +289,7 @@
 
     <div class="stage">
       <div class="boardWrap" style="position:relative;">
-        <div class="board" id="board">
+        <div class="board">
           <canvas id="cv"></canvas>
         </div>
         <div class="overlay show" id="overlay">
@@ -301,9 +300,8 @@
         </div>
       </div>
 
-      <!-- ✅ 觸控板：唯一控制入口 -->
       <div class="touchpad" id="pad">
-        <div class="touchpadHint" id="padHint">在這裡左右拖曳控制</div>
+        <div class="touchpadHint" id="padHint">在這裡左右拖曳控制（相對搖桿）</div>
         <div class="touchpadBar"></div>
         <div class="knob" id="knob">↔</div>
       </div>
@@ -319,10 +317,7 @@
   const WORLD_H = 1000;
 
   const PLAYER_Y = 900;
-  const PLAYER_SPEED = 2200;
-
-  // ✅ Touchpad 跟手（越大越跟手，建議 0.22~0.35）
-  const PAD_FOLLOW = 0.30;
+  const PLAYER_SPEED = 2200;  // 角色最大左右速度（越大越靈敏）
 
   const BULLET_BASE_SPD = 520;
   const BULLET_SPD_GROW = 18;
@@ -344,7 +339,12 @@
   const MAGNET_RADIUS = 150;
   const MAGNET_PULL = 1400;
 
-  const BEST_KEY = "dodger_best_v3_touchpad";
+  // ✅ Touchpad 參數（相對搖桿手感）
+  const PAD_DEADZONE_PX = 10;      // 小抖動忽略
+  const PAD_FULLSCALE_PX = 120;    // 拖到這距離 = 100% 速度
+  const PAD_AXIS_SMOOTH = 0.22;    // 0~1，越大越「跟手」，越小越「滑」
+
+  const BEST_KEY = "dodger_best_v4_relative_pad";
   const THEME_KEY = "dodger_theme_v1";
 
   // ====== DOM ======
@@ -419,7 +419,7 @@
   // Canvas
   let dpr=1, sizeCss=1;
   function resizeCanvas(){
-    const rect = cv.parentElement.getBoundingClientRect(); // board 的盒子
+    const rect = cv.parentElement.getBoundingClientRect();
     sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     cv.width = Math.floor(sizeCss * dpr);
@@ -441,9 +441,12 @@
   let bullets = [];
   let items = [];
 
-  // Touchpad input
+  // ✅ Touchpad axis（相對控制）
   let padActive=false;
-  let padTargetX = player.x;
+  let padDownX=0;
+  let padAxisTarget=0;  // 目標 axis
+  let padAxis=0;        // 平滑後 axis（實際用）
+  let padMoved=false;
 
   // hold/shield
   let hold=false;
@@ -497,7 +500,10 @@
     items = [];
 
     padActive=false;
-    padTargetX = player.x;
+    padDownX=0;
+    padAxisTarget=0;
+    padAxis=0;
+    padMoved=false;
 
     hold=false;
     hitFreezeUntil=0;
@@ -599,7 +605,6 @@
     }
   }
 
-  // Shield hold（loop 不停）
   function consumeShieldHold(){
     if(shield>0){
       shield -= 1;
@@ -631,9 +636,12 @@
     const targetR = (shrinkT>0) ? 18 : 26;
     player.r += (targetR - player.r) * 0.22;
 
-    // hold: 需要「觸控板拖曳意圖」解除
+    // axis smoothing
+    padAxis += (padAxisTarget - padAxis) * PAD_AXIS_SMOOTH;
+
+    // hold: 必須「真的拖曳」才解除
     if(hold){
-      if(padActive){
+      if(padActive && padMoved){
         hold = false;
         showToast(`繼續！`, 450);
         lastT = 0;
@@ -642,17 +650,8 @@
       }
     }
 
-    // player move: 只跟隨 padTargetX（不瞬移，平滑追）
-    const dx = (padTargetX - player.x);
-    player.x += dx * PAD_FOLLOW;
-
-    // 也加一點速度上限，避免非常遠距離時看起來瞬移
-    const maxStep = PLAYER_SPEED * dt;
-    const moved = player.x - (player.x - dx * PAD_FOLLOW);
-    if(Math.abs(moved) > maxStep){
-      player.x = player.x + Math.sign(dx) * maxStep;
-    }
-
+    // ✅ 相對控制：只靠 axis 左右移動（完全不會瞬移到落點）
+    player.x += padAxis * PLAYER_SPEED * dt;
     player.x = clamp(player.x, player.r, WORLD_W - player.r);
 
     // spawn bullets
@@ -847,20 +846,7 @@
     requestAnimationFrame(loop);
   }
 
-  // ====== Touchpad Input (no tap-to-teleport) ======
-  // 規則：
-  // 1) 只有「按住拖曳」才更新 padTargetX
-  // 2) 單純點一下（down 但沒移動）不更新目標 -> 不會瞬移
-  const PAD_MOVE_MIN = 6; // px
-  let padDownX = 0;
-  let padMoved = false;
-
-  function padClientToWorldX(clientX){
-    const rect = pad.getBoundingClientRect();
-    const x = clamp((clientX - rect.left) / rect.width, 0, 1);
-    return x * WORLD_W;
-  }
-
+  // ====== Relative Touchpad Input ======
   function ensureLoopRunning(){
     ensureInit();
     if(gameOver) return;
@@ -870,6 +856,14 @@
       lastT = 0;
       requestAnimationFrame(loop);
     }
+  }
+
+  function axisFromDeltaPx(dx){
+    const adx = Math.abs(dx);
+    if(adx <= PAD_DEADZONE_PX) return 0;
+    const sign = Math.sign(dx);
+    const scaled = clamp((adx - PAD_DEADZONE_PX) / PAD_FULLSCALE_PX, 0, 1);
+    return sign * scaled;
   }
 
   pad.addEventListener("pointerdown", (e) => {
@@ -882,36 +876,41 @@
     padMoved = false;
     padDownX = e.clientX;
 
+    padAxisTarget = 0; // ✅ down 不動
     knob.classList.add("show");
     padHint.style.opacity = "0.40";
 
-    // 不在 down 直接改 target（避免瞬移）
+    // knob 先放在按下點
+    const rect = pad.getBoundingClientRect();
+    const x = clamp((e.clientX - rect.left), 16, rect.width - 16);
+    knob.style.left = `${x}px`;
+    knob.style.top  = `${rect.height * 0.42}px`;
+
     ensureLoopRunning();
   }, {passive:false});
 
   pad.addEventListener("pointermove", (e) => {
     if(!padActive || gameOver) return;
 
-    const dx = Math.abs(e.clientX - padDownX);
-    if(dx >= PAD_MOVE_MIN) padMoved = true;
+    const dx = e.clientX - padDownX;
+    if(Math.abs(dx) > PAD_DEADZONE_PX) padMoved = true;
 
-    if(padMoved){
-      padTargetX = padClientToWorldX(e.clientX);
+    padAxisTarget = axisFromDeltaPx(dx);
 
-      // knob 跟著手指
-      const rect = pad.getBoundingClientRect();
-      const x = clamp((e.clientX - rect.left), 12, rect.width - 12);
-      knob.style.left = `${x}px`;
-      knob.style.top  = `${rect.height * 0.42}px`;
-    }
+    // knob 跟著手指（視覺用）
+    const rect = pad.getBoundingClientRect();
+    const x = clamp((e.clientX - rect.left), 16, rect.width - 16);
+    knob.style.left = `${x}px`;
+    knob.style.top  = `${rect.height * 0.42}px`;
   }, {passive:true});
 
   function padUp(){
     padActive = false;
+    padMoved = false;
+    padAxisTarget = 0;   // ✅ 放開就停
     knob.classList.remove("show");
     padHint.style.opacity = "0.72";
   }
-
   pad.addEventListener("pointerup", padUp, {passive:true});
   pad.addEventListener("pointercancel", padUp, {passive:true});
   pad.addEventListener("pointerleave", padUp, {passive:true});
