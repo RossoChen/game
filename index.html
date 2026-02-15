@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="zh-Hant">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
@@ -18,79 +17,76 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
   <style>
-    :root {
-      color-scheme: dark
-    }
+    :root { color-scheme: dark; }
 
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      overscroll-behavior: none;
-      background: #0b1220;
-      color: #e7eefc;
+    html, body{
+      height:100%;
+      margin:0;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:#0b1220;
+      color:#e7eefc;
       font-family: system-ui, "Noto Sans TC", sans-serif;
-      -webkit-user-select: none;
-      user-select: none;
+      -webkit-user-select:none; user-select:none;
       touch-action: manipulation;
     }
+    body{ position:fixed; inset:0; }
 
-    body {
-      position: fixed;
-      inset: 0;
-    }
-
-    .app {
-      height: 100svh;
+    .app{
+      height:100svh;
       padding-top: calc(env(safe-area-inset-top) + 14px);
       padding-right: calc(env(safe-area-inset-right) + 14px);
       padding-bottom: calc(env(safe-area-inset-bottom) + 14px);
       padding-left: calc(env(safe-area-inset-left) + 14px);
-      display: flex;
-      justify-content: center;
+      display:flex;
+      justify-content:center;
     }
 
-    .wrap {
-      width: min(900px, 92vw);
-      overflow: auto;
+    .wrap{
+      width:min(900px, 92vw);
+      overflow:auto;
       -webkit-overflow-scrolling: touch;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 28px
+    h1{ margin:0 0 4px; font-size:28px; }
+    p{ margin:0 0 10px; opacity:.8; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
     }
 
-    p {
-      margin: 0 0 18px;
-      opacity: .8
-    }
-
-    a.card {
-      display: block;
-      padding: 16px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, .06);
-      border: 1px solid rgba(255, 255, 255, .12);
-      text-decoration: none;
-      color: inherit;
+    a.card{
+      display:block;
+      padding:16px;
+      border-radius:16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      text-decoration:none;
+      color:inherit;
       -webkit-tap-highlight-color: transparent;
     }
+    a.card:hover{ background: rgba(255,255,255,.09); }
 
-    a.card:hover {
-      background: rgba(255, 255, 255, .09)
-    }
+    .t{ font-weight:900; margin-bottom:6px; font-size:18px; }
+    .d{ opacity:.78; font-size:13px; line-height:1.4; }
 
-    .t {
-      font-weight: 800;
-      margin-bottom: 6px
-    }
-
-    .d {
-      opacity: .78;
-      font-size: 13px;
-      line-height: 1.4
+    .tagRow{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:12px;
+      opacity:.9;
+      white-space:nowrap;
     }
   </style>
 </head>
@@ -98,16 +94,30 @@
 <body>
   <div class="app">
     <div class="wrap">
-      <h1>Games Hub</h1>
-      <p>入口頁。</p>
+      <div>
+        <h1>Games Hub</h1>
+        <p>入口頁。</p>
+        <div class="tagRow">
+          <div class="tag">📱 iOS 主畫面友善</div>
+          <div class="tag">🕹 單檔 / 可直開</div>
+          <div class="tag">🌙 深色主題</div>
+        </div>
+      </div>
 
-      <!-- ✅ 用絕對路徑：主畫面模式不會解析錯 -->
-      <a class="card" href="/game/games/snake/">
-        <div class="t">Snake</div>
-        <div class="d">經典貪食蛇：碰牆/碰身體結束。</div>
-      </a>
+      <div class="grid">
+        <!-- ✅ 用絕對路徑：主畫面模式不會解析錯 -->
+        <a class="card" href="/game/games/snake/">
+          <div class="t">Snake</div>
+          <div class="d">經典貪食蛇：碰牆/碰身體結束。支援大按鍵與滑動操作。</div>
+        </a>
+
+        <!-- ✅ 新增：Dodger（單手躲避） -->
+        <a class="card" href="/game/games/Dodger/index.html">
+          <div class="t">Dodger</div>
+          <div class="d">單手躲避：左右拖曳閃子彈，撿道具拿護盾/減速/清場/吸附/縮小。</div>
+        </a>
+      </div>
     </div>
   </div>
 </body>
-
 </html>
