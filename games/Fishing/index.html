@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <title>放置釣魚 Idle Fishing</title>
+
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fishing" />
+
+  <link rel="manifest" href="/game/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/game/icons/icon-192.png">
+
+  <style>
+    :root{
+      color-scheme: dark light;
+      --homebar-guard: max(env(safe-area-inset-bottom), 34px);
+      --homebar-extra: 14px;
+      --maxw: 760px;
+    }
+    html[data-theme="dark"]{
+      --bg:#0b1220;
+      --panel:rgba(255,255,255,.08);
+      --panel2:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.18);
+      --border2:rgba(255,255,255,.14);
+      --fg:#e7eefc;
+      --muted:rgba(231,238,252,.82);
+      --accent:#57b8ff;
+      --good:#7cf7b6;
+      --warn:#ffcc66;
+      --bad:#ff668a;
+      --shadow: rgba(0,0,0,.25);
+    }
+    html[data-theme="light"]{
+      --bg:#f6f7fb;
+      --panel:rgba(0,0,0,.06);
+      --panel2:rgba(0,0,0,.04);
+      --border:rgba(0,0,0,.12);
+      --border2:rgba(0,0,0,.10);
+      --fg:#0b1220;
+      --muted:rgba(11,18,32,.74);
+      --accent:#1e79c8;
+      --good:#1ea972;
+      --warn:#d9822b;
+      --bad:#d23a5a;
+      --shadow: rgba(0,0,0,.12);
+    }
+
+    html, body{
+      margin:0; height:100%;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:var(--bg);
+      color:var(--fg);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
+      -webkit-user-select:none; user-select:none;
+      touch-action: manipulation;
+    }
+    body{ position:fixed; inset:0; }
+
+    .app{
+      height:100svh;
+      padding-top: calc(env(safe-area-inset-top) + 14px);
+      padding-right: calc(env(safe-area-inset-right) + 12px);
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
+      padding-left: calc(env(safe-area-inset-left) + 12px);
+      display:flex;
+      justify-content:center;
+    }
+    .wrap{
+      width:min(var(--maxw), 96vw);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:0;
+    }
+
+    .topbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .leftTop, .rightTop{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .btn{
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
+      border-radius:16px;
+      padding:12px 14px;
+      font-size:15px;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      white-space:nowrap;
+      min-height:46px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px var(--shadow);
+    }
+    .btn:active{ transform:scale(0.985); }
+    .btn.primary{ border-color: color-mix(in oklab, var(--accent), var(--border) 50%); }
+    .btn.good{ border-color: color-mix(in oklab, var(--good), var(--border) 55%); }
+    .btn.warn{ border-color: color-mix(in oklab, var(--warn), var(--border) 55%); }
+    .btn.bad{ border-color: color-mix(in oklab, var(--bad), var(--border) 55%); }
+
+    .pill{
+      border:1px solid var(--border2);
+      background:var(--panel2);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:14px;
+      text-align:center;
+      white-space:nowrap;
+      backdrop-filter: blur(8px);
+    }
+    .pill strong{ font-weight:1000; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap:12px;
+      min-height:0;
+    }
+    @media (max-width: 860px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      border:1px solid var(--border2);
+      background:var(--panel2);
+      border-radius:18px;
+      padding:14px;
+      box-shadow: 0 10px 28px var(--shadow);
+      backdrop-filter: blur(10px);
+      min-height:0;
+    }
+    .card h2{
+      margin:0 0 10px;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
+    .sub{
+      margin:0 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .spacer{ flex:1; }
+
+    .kv{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 420px){
+      .kv{ grid-template-columns: 1fr; }
+    }
+
+    .list{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      max-height: 46svh;
+      padding-right:2px;
+    }
+    .item{
+      border:1px solid var(--border2);
+      background:color-mix(in oklab, var(--panel2), transparent 0%);
+      border-radius:16px;
+      padding:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .itL{ min-width:0; }
+    .itT{
+      font-weight:1000;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      min-width:0;
+    }
+    .tag{
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background:var(--panel);
+      white-space:nowrap;
+      font-weight:900;
+      opacity:.95;
+    }
+    .muted{ color:var(--muted); font-size:12px; line-height:1.35; }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      top: calc(env(safe-area-inset-top) + 10px);
+      transform:translateX(-50%);
+      z-index:999;
+      border:1px solid var(--border2);
+      background:var(--panel);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:13px;
+      font-weight:1000;
+      white-space:nowrap;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .16s ease, transform .16s ease;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px var(--shadow);
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(6px); }
+    .toast b{ color:var(--accent); }
+
+    dialog{
+      width:min(760px, 94vw);
+      border:1px solid var(--border2);
+      background:var(--bg);
+      color:var(--fg);
+      border-radius:18px;
+      box-shadow: 0 20px 60px var(--shadow);
+      padding:0;
+    }
+    dialog::backdrop{ background: rgba(0,0,0,.35); }
+    .dlgHead{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--border2);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .dlgHead h3{ margin:0; font-size:15px; }
+    .dlgBody{ padding:14px; display:flex; flex-direction:column; gap:10px; }
+    textarea{
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      border-radius:14px;
+      border:1px solid var(--border2);
+      background:var(--panel2);
+      color:var(--fg);
+      padding:12px;
+      font-size:13px;
+      line-height:1.4;
+      outline:none;
+    }
+    .dlgFoot{
+      padding:14px;
+      border-top:1px solid var(--border2);
+      display:flex;
+      gap:10px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toast" id="toast"></div>
+
+  <div class="app">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="leftTop">
+          <button class="btn" id="backBtn">← Back</button>
+          <button class="btn" id="themeBtn">主題：深色</button>
+          <button class="btn" id="saveBtn">存檔碼</button>
+        </div>
+        <div class="rightTop">
+          <div class="pill">金幣：<strong id="gold">0</strong></div>
+          <div class="pill">釣竿：Lv <strong id="rodLv">1</strong></div>
+          <div class="pill">水域：<strong id="zoneName">新手池</strong></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>釣魚作業面板</h2>
+          <p class="sub">這不是反應遊戲，是 KPI 達成遊戲：<b>派遣 → 結算 → 變有錢</b>。離線也會算，放心。</p>
+
+          <div class="kv">
+            <div class="pill">狀態：<strong id="status">待命</strong></div>
+            <div class="pill">剩餘：<strong id="remain">—</strong></div>
+            <div class="pill">背包：<strong id="bag">0</strong>/<strong id="bagCap">30</strong></div>
+            <div class="pill">魚圖鑑：<strong id="dex">0</strong>/<strong id="dexAll">0</strong></div>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="row">
+            <button class="btn primary" id="castBtn">🎣 開始釣魚</button>
+            <button class="btn good" id="claimBtn">✅ 結算收魚</button>
+            <button class="btn warn" id="sellBtn">💰 全部賣掉</button>
+            <div class="spacer"></div>
+            <button class="btn" id="bagBtn">📦 背包/圖鑑</button>
+          </div>
+
+          <div style="height:10px"></div>
+
+          <div class="card" style="padding:12px; box-shadow:none;">
+            <h2 style="margin:0 0 10px; font-size:15px;">升級與解鎖</h2>
+            <div class="row">
+              <div class="pill">釣竿升級費：<strong id="rodCost">—</strong></div>
+              <button class="btn good" id="rodUpBtn">⬆️ 升級釣竿</button>
+              <div class="spacer"></div>
+              <div class="pill">水域解鎖費：<strong id="zoneCost">—</strong></div>
+              <button class="btn primary" id="zoneUpBtn">🌊 解鎖下一水域</button>
+            </div>
+            <p class="sub" style="margin:10px 0 0;">
+              釣竿等級影響：<b>釣魚時間</b>、<b>掉落品質</b>；水域影響：<b>魚種</b>與<b>單價</b>。
+            </p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>本次作業紀錄</h2>
+          <p class="sub">你不是在釣魚，你是在跑一個「隨機產出」的工作流。很好。</p>
+
+          <div class="list" id="log"></div>
+
+          <div style="height:10px"></div>
+
+          <div class="row">
+            <div class="pill">總釣獲：<strong id="totalCatch">0</strong></div>
+            <div class="pill">總賣出：<strong id="totalSold">0</strong></div>
+            <div class="pill">累積金幣：<strong id="totalGold">0</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 存檔碼 Dialog -->
+  <dialog id="dlgSave">
+    <div class="dlgHead">
+      <h3>存檔碼（可換機/防清除）</h3>
+      <button class="btn" id="closeSave">關閉</button>
+    </div>
+    <div class="dlgBody">
+      <div class="muted">
+        原則：<b>自動本機存檔</b> + <b>存檔碼備份</b>。清除瀏覽資料會掉本機存檔，但存檔碼可以救回來。
+      </div>
+      <textarea id="saveText" spellcheck="false" placeholder="這裡會顯示你的存檔碼…"></textarea>
+      <div class="row">
+        <button class="btn good" id="btnExport">匯出存檔碼</button>
+        <button class="btn" id="btnCopy">複製</button>
+        <div class="spacer"></div>
+        <button class="btn warn" id="btnImport">匯入（覆蓋）</button>
+        <button class="btn bad" id="btnReset">重置存檔</button>
+      </div>
+    </div>
+    <div class="dlgFoot">
+      <button class="btn" id="closeSave2">OK</button>
+    </div>
+  </dialog>
+
+  <!-- 背包 Dialog -->
+  <dialog id="dlgBag">
+    <div class="dlgHead">
+      <h3>背包 / 圖鑑</h3>
+      <button class="btn" id="closeBag">關閉</button>
+    </div>
+    <div class="dlgBody">
+      <div class="row">
+        <div class="pill">背包：<strong id="bag2">0</strong>/<strong id="bagCap2">30</strong></div>
+        <div class="pill">圖鑑：<strong id="dex2">0</strong>/<strong id="dexAll2">0</strong></div>
+      </div>
+      <div class="list" id="bagList" style="max-height:56svh;"></div>
+    </div>
+    <div class="dlgFoot">
+      <button class="btn" id="closeBag2">OK</button>
+    </div>
+  </dialog>
+
+<script>
+(() => {
+  // ========= Utilities =========
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+  const fmt = (n) => (Math.floor(n) === n ? String(n) : n.toFixed(2));
+  const now = () => Date.now();
+
+  const toast = $("toast");
+  let toastTimer = 0;
+  function showToast(msg, ms=900){
+    toast.innerHTML = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), ms);
+  }
+
+  // ========= Theme =========
+  const THEME_KEY = "idle_fishing_theme_v1";
+  function systemTheme(){
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  }
+  function applyTheme(mode){
+    const final = (mode === "system") ? systemTheme() : mode;
+    document.documentElement.dataset.theme = final;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute("content", final === "light" ? "#f6f7fb" : "#0b1220");
+    $("themeBtn").textContent = `主題：${final === "light" ? "淺色" : "深色"}`;
+  }
+  function getThemeMode(){ return localStorage.getItem(THEME_KEY) || "system"; }
+  function setThemeMode(mode){ localStorage.setItem(THEME_KEY, mode); applyTheme(mode); }
+  applyTheme(getThemeMode());
+  if(window.matchMedia){
+    window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => {
+      if(getThemeMode() === "system") applyTheme("system");
+    });
+  }
+  $("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme;
+    setThemeMode(cur === "light" ? "dark" : "light");
+  });
+
+  // ========= Back =========
+  $("backBtn").addEventListener("click", () => {
+    const hub = "/game/";
+    try{
+      if(document.referrer && document.referrer.includes("/game/")) history.back();
+      else location.href = hub;
+    }catch(_){
+      location.href = hub;
+    }
+  });
+
+  // ========= Game Data =========
+  // 稀有度：越稀有越貴
+  const RAR = {
+    C: {name:"普通", tag:"C", mult:1.0},
+    U: {name:"少見", tag:"U", mult:1.6},
+    R: {name:"稀有", tag:"R", mult:2.6},
+    E: {name:"史詩", tag:"E", mult:4.2},
+    L: {name:"傳說", tag:"L", mult:7.0},
+  };
+
+  // 水域（逐步解鎖）
+  const ZONES = [
+    {
+      id:"pond",
+      name:"新手池",
+      unlockGold: 0,
+      baseTimeSec: 18,
+      fish: [
+        {id:"minnow",  name:"小銀魚", base: 6,  rar:"C", w:60},
+        {id:"carp",    name:"鯉魚",   base: 10, rar:"C", w:45},
+        {id:"catfish", name:"鯰魚",   base: 16, rar:"U", w:24},
+        {id:"eel",     name:"鰻魚",   base: 22, rar:"R", w:10},
+        {id:"koi",     name:"錦鯉",   base: 40, rar:"E", w:4},
+      ]
+    },
+    {
+      id:"river",
+      name:"溪流",
+      unlockGold: 600,
+      baseTimeSec: 24,
+      fish: [
+        {id:"trout",   name:"鱒魚",   base: 18, rar:"C", w:55},
+        {id:"bass",    name:"鱸魚",   base: 26, rar:"U", w:28},
+        {id:"pike",    name:"狗魚",   base: 38, rar:"R", w:12},
+        {id:"golden",  name:"金鱗魚", base: 60, rar:"E", w:4},
+        {id:"spirit",  name:"靈水魚", base: 95, rar:"L", w:1},
+      ]
+    },
+    {
+      id:"lake",
+      name:"深湖",
+      unlockGold: 2600,
+      baseTimeSec: 30,
+      fish: [
+        {id:"perch",    name:"河鱸",   base: 28,  rar:"C", w:52},
+        {id:"tilapia",  name:"吳郭魚", base: 34,  rar:"U", w:30},
+        {id:"sturgeon", name:"鱘魚",   base: 70,  rar:"R", w:12},
+        {id:"moon",     name:"月影魚", base: 120, rar:"E", w:5},
+        {id:"ancient",  name:"古代魚", base: 180, rar:"L", w:1},
+      ]
+    },
+  ];
+
+  // 全魚種數（圖鑑）
+  const ALL_FISH_IDS = Array.from(new Set(ZONES.flatMap(z => z.fish.map(f => f.id))));
+  $("dexAll").textContent = ALL_FISH_IDS.length;
+  $("dexAll2").textContent = ALL_FISH_IDS.length;
+
+  // ========= Save Model =========
+  const SAVE_KEY = "idle_fishing_save_v1";
+  const SAVE_VER = 1;
+
+  // state:
+  // gold, totalGold, totalCatch, totalSold
+  // rodLv, zoneIdx
+  // bag: [{id, q}]
+  // dex: {id:true}
+  // job: {active, zoneIdx, startAt, endAt, planCount, planned: [{id, q, price}]}
+  // log: [{t, msg}]
+  let S = null;
+
+  function defaultState(){
+    return {
+      v: SAVE_VER,
+      gold: 0,
+      totalGold: 0,
+      totalCatch: 0,
+      totalSold: 0,
+
+      rodLv: 1,
+      zoneIdx: 0,
+
+      bagCap: 30,
+      bag: [],
+
+      dex: {},
+
+      job: {
+        active: false,
+        zoneIdx: 0,
+        startAt: 0,
+        endAt: 0,
+        planned: [] // planned catches
+      },
+
+      log: []
+    };
+  }
+
+  function pushLog(msg){
+    const t = new Date().toLocaleString();
+    S.log.unshift({t, msg});
+    if(S.log.length > 60) S.log.pop();
+    renderLog();
+  }
+
+  function saveLocal(){
+    try{
+      localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    }catch(e){
+      // iOS storage full / blocked
+      showToast(`<b>存檔失敗</b>：空間不足或被限制`, 1200);
+    }
+  }
+
+  function loadLocal(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return null;
+      const obj = JSON.parse(raw);
+      if(!obj || typeof obj !== "object") return null;
+      return obj;
+    }catch(_){
+      return null;
+    }
+  }
+
+  // ========= Save Code (export/import) =========
+  // 格式：v1:<base64(json)>:<chk>
+  // chk = 簡單 hash（防貼錯，不是防作弊）
+  function b64encode(str){
+    // UTF-8 safe
+    const bytes = new TextEncoder().encode(str);
+    let bin = "";
+    bytes.forEach(b => bin += String.fromCharCode(b));
+    return btoa(bin);
+  }
+  function b64decode(b64){
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function checksum(str){
+    // FNV-1a like (簡化)
+    let h = 2166136261 >>> 0;
+    for(let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    // 轉成 4 bytes base36
+    return (h >>> 0).toString(36).toUpperCase().padStart(6, "0").slice(0,6);
+  }
+  function exportCode(){
+    const json = JSON.stringify(S);
+    const b64 = b64encode(json);
+    const chk = checksum(b64);
+    return `v${SAVE_VER}:${b64}:${chk}`;
+  }
+  function importCode(code){
+    const m = String(code || "").trim().match(/^v(\d+):([A-Za-z0-9+/=]+):([A-Za-z0-9]+)$/);
+    if(!m) throw new Error("格式不正確");
+    const ver = Number(m[1]);
+    const b64 = m[2];
+    const chk = m[3].toUpperCase();
+    const c = checksum(b64);
+    if(c !== chk) throw new Error("校驗失敗（可能貼錯或被改過）");
+    const json = b64decode(b64);
+    const obj = JSON.parse(json);
+    if(!obj || typeof obj !== "object") throw new Error("內容不可解析");
+    if(obj.v !== SAVE_VER){
+      // 目前只有 v1，未來可以在這裡做相容轉換
+      throw new Error(`版本不相容（存檔 v${obj.v}，目前支援 v${SAVE_VER}）`);
+    }
+    return obj;
+  }
+
+  // ========= Gameplay =========
+  function curZone(){ return ZONES[clamp(S.zoneIdx, 0, ZONES.length-1)]; }
+  function rodTimeSec(){
+    // rodLv 越高，釣魚時間越短（最低 7 秒）
+    const z = curZone();
+    const base = z.baseTimeSec;
+    const factor = Math.pow(0.92, S.rodLv - 1);
+    return Math.max(7, Math.round(base * factor));
+  }
+  function rodQualityBonus(){
+    // 釣竿品質加成：提高稀有魚權重（不是暴力，慢慢加）
+    // 回傳一個 0~? 的值，用於稀有加權
+    return Math.min(0.55, (S.rodLv - 1) * 0.035);
+  }
+
+  function bagCount(){
+    return S.bag.reduce((a,x)=>a+x.q, 0);
+  }
+  function bagHasSpace(n){
+    return bagCount() + n <= S.bagCap;
+  }
+
+  function addToBag(fishId, qty){
+    const it = S.bag.find(x => x.id === fishId);
+    if(it) it.q += qty;
+    else S.bag.push({id: fishId, q: qty});
+  }
+
+  function fishById(id){
+    for(const z of ZONES){
+      const f = z.fish.find(x => x.id === id);
+      if(f) return f;
+    }
+    return null;
+  }
+
+  function priceOfFish(fish){
+    const r = RAR[fish.rar] || RAR.C;
+    const zoneMult = 1 + (S.zoneIdx * 0.18);
+    return Math.round(fish.base * r.mult * zoneMult);
+  }
+
+  function weightedPick(list){
+    const total = list.reduce((a,x)=>a + x.w, 0);
+    let r = Math.random() * total;
+    for(const x of list){
+      r -= x.w;
+      if(r <= 0) return x;
+    }
+    return list[list.length-1];
+  }
+
+  function makeZoneFishTable(){
+    const z = curZone();
+    const qBonus = rodQualityBonus();
+
+    // 釣竿加成：對 U/R/E/L 逐級加權；同時略降普通，避免總量爆表
+    const out = z.fish.map(f => {
+      let w = f.w;
+      if(f.rar === "U") w *= (1 + qBonus * 0.9);
+      if(f.rar === "R") w *= (1 + qBonus * 1.4);
+      if(f.rar === "E") w *= (1 + qBonus * 2.0);
+      if(f.rar === "L") w *= (1 + qBonus * 2.6);
+      if(f.rar === "C") w *= (1 - qBonus * 0.35);
+      return {...f, w: Math.max(0.2, w)};
+    });
+    return out;
+  }
+
+  function planCatch(){
+    // 本次釣魚會抓幾條：1~(1+rod bonus)
+    const base = 1;
+    const extraChance = clamp((S.rodLv-1) * 0.12, 0, 0.55);
+    let n = base;
+    if(Math.random() < extraChance) n += 1;
+    if(Math.random() < extraChance * 0.33) n += 1;
+    n = clamp(n, 1, 3);
+
+    const table = makeZoneFishTable();
+    const planned = [];
+    for(let i=0;i<n;i++){
+      const f = weightedPick(table);
+      const price = priceOfFish(f);
+      planned.push({id:f.id, q:1, price});
+    }
+    return planned;
+  }
+
+  function startJob(){
+    if(S.job.active){
+      showToast(`目前正在釣魚，先<b>結算</b>再說`, 900);
+      return;
+    }
+    const planned = planCatch();
+    if(!bagHasSpace(planned.length)){
+      showToast(`<b>背包滿了</b>，先賣掉或清背包`, 1100);
+      return;
+    }
+    const sec = rodTimeSec();
+    const t0 = now();
+    S.job = {
+      active: true,
+      zoneIdx: S.zoneIdx,
+      startAt: t0,
+      endAt: t0 + sec*1000,
+      planned
+    };
+    pushLog(`🎣 開始釣魚（${curZone().name}），預計 ${sec}s，目標 ${planned.length} 條`);
+    saveLocal();
+    renderAll();
+  }
+
+  function settleJob(force=false){
+    if(!S.job.active){
+      showToast(`沒有進行中的釣魚任務`, 700);
+      return;
+    }
+    const t = now();
+    if(t < S.job.endAt && !force){
+      showToast(`還沒釣完，別急`, 650);
+      return;
+    }
+
+    // 加入背包 + 更新圖鑑
+    let got = [];
+    for(const p of S.job.planned){
+      addToBag(p.id, p.q);
+      S.dex[p.id] = true;
+      got.push(p);
+    }
+    S.totalCatch += got.length;
+
+    const zoneName = ZONES[S.job.zoneIdx]?.name || curZone().name;
+    const summary = got.map(p => fishById(p.id)?.name || p.id).join("、");
+    pushLog(`✅ 結算完成（${zoneName}）：${summary || "空手"}（+${got.length}）`);
+
+    S.job.active = false;
+    S.job.planned = [];
+    S.job.startAt = 0;
+    S.job.endAt = 0;
+
+    saveLocal();
+    renderAll();
+    showToast(`收魚完成：<b>+${got.length}</b>`, 900);
+  }
+
+  function sellAll(){
+    const cnt = bagCount();
+    if(cnt <= 0){
+      showToast(`背包空的，賣個寂寞`, 800);
+      return;
+    }
+    let gold = 0;
+    for(const it of S.bag){
+      const f = fishById(it.id);
+      if(!f) continue;
+      gold += priceOfFish(f) * it.q;
+    }
+    S.bag = [];
+    S.gold += gold;
+    S.totalGold += gold;
+    S.totalSold += cnt;
+
+    pushLog(`💰 全部賣出：${cnt} 條 → +${gold} 金幣`);
+    saveLocal();
+    renderAll();
+    showToast(`賣出完成：<b>+${gold}</b>`, 900);
+  }
+
+  function rodUpCost(){
+    // 緩慢成長：不讓你 2 分鐘就封頂
+    const lv = S.rodLv;
+    return Math.round(180 * Math.pow(1.55, lv-1));
+  }
+
+  function upgradeRod(){
+    const cost = rodUpCost();
+    if(S.gold < cost){
+      showToast(`金幣不足（需要 <b>${cost}</b>）`, 900);
+      return;
+    }
+    S.gold -= cost;
+    S.rodLv += 1;
+    pushLog(`⬆️ 釣竿升級：Lv ${S.rodLv}（花費 ${cost}）`);
+    saveLocal();
+    renderAll();
+    showToast(`釣竿升級成功：<b>Lv ${S.rodLv}</b>`, 900);
+  }
+
+  function nextZone(){
+    return ZONES[S.zoneIdx + 1] || null;
+  }
+
+  function unlockNextZone(){
+    const nz = nextZone();
+    if(!nz){
+      showToast(`已到最後水域，恭喜你 KPI 封頂`, 1000);
+      return;
+    }
+    if(S.gold < nz.unlockGold){
+      showToast(`金幣不足（需要 <b>${nz.unlockGold}</b>）`, 900);
+      return;
+    }
+    if(S.job.active){
+      showToast(`先結算當前釣魚任務再解鎖`, 900);
+      return;
+    }
+    S.gold -= nz.unlockGold;
+    S.zoneIdx += 1;
+    pushLog(`🌊 解鎖水域：${curZone().name}（花費 ${nz.unlockGold}）`);
+    saveLocal();
+    renderAll();
+    showToast(`解鎖成功：<b>${curZone().name}</b>`, 900);
+  }
+
+  // ========= Offline Progress =========
+  function applyOfflineSettlement(){
+    if(!S.job.active) return;
+    const t = now();
+    if(t >= S.job.endAt){
+      // 任務已到期，自動結算（不強制提示擋住）
+      settleJob(true);
+      showToast(`離線結算已完成 ✅`, 850);
+    }
+  }
+
+  // ========= Render =========
+  function renderHeader(){
+    $("gold").textContent = fmt(S.gold);
+    $("rodLv").textContent = S.rodLv;
+    $("zoneName").textContent = curZone().name;
+
+    $("bag").textContent = bagCount();
+    $("bag2").textContent = bagCount();
+    $("bagCap").textContent = S.bagCap;
+    $("bagCap2").textContent = S.bagCap;
+
+    const dexCount = Object.keys(S.dex).length;
+    $("dex").textContent = dexCount;
+    $("dex2").textContent = dexCount;
+
+    $("totalCatch").textContent = fmt(S.totalCatch);
+    $("totalSold").textContent  = fmt(S.totalSold);
+    $("totalGold").textContent  = fmt(S.totalGold);
+
+    $("rodCost").textContent = rodUpCost();
+    $("zoneCost").textContent = nextZone() ? nextZone().unlockGold : "—";
+  }
+
+  function renderJob(){
+    if(!S.job.active){
+      $("status").textContent = "待命";
+      $("remain").textContent = "—";
+      return;
+    }
+    $("status").textContent = "釣魚中";
+    const r = Math.max(0, S.job.endAt - now());
+    const sec = Math.ceil(r / 1000);
+    $("remain").textContent = `${sec}s`;
+  }
+
+  function renderLog(){
+    const box = $("log");
+    box.innerHTML = "";
+    if(!S.log.length){
+      const div = document.createElement("div");
+      div.className = "muted";
+      div.textContent = "還沒開始作業。按「開始釣魚」先跑一單。";
+      box.appendChild(div);
+      return;
+    }
+    for(const it of S.log){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `
+        <div class="itL">
+          <div class="itT"><span class="tag">${it.t}</span><span style="font-weight:900;">${it.msg}</span></div>
+        </div>
+      `;
+      box.appendChild(div);
+    }
+  }
+
+  function renderBagDialog(){
+    const box = $("bagList");
+    box.innerHTML = "";
+
+    const dexCount = Object.keys(S.dex).length;
+
+    const section1 = document.createElement("div");
+    section1.className = "muted";
+    section1.innerHTML = `背包內容（可賣掉換金幣）。圖鑑解鎖：<b>${dexCount}</b> / <b>${ALL_FISH_IDS.length}</b>`;
+    box.appendChild(section1);
+
+    const bagSorted = [...S.bag].sort((a,b)=>a.id.localeCompare(b.id));
+    if(!bagSorted.length){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = `<div class="itL"><div class="itT">📦 背包空</div><div class="muted">去釣幾條再來。</div></div>`;
+      box.appendChild(div);
+    }else{
+      for(const it of bagSorted){
+        const f = fishById(it.id);
+        const rar = f ? (RAR[f.rar]?.name || f.rar) : "未知";
+        const price = f ? priceOfFish(f) : 0;
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div class="itL">
+            <div class="itT">
+              <span style="font-weight:1000;">${f ? f.name : it.id}</span>
+              <span class="tag">${rar}</span>
+              <span class="tag">單價 ${price}</span>
+            </div>
+            <div class="muted">數量：${it.q}</div>
+          </div>
+          <div class="pill">小計：<strong>${price * it.q}</strong></div>
+        `;
+        box.appendChild(div);
+      }
+    }
+
+    const section2 = document.createElement("div");
+    section2.className = "muted";
+    section2.style.marginTop = "6px";
+    section2.textContent = "圖鑑（已解鎖 ✅ / 未解鎖 —）：";
+    box.appendChild(section2);
+
+    const dexWrap = document.createElement("div");
+    dexWrap.style.display = "flex";
+    dexWrap.style.flexWrap = "wrap";
+    dexWrap.style.gap = "8px";
+    dexWrap.style.marginTop = "4px";
+
+    for(const id of ALL_FISH_IDS){
+      const f = fishById(id);
+      const ok = !!S.dex[id];
+      const chip = document.createElement("div");
+      chip.className = "tag";
+      chip.style.opacity = ok ? "1" : "0.55";
+      chip.textContent = `${ok ? "✅" : "—"} ${f ? f.name : id}`;
+      dexWrap.appendChild(chip);
+    }
+    box.appendChild(dexWrap);
+  }
+
+  function renderAll(){
+    renderHeader();
+    renderJob();
+    renderLog();
+  }
+
+  // ========= Tick =========
+  function tick(){
+    if(!S) return;
+    if(S.job.active){
+      renderJob();
+      if(now() >= S.job.endAt){
+        // 不自動結算，留給玩家按「結算」有儀式感
+        $("remain").textContent = "可結算";
+      }
+    }
+    requestAnimationFrame(()=>{});
+  }
+
+  // ========= UI Events =========
+  $("castBtn").addEventListener("click", () => startJob());
+  $("claimBtn").addEventListener("click", () => settleJob(false));
+  $("sellBtn").addEventListener("click", () => sellAll());
+  $("rodUpBtn").addEventListener("click", () => upgradeRod());
+  $("zoneUpBtn").addEventListener("click", () => unlockNextZone());
+
+  // Dialog: Save Code
+  const dlgSave = $("dlgSave");
+  $("saveBtn").addEventListener("click", () => {
+    $("saveText").value = exportCode();
+    dlgSave.showModal();
+  });
+  $("closeSave").addEventListener("click", () => dlgSave.close());
+  $("closeSave2").addEventListener("click", () => dlgSave.close());
+
+  $("btnExport").addEventListener("click", () => {
+    $("saveText").value = exportCode();
+    showToast(`已產生存檔碼`, 750);
+  });
+  $("btnCopy").addEventListener("click", async () => {
+    const txt = $("saveText").value.trim();
+    if(!txt){ showToast(`沒有內容可複製`, 700); return; }
+    try{
+      await navigator.clipboard.writeText(txt);
+      showToast(`已複製 ✅`, 750);
+    }catch(_){
+      $("saveText").focus();
+      $("saveText").select();
+      showToast(`已選取，手動複製`, 900);
+    }
+  });
+  $("btnImport").addEventListener("click", () => {
+    const txt = $("saveText").value.trim();
+    if(!txt){ showToast(`請貼上存檔碼`, 850); return; }
+    try{
+      const obj = importCode(txt);
+      S = obj;
+      saveLocal();
+      applyOfflineSettlement();
+      renderAll();
+      showToast(`<b>匯入成功</b>`, 900);
+      pushLog(`📥 匯入存檔完成`);
+    }catch(e){
+      showToast(`<b>匯入失敗</b>：${e.message}`, 1200);
+    }
+  });
+  $("btnReset").addEventListener("click", () => {
+    // 不做 confirm（手機麻煩），直接重置但先提示
+    S = defaultState();
+    saveLocal();
+    renderAll();
+    showToast(`<b>已重置</b>`, 900);
+    pushLog(`🧨 存檔已重置`);
+  });
+
+  // Dialog: Bag
+  const dlgBag = $("dlgBag");
+  $("bagBtn").addEventListener("click", () => {
+    renderBagDialog();
+    dlgBag.showModal();
+  });
+  $("closeBag").addEventListener("click", () => dlgBag.close());
+  $("closeBag2").addEventListener("click", () => dlgBag.close());
+
+  // ========= Boot =========
+  function boot(){
+    S = loadLocal() || defaultState();
+    // 基本修復（避免舊資料缺欄位）
+    if(!S.v) S.v = SAVE_VER;
+    if(!S.dex) S.dex = {};
+    if(!Array.isArray(S.bag)) S.bag = [];
+    if(!S.job) S.job = {active:false, zoneIdx:0, startAt:0, endAt:0, planned:[]};
+    if(!Array.isArray(S.log)) S.log = [];
+
+    applyOfflineSettlement();
+    renderAll();
+
+    // 每 1 秒刷新一次剩餘時間 & 自動存檔（保守）
+    setInterval(() => {
+      tick();
+      saveLocal();
+    }, 1000);
+
+    // 首次提示
+    if(S.totalCatch === 0 && !S.job.active){
+      showToast(`按「<b>開始釣魚</b>」先跑一單`, 1200);
+    }
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
