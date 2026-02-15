@@ -268,44 +268,39 @@
 
 <script>
 (() => {
-  // 防 iOS 彈跳
   document.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
-  // ====== 基礎參數（你之後要調難度就改這區） ======
-  const WORLD_W = 1000;           // 內部世界座標寬（用來做獨立於畫面比例的運算）
+  // ====== 調難度改這區 ======
+  const WORLD_W = 1000;
   const WORLD_H = 1000;
 
-  const PLAYER_Y = 900;           // 玩家固定在底部附近
-  const PLAYER_SPEED = 2200;      // 左右鍵推動速度（世界座標/秒）
-  const DRAG_FOLLOW = 0.28;       // 拖曳跟手係數（越大越跟手）
+  const PLAYER_Y = 900;
+  const PLAYER_SPEED = 2200;
+  const DRAG_FOLLOW = 0.28;
 
-  const BULLET_BASE_SPD = 520;    // 子彈初始速度
-  const BULLET_SPD_GROW = 18;     // 每秒速度成長（越大越虐）
-  const BULLET_BASE_RATE = 1.10;  // 每秒生成數（起始）
-  const BULLET_RATE_GROW = 0.040; // 每秒生成數成長
-  const BULLET_MAX = 120;         // 上限（避免手機炸裂）
+  const BULLET_BASE_SPD = 520;
+  const BULLET_SPD_GROW = 18;
+  const BULLET_BASE_RATE = 1.10;
+  const BULLET_RATE_GROW = 0.040;
+  const BULLET_MAX = 120;
 
-  const HIT_GRACE_MS = 280;       // 被撞後的「短暫緩衝」時間（視覺比較合理）
+  const HIT_GRACE_MS = 280;
 
-  // 道具生成
-  const ITEM_BASE_RATE = 0.22;    // 每秒道具生成機率（不是必出，是機率）
-  const ITEM_RATE_GROW = 0.006;   // 隨時間略增加
-  const ITEM_MAX = 3;             // 盤面最多幾個道具
+  const ITEM_BASE_RATE = 0.22;
+  const ITEM_RATE_GROW = 0.006;
+  const ITEM_MAX = 3;
   const ITEM_FALL_SPD = 420;
 
-  // 道具效果（秒）
   const SLOW_T = 6.0;
   const SHRINK_T = 7.0;
   const MAGNET_T = 7.5;
 
-  const MAGNET_RADIUS = 150;      // 吸附半徑（世界座標）
-  const MAGNET_PULL = 1400;       // 吸附拉力（世界座標/秒）
+  const MAGNET_RADIUS = 150;
+  const MAGNET_PULL = 1400;
 
-  // ====== 儲存鍵 ======
-  const BEST_KEY = "dodger_best_v1";
+  const BEST_KEY = "dodger_best_v2_fixed_hold";
   const THEME_KEY = "dodger_theme_v1";
 
-  // ====== DOM ======
   const board = document.getElementById("board");
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
@@ -335,7 +330,7 @@
     toastTimer = setTimeout(() => toast.classList.remove("show"), ms);
   }
 
-  // ====== Theme ======
+  // Theme
   function systemTheme(){
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   }
@@ -359,7 +354,7 @@
     setThemeMode(cur === "light" ? "dark" : "light");
   });
 
-  // ====== Back ======
+  // Back
   backBtn.addEventListener("click", () => {
     const hub = "/game/";
     try{
@@ -370,11 +365,11 @@
     }
   });
 
-  // ====== Best ======
+  // Best
   let best = Number(localStorage.getItem(BEST_KEY) || 0) || 0;
   elBest.textContent = best.toFixed(1);
 
-  // ====== Canvas Resize ======
+  // Canvas
   let dpr=1, sizeCss=1;
   function resizeCanvas(){
     const rect = board.getBoundingClientRect();
@@ -389,34 +384,33 @@
     if(initialized) draw();
   });
 
-  // ====== Game State ======
+  // Game State
   let initialized=false, running=false, gameOver=false;
 
   let tSurvive=0;
   let lastT=0;
 
   let player = { x: WORLD_W/2, y: PLAYER_Y, r: 26 };
-  let bullets = []; // {x,y,r,vy}
-  let items = [];   // {x,y,r,vy,type,spin}
+  let bullets = [];
+  let items = [];
 
-  // 控制
   let keyLeft=false, keyRight=false;
   let dragActive=false;
-  let dragX=0; // 目標位置（世界座標）
+  let dragX=0;
 
-  // 命中緩衝/停住（護盾觸發用）
-  let hold = false;          // 需要玩家再移動才能繼續
-  let hitFreezeUntil = 0;    // 視覺緩衝
+  let hold=false;
+  let hitFreezeUntil=0;
 
-  // 效果
-  let shield = 0;            // 可疊加
-  let slowT = 0;
-  let shrinkT = 0;
-  let magnetT = 0;
+  let shield=0;
+  let slowT=0;
+  let shrinkT=0;
+  let magnetT=0;
 
   const ITEM_TYPES = ["SHIELD","SLOW","CLEAR","MAGNET","SHRINK"];
 
   function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
 
   function setOverlay(show, title, text){
     if(show){
@@ -432,6 +426,7 @@
     if(slowT>0) p.push(`減速(${slowT.toFixed(1)})`);
     if(shrinkT>0) p.push(`縮小(${shrinkT.toFixed(1)})`);
     if(magnetT>0) p.push(`吸附(${magnetT.toFixed(1)})`);
+    if(hold) p.push(`等待移動`);
     return p.length ? p.join(" / ") : "無";
   }
 
@@ -449,8 +444,8 @@
     player.x = WORLD_W/2;
     player.r = 26;
 
-    bullets.length=0;
-    items.length=0;
+    bullets = [];
+    items = [];
 
     keyLeft=keyRight=false;
     dragActive=false;
@@ -481,7 +476,7 @@
 
   function setRunning(v){
     if(gameOver && v) return;
-    if(hold && v) return; // hold 狀態只能靠移動解除
+    if(hold && v) return; // hold 狀態必須靠移動解除
     running=v;
     syncUI();
     if(running){
@@ -492,21 +487,14 @@
     }
   }
 
-  // ====== Spawn ======
-  function rand(a,b){ return a + Math.random()*(b-a); }
-  function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
-
-  function bulletRate(){
-    return BULLET_BASE_RATE + BULLET_RATE_GROW * tSurvive;
-  }
+  // Spawn
+  function bulletRate(){ return BULLET_BASE_RATE + BULLET_RATE_GROW * tSurvive; }
   function bulletSpeed(){
     const base = BULLET_BASE_SPD + BULLET_SPD_GROW * tSurvive;
     const slowMul = (slowT>0) ? 0.55 : 1.0;
     return base * slowMul;
   }
-  function itemRate(){
-    return ITEM_BASE_RATE + ITEM_RATE_GROW * tSurvive;
-  }
+  function itemRate(){ return ITEM_BASE_RATE + ITEM_RATE_GROW * tSurvive; }
 
   function spawnBullet(){
     if(bullets.length >= BULLET_MAX) return;
@@ -533,7 +521,7 @@
     });
   }
 
-  // ====== Effects ======
+  // Effects
   function applyItem(type){
     if(type==="SHIELD"){
       shield += 1;
@@ -546,7 +534,7 @@
       return;
     }
     if(type==="CLEAR"){
-      bullets.length = 0;
+      bullets = [];
       showToast(`啟動 <b>清場</b>`);
       return;
     }
@@ -562,27 +550,34 @@
     }
   }
 
+  // ✅ 修正：護盾擋下時不把 loop 停掉
   function consumeShieldHold(){
     if(shield>0){
       shield -= 1;
       hold = true;
-      running = false;
+
+      // 保持 running=true，loop 繼續刷新畫面/等待輸入
+      running = true;
+
       hitFreezeUntil = performance.now() + HIT_GRACE_MS;
       showToast(`<b>護盾擋下！</b> 移動一下繼續`, 1100);
       syncUI();
       setOverlay(false);
+
+      // 避免下一幀 dt 爆大
+      lastT = 0;
+      requestAnimationFrame(loop);
       return true;
     }
     return false;
   }
 
-  // ====== Collision ======
   function dist2(ax,ay,bx,by){
     const dx=ax-bx, dy=ay-by;
     return dx*dx + dy*dy;
   }
 
-  // ====== Update ======
+  // Update
   function update(dt){
     // 效果倒數
     if(slowT>0) slowT = Math.max(0, slowT - dt);
@@ -593,33 +588,31 @@
     const targetR = (shrinkT>0) ? 18 : 26;
     player.r += (targetR - player.r) * 0.22;
 
-    // 玩家移動
+    // hold：等玩家有移動意圖才解除，且解除後不吃 dt 爆衝
     if(hold){
-      // 等玩家開始「移動」才解除（避免護盾剛擋就又死）
-      // 拖曳或按鍵都算
       const movingIntent = dragActive || keyLeft || keyRight;
       if(movingIntent){
         hold = false;
-        running = true;
         showToast(`繼續！`, 450);
+        // 重置時間基準，避免解除後 dt 變大
+        lastT = 0;
       }else{
         return; // hold 時整體凍結
       }
     }
 
+    // 玩家移動
     const speed = PLAYER_SPEED * dt;
     if(keyLeft) player.x -= speed;
     if(keyRight) player.x += speed;
 
-    // 拖曳跟隨：把 dragX 當目標位置，平滑靠近
     if(dragActive){
       const dx = (dragX - player.x);
       player.x += dx * DRAG_FOLLOW;
     }
-
     player.x = clamp(player.x, player.r, WORLD_W - player.r);
 
-    // 生成子彈（泊松近似：rate * dt 可能 >1）
+    // 生成子彈（泊松近似）
     let spawnCount = bulletRate() * dt;
     while(spawnCount > 0){
       if(Math.random() < spawnCount) spawnBullet();
@@ -635,10 +628,8 @@
     // 更新子彈
     const spdBase = bulletSpeed();
     for(const b of bullets){
-      // 把 b.vy 視為係數，乘上當前 spdBase 來體感連續
       b.y += (b.vy / (BULLET_BASE_SPD || 1)) * spdBase * dt;
     }
-    // 清掉出界
     bullets = bullets.filter(b => b.y < WORLD_H + b.r + 30);
 
     // 更新道具
@@ -662,7 +653,7 @@
       }
     }
 
-    // 碰撞：道具先判（拿到就是爽）
+    // 道具碰撞
     for(let i=items.length-1;i>=0;i--){
       const it = items[i];
       const rr = (player.r + it.r);
@@ -672,19 +663,17 @@
       }
     }
 
-    // 命中緩衝（剛被擋下那一下不再判）
+    // 命中緩衝（擋下後的一瞬間不再判）
     const now = performance.now();
     if(now < hitFreezeUntil) return;
 
-    // 碰撞：子彈
+    // 子彈碰撞
     for(const b of bullets){
       const rr = (player.r + b.r);
       if(dist2(player.x, player.y, b.x, b.y) <= rr*rr){
         if(consumeShieldHold()){
-          // 擋下後凍結：保留現場
           return;
         }
-        // GG
         running=false;
         gameOver=true;
         if(tSurvive > best){
@@ -699,7 +688,7 @@
     }
   }
 
-  // ====== Render ======
+  // Render
   function draw(isOver=false){
     const w = sizeCss || 1;
     const h = sizeCss || 1;
@@ -709,7 +698,7 @@
     const sx = w / WORLD_W;
     const sy = h / WORLD_H;
 
-    // grid（淡淡的，讓空間感好一點）
+    // grid
     ctx.globalAlpha = 0.08;
     ctx.beginPath();
     const step = 100;
@@ -765,7 +754,6 @@
     // player
     const px=player.x*sx, py=player.y*sy;
     ctx.save();
-    // 外圈：護盾視覺
     if(shield>0){
       ctx.globalAlpha = 0.9;
       ctx.strokeStyle = css("--toast");
@@ -774,13 +762,13 @@
       ctx.arc(px,py, player.r*sx*1.35, 0, Math.PI*2);
       ctx.stroke();
     }
-    // 主體
     ctx.globalAlpha = 1;
     ctx.fillStyle = css("--good");
     ctx.beginPath();
     ctx.arc(px,py, player.r*sx, 0, Math.PI*2);
     ctx.fill();
-    // 眼睛（讓它看起來有生命）
+
+    // eyes
     ctx.fillStyle = css("--bg");
     ctx.beginPath();
     ctx.arc(px - player.r*sx*0.28, py - player.r*sx*0.12, Math.max(2, player.r*sx*0.12), 0, Math.PI*2);
@@ -795,11 +783,10 @@
       ctx.globalAlpha = 1;
     }
 
-    // HUD status refresh（避免動畫期落後）
     elStatus.textContent = statusLabel();
   }
 
-  // ====== Loop ======
+  // ✅ 修正：hold 時不加時間，loop 仍持續
   function loop(ts){
     if(!running) return;
 
@@ -807,26 +794,30 @@
     const dt = Math.min(0.033, (ts - lastT) / 1000);
     lastT = ts;
 
-    tSurvive += dt;
-    syncUI();
-
     update(dt);
+
+    if(!hold && !gameOver){
+      tSurvive += dt;
+    }
+
+    syncUI();
     draw();
 
     requestAnimationFrame(loop);
   }
 
-  // ====== Input ======
+  // Input
   function startDragFromEvent(e){
     const rect = board.getBoundingClientRect();
     const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
     dragX = x * WORLD_W;
     dragActive = true;
 
-    if(!running && !gameOver) setRunning(true);
-    if(hold){
-      // 只要有移動意圖就解 hold（update() 會解）
-    }
+    ensureInit();
+    if(gameOver) return;
+
+    // 有輸入就確保 loop 在跑（hold 也會靠這解除）
+    if(!running) { running = true; syncUI(); lastT = 0; requestAnimationFrame(loop); }
   }
 
   board.addEventListener("pointerdown", (e) => {
@@ -842,28 +833,26 @@
     startDragFromEvent(e);
   }, {passive:true});
 
-  board.addEventListener("pointerup", () => {
-    dragActive = false;
-  }, {passive:true});
-  board.addEventListener("pointercancel", () => {
-    dragActive = false;
-  }, {passive:true});
+  board.addEventListener("pointerup", () => { dragActive = false; }, {passive:true});
+  board.addEventListener("pointercancel", () => { dragActive = false; }, {passive:true});
 
-  // D-pad（長按）
   function pressLeft(v){
     keyLeft = v;
     if(v){
       ensureInit();
-      if(!running && !gameOver) setRunning(true);
+      if(gameOver) return;
+      if(!running){ running=true; syncUI(); lastT=0; requestAnimationFrame(loop); }
     }
   }
   function pressRight(v){
     keyRight = v;
     if(v){
       ensureInit();
-      if(!running && !gameOver) setRunning(true);
+      if(gameOver) return;
+      if(!running){ running=true; syncUI(); lastT=0; requestAnimationFrame(loop); }
     }
   }
+
   leftBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); if(!gameOver) pressLeft(true); }, {passive:false});
   leftBtn.addEventListener("pointerup", ()=>pressLeft(false), {passive:true});
   leftBtn.addEventListener("pointercancel", ()=>pressLeft(false), {passive:true});
@@ -874,29 +863,29 @@
   rightBtn.addEventListener("pointercancel", ()=>pressRight(false), {passive:true});
   rightBtn.addEventListener("pointerleave", ()=>pressRight(false), {passive:true});
 
-  // Keyboard
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if(["arrowleft","arrowright","a","d"," "].includes(k)) e.preventDefault();
+
     if(k===" "){
       ensureInit();
       if(gameOver) return;
+      if(hold) return;
       setRunning(!running);
       return;
     }
     if(gameOver) return;
 
-    if(k==="arrowleft"||k==="a"){ pressLeft(true); }
-    if(k==="arrowright"||k==="d"){ pressRight(true); }
+    if(k==="arrowleft"||k==="a") pressLeft(true);
+    if(k==="arrowright"||k==="d") pressRight(true);
   }, {passive:false});
 
   window.addEventListener("keyup", (e) => {
     const k = e.key.toLowerCase();
-    if(k==="arrowleft"||k==="a"){ pressLeft(false); }
-    if(k==="arrowright"||k==="d"){ pressRight(false); }
+    if(k==="arrowleft"||k==="a") pressLeft(false);
+    if(k==="arrowright"||k==="d") pressRight(false);
   }, {passive:true});
 
-  // Buttons
   startBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureInit();
@@ -909,10 +898,13 @@
     e.preventDefault();
     ensureInit();
     resetGame();
-    setRunning(true);
+    running = true;
+    syncUI();
+    lastT = 0;
+    setOverlay(false);
+    requestAnimationFrame(loop);
   }, {passive:false});
 
-  // init
   requestAnimationFrame(() => ensureInit());
 })();
 </script>
