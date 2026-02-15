@@ -166,7 +166,8 @@
       background:var(--board);
       position:relative;
       overflow:hidden;
-      touch-action:none;
+      /* ✅ 棋盤不吃控制，避免點擊瞬移/遮畫面 */
+      pointer-events:none;
     }
     canvas{ width:100%; height:100%; display:block; }
 
@@ -178,44 +179,82 @@
       padding:16px;
       background:rgba(0,0,0,.35);
       backdrop-filter:blur(8px);
+      pointer-events:none;
     }
     html[data-theme="light"] .overlay{ background:rgba(255,255,255,.55); }
     .overlay.show{ display:flex; }
     .overlay h2{ margin:0 0 8px; font-size:18px; }
     .overlay p{ margin:0; opacity:.88; font-size:13px; line-height:1.5; color:var(--muted); }
 
-    .dpad{
+    /* ✅ Touchpad：專用輸入區 */
+    .touchpad{
       width:min(var(--maxw), 96vw);
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:12px;
-      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
-    }
-    .pad{
+      border-radius:18px;
       border:1px solid var(--border);
       background:var(--panel);
-      color:var(--fg);
-      border-radius:18px;
-      padding:18px 0;
-      font-size:22px;
-      font-weight:1000;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-      min-height:64px;
-      touch-action:manipulation;
+      min-height:84px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+      touch-action:none;
       backdrop-filter: blur(8px);
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
     }
-    .pad:active{ transform:scale(0.985); }
+    .touchpadHint{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:14px;
+      opacity:.72;
+      pointer-events:none;
+    }
+    .touchpadBar{
+      position:absolute;
+      left:14px; right:14px;
+      height:8px;
+      bottom: calc(14px + var(--homebar-guard));
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      pointer-events:none;
+    }
+    html[data-theme="light"] .touchpadBar{
+      background: rgba(0,0,0,.06);
+      border: 1px solid rgba(0,0,0,.08);
+    }
+    .knob{
+      position:absolute;
+      width:42px; height:42px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      font-weight:1000;
+      transform: translate(-50%, -50%);
+      left:50%; top:50%;
+      pointer-events:none;
+      opacity:.0;
+      transition: opacity .12s ease;
+    }
+    .knob.show{ opacity:1; }
 
     @media (max-width: 360px){
       .hudBottom{ grid-template-columns: 1fr 1fr; }
       #startBtn, #restartBtn, #backBtn, #themeBtn{ width:100%; }
       .hudTop{ flex-direction:column; align-items:stretch; }
       .toast{ top:-10px; }
+      .touchpad{ min-height:92px; }
     }
 
     @media (max-height: 720px){
-      .pad{ padding:16px 0; min-height:60px; }
       .pill{ padding:10px 12px; }
       .btn{ padding:11px 12px; min-height:46px; }
       .board{
@@ -223,6 +262,7 @@
         height:min(var(--maxw), 96vw, 52svh);
       }
       .stage{ gap:12px; }
+      .touchpad{ min-height:76px; }
     }
   </style>
 </head>
@@ -249,19 +289,23 @@
     </div>
 
     <div class="stage">
-      <div class="board" id="board">
-        <canvas id="cv"></canvas>
+      <div class="boardWrap" style="position:relative;">
+        <div class="board" id="board">
+          <canvas id="cv"></canvas>
+        </div>
         <div class="overlay show" id="overlay">
           <div>
             <h2 id="ovTitle">準備</h2>
-            <p id="ovText">左右拖曳移動（或按下方左右鍵）</p>
+            <p id="ovText">在下方觸控板左右拖曳移動</p>
           </div>
         </div>
       </div>
 
-      <div class="dpad">
-        <button class="pad" id="leftBtn">◀</button>
-        <button class="pad" id="rightBtn">▶</button>
+      <!-- ✅ 觸控板：唯一控制入口 -->
+      <div class="touchpad" id="pad">
+        <div class="touchpadHint" id="padHint">在這裡左右拖曳控制</div>
+        <div class="touchpadBar"></div>
+        <div class="knob" id="knob">↔</div>
       </div>
     </div>
   </div>
@@ -276,7 +320,9 @@
 
   const PLAYER_Y = 900;
   const PLAYER_SPEED = 2200;
-  const DRAG_FOLLOW = 0.28;
+
+  // ✅ Touchpad 跟手（越大越跟手，建議 0.22~0.35）
+  const PAD_FOLLOW = 0.30;
 
   const BULLET_BASE_SPD = 520;
   const BULLET_SPD_GROW = 18;
@@ -298,10 +344,10 @@
   const MAGNET_RADIUS = 150;
   const MAGNET_PULL = 1400;
 
-  const BEST_KEY = "dodger_best_v2_fixed_hold";
+  const BEST_KEY = "dodger_best_v3_touchpad";
   const THEME_KEY = "dodger_theme_v1";
 
-  const board = document.getElementById("board");
+  // ====== DOM ======
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
 
@@ -318,8 +364,9 @@
   const ovTitle = document.getElementById("ovTitle");
   const ovText  = document.getElementById("ovText");
 
-  const leftBtn = document.getElementById("leftBtn");
-  const rightBtn = document.getElementById("rightBtn");
+  const pad = document.getElementById("pad");
+  const padHint = document.getElementById("padHint");
+  const knob = document.getElementById("knob");
 
   const toast = document.getElementById("toast");
   let toastTimer = 0;
@@ -372,7 +419,7 @@
   // Canvas
   let dpr=1, sizeCss=1;
   function resizeCanvas(){
-    const rect = board.getBoundingClientRect();
+    const rect = cv.parentElement.getBoundingClientRect(); // board 的盒子
     sizeCss = Math.max(1, Math.floor(Math.min(rect.width, rect.height)));
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     cv.width = Math.floor(sizeCss * dpr);
@@ -384,7 +431,7 @@
     if(initialized) draw();
   });
 
-  // Game State
+  // State
   let initialized=false, running=false, gameOver=false;
 
   let tSurvive=0;
@@ -394,13 +441,15 @@
   let bullets = [];
   let items = [];
 
-  let keyLeft=false, keyRight=false;
-  let dragActive=false;
-  let dragX=0;
+  // Touchpad input
+  let padActive=false;
+  let padTargetX = player.x;
 
+  // hold/shield
   let hold=false;
   let hitFreezeUntil=0;
 
+  // effects
   let shield=0;
   let slowT=0;
   let shrinkT=0;
@@ -408,7 +457,7 @@
 
   const ITEM_TYPES = ["SHIELD","SLOW","CLEAR","MAGNET","SHRINK"];
 
-  function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
   function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
   function rand(a,b){ return a + Math.random()*(b-a); }
 
@@ -447,9 +496,8 @@
     bullets = [];
     items = [];
 
-    keyLeft=keyRight=false;
-    dragActive=false;
-    dragX = player.x;
+    padActive=false;
+    padTargetX = player.x;
 
     hold=false;
     hitFreezeUntil=0;
@@ -462,9 +510,12 @@
     running=false;
     gameOver=false;
 
+    knob.classList.remove("show");
+    padHint.style.opacity = "0.72";
+
     syncUI();
     draw();
-    setOverlay(true, "準備", "左右拖曳移動（或按下方左右鍵）");
+    setOverlay(true, "準備", "在下方觸控板左右拖曳移動");
   }
 
   function ensureInit(){
@@ -476,7 +527,7 @@
 
   function setRunning(v){
     if(gameOver && v) return;
-    if(hold && v) return; // hold 狀態必須靠移動解除
+    if(hold && v) return;
     running=v;
     syncUI();
     if(running){
@@ -491,8 +542,7 @@
   function bulletRate(){ return BULLET_BASE_RATE + BULLET_RATE_GROW * tSurvive; }
   function bulletSpeed(){
     const base = BULLET_BASE_SPD + BULLET_SPD_GROW * tSurvive;
-    const slowMul = (slowT>0) ? 0.55 : 1.0;
-    return base * slowMul;
+    return base * ((slowT>0) ? 0.55 : 1.0);
   }
   function itemRate(){ return ITEM_BASE_RATE + ITEM_RATE_GROW * tSurvive; }
 
@@ -521,7 +571,6 @@
     });
   }
 
-  // Effects
   function applyItem(type){
     if(type==="SHIELD"){
       shield += 1;
@@ -550,21 +599,16 @@
     }
   }
 
-  // ✅ 修正：護盾擋下時不把 loop 停掉
+  // Shield hold（loop 不停）
   function consumeShieldHold(){
     if(shield>0){
       shield -= 1;
       hold = true;
-
-      // 保持 running=true，loop 繼續刷新畫面/等待輸入
       running = true;
-
       hitFreezeUntil = performance.now() + HIT_GRACE_MS;
-      showToast(`<b>護盾擋下！</b> 移動一下繼續`, 1100);
+      showToast(`<b>護盾擋下！</b> 觸控板拖一下繼續`, 1100);
       syncUI();
       setOverlay(false);
-
-      // 避免下一幀 dt 爆大
       lastT = 0;
       requestAnimationFrame(loop);
       return true;
@@ -577,69 +621,68 @@
     return dx*dx + dy*dy;
   }
 
-  // Update
   function update(dt){
-    // 效果倒數
+    // effects
     if(slowT>0) slowT = Math.max(0, slowT - dt);
     if(shrinkT>0) shrinkT = Math.max(0, shrinkT - dt);
     if(magnetT>0) magnetT = Math.max(0, magnetT - dt);
 
-    // 玩家半徑（縮小）
+    // player radius smoothing
     const targetR = (shrinkT>0) ? 18 : 26;
     player.r += (targetR - player.r) * 0.22;
 
-    // hold：等玩家有移動意圖才解除，且解除後不吃 dt 爆衝
+    // hold: 需要「觸控板拖曳意圖」解除
     if(hold){
-      const movingIntent = dragActive || keyLeft || keyRight;
-      if(movingIntent){
+      if(padActive){
         hold = false;
         showToast(`繼續！`, 450);
-        // 重置時間基準，避免解除後 dt 變大
         lastT = 0;
       }else{
-        return; // hold 時整體凍結
+        return;
       }
     }
 
-    // 玩家移動
-    const speed = PLAYER_SPEED * dt;
-    if(keyLeft) player.x -= speed;
-    if(keyRight) player.x += speed;
+    // player move: 只跟隨 padTargetX（不瞬移，平滑追）
+    const dx = (padTargetX - player.x);
+    player.x += dx * PAD_FOLLOW;
 
-    if(dragActive){
-      const dx = (dragX - player.x);
-      player.x += dx * DRAG_FOLLOW;
+    // 也加一點速度上限，避免非常遠距離時看起來瞬移
+    const maxStep = PLAYER_SPEED * dt;
+    const moved = player.x - (player.x - dx * PAD_FOLLOW);
+    if(Math.abs(moved) > maxStep){
+      player.x = player.x + Math.sign(dx) * maxStep;
     }
+
     player.x = clamp(player.x, player.r, WORLD_W - player.r);
 
-    // 生成子彈（泊松近似）
+    // spawn bullets
     let spawnCount = bulletRate() * dt;
     while(spawnCount > 0){
       if(Math.random() < spawnCount) spawnBullet();
       spawnCount -= 1;
     }
 
-    // 生成道具（機率式）
+    // spawn items
     const ir = itemRate() * dt;
     if(items.length < ITEM_MAX && Math.random() < ir){
       spawnItem();
     }
 
-    // 更新子彈
+    // update bullets
     const spdBase = bulletSpeed();
     for(const b of bullets){
       b.y += (b.vy / (BULLET_BASE_SPD || 1)) * spdBase * dt;
     }
     bullets = bullets.filter(b => b.y < WORLD_H + b.r + 30);
 
-    // 更新道具
+    // update items
     for(const it of items){
       it.y += it.vy * dt;
       it.spin += dt * 2.2;
     }
     items = items.filter(it => it.y < WORLD_H + it.r + 40);
 
-    // 吸附道具
+    // magnet: pull items
     if(magnetT>0){
       for(const it of items){
         const dx = player.x - it.x;
@@ -653,7 +696,7 @@
       }
     }
 
-    // 道具碰撞
+    // item collision
     for(let i=items.length-1;i>=0;i--){
       const it = items[i];
       const rr = (player.r + it.r);
@@ -663,19 +706,19 @@
       }
     }
 
-    // 命中緩衝（擋下後的一瞬間不再判）
+    // grace after shield
     const now = performance.now();
     if(now < hitFreezeUntil) return;
 
-    // 子彈碰撞
+    // bullet collision
     for(const b of bullets){
       const rr = (player.r + b.r);
       if(dist2(player.x, player.y, b.x, b.y) <= rr*rr){
-        if(consumeShieldHold()){
-          return;
-        }
+        if(consumeShieldHold()) return;
+
         running=false;
         gameOver=true;
+
         if(tSurvive > best){
           best = tSurvive;
           localStorage.setItem(BEST_KEY, String(best));
@@ -688,7 +731,6 @@
     }
   }
 
-  // Render
   function draw(isOver=false){
     const w = sizeCss || 1;
     const h = sizeCss || 1;
@@ -710,12 +752,12 @@
       const y = j*step*sy;
       ctx.moveTo(0,y); ctx.lineTo(w,y);
     }
-    ctx.strokeStyle = css("--grid");
+    ctx.strokeStyle = cssVar("--grid");
     ctx.stroke();
     ctx.globalAlpha = 1;
 
     // bullets
-    ctx.fillStyle = css("--danger");
+    ctx.fillStyle = cssVar("--danger");
     for(const b of bullets){
       const x=b.x*sx, y=b.y*sy;
       ctx.beginPath();
@@ -726,13 +768,13 @@
     // items
     for(const it of items){
       const x=it.x*sx, y=it.y*sy;
-      let ring = css("--warn");
+      let ring = cssVar("--warn");
       let icon = "?";
-      if(it.type==="SHIELD"){ ring = css("--toast"); icon = "🛡"; }
-      if(it.type==="SLOW"){ ring = css("--accent"); icon = "🧊"; }
-      if(it.type==="CLEAR"){ ring = css("--warn"); icon = "🧹"; }
-      if(it.type==="MAGNET"){ ring = css("--accent"); icon = "🧲"; }
-      if(it.type==="SHRINK"){ ring = css("--good"); icon = "✨"; }
+      if(it.type==="SHIELD"){ ring = cssVar("--toast"); icon = "🛡"; }
+      if(it.type==="SLOW"){ ring = cssVar("--accent"); icon = "🧊"; }
+      if(it.type==="CLEAR"){ ring = cssVar("--warn"); icon = "🧹"; }
+      if(it.type==="MAGNET"){ ring = cssVar("--accent"); icon = "🧲"; }
+      if(it.type==="SHRINK"){ ring = cssVar("--good"); icon = "✨"; }
 
       ctx.save();
       ctx.globalAlpha = 0.95;
@@ -741,7 +783,7 @@
       ctx.arc(x,y, it.r*sx, 0, Math.PI*2);
       ctx.fill();
 
-      ctx.fillStyle = css("--bg");
+      ctx.fillStyle = cssVar("--bg");
       ctx.font = `${Math.max(12, it.r*sx*1.05)}px system-ui`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -756,20 +798,20 @@
     ctx.save();
     if(shield>0){
       ctx.globalAlpha = 0.9;
-      ctx.strokeStyle = css("--toast");
+      ctx.strokeStyle = cssVar("--toast");
       ctx.lineWidth = Math.max(2, player.r*sx*0.22);
       ctx.beginPath();
       ctx.arc(px,py, player.r*sx*1.35, 0, Math.PI*2);
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
-    ctx.fillStyle = css("--good");
+    ctx.fillStyle = cssVar("--good");
     ctx.beginPath();
     ctx.arc(px,py, player.r*sx, 0, Math.PI*2);
     ctx.fill();
 
     // eyes
-    ctx.fillStyle = css("--bg");
+    ctx.fillStyle = cssVar("--bg");
     ctx.beginPath();
     ctx.arc(px - player.r*sx*0.28, py - player.r*sx*0.12, Math.max(2, player.r*sx*0.12), 0, Math.PI*2);
     ctx.arc(px + player.r*sx*0.18, py - player.r*sx*0.12, Math.max(2, player.r*sx*0.10), 0, Math.PI*2);
@@ -778,7 +820,7 @@
 
     if(isOver){
       ctx.globalAlpha = 0.10;
-      ctx.fillStyle = css("--danger");
+      ctx.fillStyle = cssVar("--danger");
       ctx.fillRect(0,0,w,h);
       ctx.globalAlpha = 1;
     }
@@ -786,7 +828,6 @@
     elStatus.textContent = statusLabel();
   }
 
-  // ✅ 修正：hold 時不加時間，loop 仍持續
   function loop(ts){
     if(!running) return;
 
@@ -806,86 +847,76 @@
     requestAnimationFrame(loop);
   }
 
-  // Input
-  function startDragFromEvent(e){
-    const rect = board.getBoundingClientRect();
-    const x = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-    dragX = x * WORLD_W;
-    dragActive = true;
+  // ====== Touchpad Input (no tap-to-teleport) ======
+  // 規則：
+  // 1) 只有「按住拖曳」才更新 padTargetX
+  // 2) 單純點一下（down 但沒移動）不更新目標 -> 不會瞬移
+  const PAD_MOVE_MIN = 6; // px
+  let padDownX = 0;
+  let padMoved = false;
 
-    ensureInit();
-    if(gameOver) return;
-
-    // 有輸入就確保 loop 在跑（hold 也會靠這解除）
-    if(!running) { running = true; syncUI(); lastT = 0; requestAnimationFrame(loop); }
+  function padClientToWorldX(clientX){
+    const rect = pad.getBoundingClientRect();
+    const x = clamp((clientX - rect.left) / rect.width, 0, 1);
+    return x * WORLD_W;
   }
 
-  board.addEventListener("pointerdown", (e) => {
+  function ensureLoopRunning(){
+    ensureInit();
+    if(gameOver) return;
+    if(!running){
+      running = true;
+      syncUI();
+      lastT = 0;
+      requestAnimationFrame(loop);
+    }
+  }
+
+  pad.addEventListener("pointerdown", (e) => {
     ensureInit();
     if(gameOver) return;
     e.preventDefault();
-    board.setPointerCapture?.(e.pointerId);
-    startDragFromEvent(e);
+
+    pad.setPointerCapture?.(e.pointerId);
+    padActive = true;
+    padMoved = false;
+    padDownX = e.clientX;
+
+    knob.classList.add("show");
+    padHint.style.opacity = "0.40";
+
+    // 不在 down 直接改 target（避免瞬移）
+    ensureLoopRunning();
   }, {passive:false});
 
-  board.addEventListener("pointermove", (e) => {
-    if(!dragActive || gameOver) return;
-    startDragFromEvent(e);
+  pad.addEventListener("pointermove", (e) => {
+    if(!padActive || gameOver) return;
+
+    const dx = Math.abs(e.clientX - padDownX);
+    if(dx >= PAD_MOVE_MIN) padMoved = true;
+
+    if(padMoved){
+      padTargetX = padClientToWorldX(e.clientX);
+
+      // knob 跟著手指
+      const rect = pad.getBoundingClientRect();
+      const x = clamp((e.clientX - rect.left), 12, rect.width - 12);
+      knob.style.left = `${x}px`;
+      knob.style.top  = `${rect.height * 0.42}px`;
+    }
   }, {passive:true});
 
-  board.addEventListener("pointerup", () => { dragActive = false; }, {passive:true});
-  board.addEventListener("pointercancel", () => { dragActive = false; }, {passive:true});
-
-  function pressLeft(v){
-    keyLeft = v;
-    if(v){
-      ensureInit();
-      if(gameOver) return;
-      if(!running){ running=true; syncUI(); lastT=0; requestAnimationFrame(loop); }
-    }
-  }
-  function pressRight(v){
-    keyRight = v;
-    if(v){
-      ensureInit();
-      if(gameOver) return;
-      if(!running){ running=true; syncUI(); lastT=0; requestAnimationFrame(loop); }
-    }
+  function padUp(){
+    padActive = false;
+    knob.classList.remove("show");
+    padHint.style.opacity = "0.72";
   }
 
-  leftBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); if(!gameOver) pressLeft(true); }, {passive:false});
-  leftBtn.addEventListener("pointerup", ()=>pressLeft(false), {passive:true});
-  leftBtn.addEventListener("pointercancel", ()=>pressLeft(false), {passive:true});
-  leftBtn.addEventListener("pointerleave", ()=>pressLeft(false), {passive:true});
+  pad.addEventListener("pointerup", padUp, {passive:true});
+  pad.addEventListener("pointercancel", padUp, {passive:true});
+  pad.addEventListener("pointerleave", padUp, {passive:true});
 
-  rightBtn.addEventListener("pointerdown", (e)=>{ e.preventDefault(); if(!gameOver) pressRight(true); }, {passive:false});
-  rightBtn.addEventListener("pointerup", ()=>pressRight(false), {passive:true});
-  rightBtn.addEventListener("pointercancel", ()=>pressRight(false), {passive:true});
-  rightBtn.addEventListener("pointerleave", ()=>pressRight(false), {passive:true});
-
-  window.addEventListener("keydown", (e) => {
-    const k = e.key.toLowerCase();
-    if(["arrowleft","arrowright","a","d"," "].includes(k)) e.preventDefault();
-
-    if(k===" "){
-      ensureInit();
-      if(gameOver) return;
-      if(hold) return;
-      setRunning(!running);
-      return;
-    }
-    if(gameOver) return;
-
-    if(k==="arrowleft"||k==="a") pressLeft(true);
-    if(k==="arrowright"||k==="d") pressRight(true);
-  }, {passive:false});
-
-  window.addEventListener("keyup", (e) => {
-    const k = e.key.toLowerCase();
-    if(k==="arrowleft"||k==="a") pressLeft(false);
-    if(k==="arrowright"||k==="d") pressRight(false);
-  }, {passive:true});
-
+  // Buttons
   startBtn.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureInit();
@@ -905,6 +936,18 @@
     requestAnimationFrame(loop);
   }, {passive:false});
 
+  // Keyboard (desktop)
+  window.addEventListener("keydown", (e) => {
+    const k = e.key.toLowerCase();
+    if(k === " "){
+      ensureInit();
+      if(gameOver) return;
+      if(hold) return;
+      setRunning(!running);
+    }
+  }, {passive:false});
+
+  // init
   requestAnimationFrame(() => ensureInit());
 })();
 </script>
