@@ -1,14 +1,24 @@
 <!doctype html><html lang="zh-Hant"><head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
-<title>Blaster</title><meta name="theme-color" content="#0b1220"/>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
+<title>Blaster</title>
+<meta name="theme-color" content="#0b1220"/>
 <style>
 :root{
   color-scheme:dark;
   --appSafeTop:24px; --appSafeR:0px; --appSafeB:0px; --appSafeL:0px;
   --appExtraTop:10px; --appExtraBottom:10px;
+  --gap:8px;
 }
-html,body{height:100%;margin:0;background:#0b1220;color:#e7eefc;font-family:system-ui,"Noto Sans TC",sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;overflow:hidden}
+
+html,body{
+  height:100%;margin:0;background:#0b1220;color:#e7eefc;
+  font-family:system-ui,"Noto Sans TC",sans-serif;
+  -webkit-user-select:none;user-select:none;
+  touch-action:manipulation;overflow:hidden
+}
 body{position:fixed;inset:0}
+
 .app{
   height:100svh;
   padding:
@@ -16,51 +26,81 @@ body{position:fixed;inset:0}
     calc(var(--appSafeR) + 10px)
     calc(var(--appSafeB) + var(--appExtraBottom))
     calc(var(--appSafeL) + 10px);
-  display:flex;flex-direction:column;gap:10px;box-sizing:border-box
-}
-.hud{
-  display:flex;
-  flex-direction:column;      /* 兩行 */
-  gap:10px;
-  min-height:0;
+  display:flex;flex-direction:column;gap:var(--gap);box-sizing:border-box;
 }
 
+/* ---------- HUD (compact, 2 rows) ---------- */
+.hud{display:flex;flex-direction:column;gap:var(--gap);min-height:0}
 .hudRow{
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
+  display:flex;align-items:center;gap:var(--gap);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
 .hudRow::-webkit-scrollbar{display:none}
+.hudRow2{justify-content:space-between}
 
-/* 第二行：右側群組靠右（HP + 暫停） */
-.hudRow2{justify-content:flex-end}
-
-.hudLeft,.hudRight{
-  display:flex;
-  flex-wrap:nowrap;
-  gap:10px;
-  align-items:center;
+/* Pills smaller */
+.pill,button.pill{
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#e7eefc;
+  padding:8px 10px;
+  font-size:13px;
+  line-height:1;
   white-space:nowrap;
+  -webkit-tap-highlight-color:transparent
 }
-.hudLeft,.hudRight{display:flex;flex-wrap:nowrap;gap:10px;align-items:center;white-space:nowrap}
-.pill,button.pill{border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#e7eefc;padding:10px 12px;font-size:14px;line-height:1;white-space:nowrap;-webkit-tap-highlight-color:transparent}
-button.pill{cursor:pointer}button.pill:active{transform:scale(.99)}
-#hudScore{min-width:92px;text-align:center}#hudStage,#hudWave,#hudLv{min-width:74px;text-align:center}
-.hpbar{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:16px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05)}
-.hpbar .label{opacity:.85;font-weight:700}
-.hpbar .track{width:min(300px,40vw);height:14px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+button.pill{cursor:pointer}
+button.pill:active{transform:scale(.99)}
+
+/* make the key pills narrower */
+#hudStage,#hudWave,#hudLv{min-width:66px;text-align:center}
+#hudScore{min-width:82px;text-align:center}
+
+/* HP bar: controlled width so Pause never gets pushed out */
+.hpbar{
+  flex:1 1 auto;               /* eat remaining space on row2 */
+  min-width:0;                 /* allow shrink */
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);
+}
+.hpbar .label{opacity:.85;font-weight:800;letter-spacing:.2px}
+.hpbar .track{
+  flex:1 1 auto;
+  min-width:90px;
+  max-width:300px;             /* ← 關鍵：不要無限長 */
+  height:12px;border-radius:999px;
+  background:rgba(255,255,255,.10);
+  overflow:hidden;border:1px solid rgba(255,255,255,.10)
+}
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
-.hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;display:inline-block;min-width:110px;text-align:right}
-.main{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px}
-.boardWrap{flex:1;min-height:0;border-radius:18px;border:1px solid rgba(255,255,255,.12);background:radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),rgba(255,255,255,.03);overflow:hidden;position:relative}
+.hpbar .num{
+  opacity:.85;font-variant-numeric:tabular-nums;
+  min-width:78px;text-align:right
+}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
+.boardWrap{
+  flex:1;min-height:0;
+  border-radius:18px;border:1px solid rgba(255,255,255,.12);
+  background:radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),rgba(255,255,255,.03);
+  overflow:hidden;position:relative
+}
 canvas{width:100%;height:100%;display:block}
-.touchpad{flex:0 0 auto;height:max(86px,13svh);border-radius:18px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent}
+
+.touchpad{
+  flex:0 0 auto;height:max(86px,13svh);
+  border-radius:18px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
+  position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent
+}
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
+
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
 .panel{width:min(720px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.14);background:rgba(15,22,40,.92);padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55)}
@@ -70,31 +110,29 @@ canvas{width:100%;height:100%;display:block}
 .opt{border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .opt:active{transform:scale(.99)}
 .opt .t{font-weight:900;margin-bottom:6px}.opt .d{opacity:.78;font-size:13px;line-height:1.4}
-.toast{position:absolute;left:50%;top:16px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
+
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
 .toast.show{display:block}
 </style></head>
+
 <body>
 <div class="app">
   <div class="hud">
     <div class="hudRow">
-      <div class="hudLeft">
-        <button class="pill" id="btnBack">← Back</button>
-        <span class="pill" id="hudStage">關卡 1</span>
-        <span class="pill" id="hudWave">波次 1</span>
-        <span class="pill" id="hudLv">等級 1</span>
-        <span class="pill" id="hudScore">分數 0</span>
-      </div>
+      <button class="pill" id="btnBack">← Back</button>
+      <span class="pill" id="hudStage">關卡 1</span>
+      <span class="pill" id="hudWave">波次 1</span>
+      <span class="pill" id="hudLv">等級 1</span>
+      <span class="pill" id="hudScore">分數 0</span>
     </div>
-  
+
     <div class="hudRow hudRow2">
-      <div class="hudRight">
-        <div class="hpbar">
-          <span class="label">HP</span>
-          <div class="track"><div class="fill" id="hpFill"></div></div>
-          <span class="num" id="hpNum">300/300</span>
-        </div>
-        <button class="pill" id="btnPause">暫停</button>
+      <div class="hpbar">
+        <span class="label">HP</span>
+        <div class="track"><div class="fill" id="hpFill"></div></div>
+        <span class="num" id="hpNum">300/300</span>
       </div>
+      <button class="pill" id="btnPause">暫停</button>
     </div>
   </div>
 
@@ -120,28 +158,26 @@ canvas{width:100%;height:100%;display:block}
 
 <script>
 (()=>{ // setup
-  // --- Safe-area / Dynamic Island adaptive padding (iOS friendly) ---
+  // ---------- Safe-area / Dynamic Island ----------
   function isIOS(){
     return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
   }
-  function readEnvInsetPx(side){ // side: top/right/bottom/left
+  function readEnvInsetPx(side){
     const d=document.createElement('div');
     d.style.cssText=`position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-${side});width:0;`;
     document.body.appendChild(d);
     const px=d.getBoundingClientRect().height;
     d.remove();
-    return px || 0;
+    return px||0;
   }
   function isDynamicIslandSize(){
     const w=Math.min(screen.width, screen.height);
     const h=Math.max(screen.width, screen.height);
     const key=`${w}x${h}`;
-    const DI=new Set(['393x852','430x932','402x874','440x956']);
-    return DI.has(key);
+    return new Set(['393x852','430x932','402x874','440x956']).has(key);
   }
   function applySafeArea(){
     const root=document.documentElement;
-
     let top=readEnvInsetPx('top');
     let right=readEnvInsetPx('right');
     let bottom=readEnvInsetPx('bottom');
@@ -151,14 +187,12 @@ canvas{width:100%;height:100%;display:block}
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
       (navigator.standalone === true);
 
-    if(isIOS() && top < 10){
-      top = isDynamicIslandSize() ? 54 : 44;
-    }else{
-      top = Math.max(top, 24);
-    }
+    if(isIOS() && top < 10) top = isDynamicIslandSize() ? 54 : 44;
+    else top = Math.max(top, 24);
 
-    const extraTop = standalone ? 18 : 10;
-    const extraBottom = standalone ? 4 : 10;
+    // 你要「一畫面塞下」：不要用超大 padding，交給 HUD 兩行吃高度即可
+    const extraTop = standalone ? 14 : 10;
+    const extraBottom = standalone ? 4 : 8;
 
     root.style.setProperty('--appSafeTop', `${top}px`);
     root.style.setProperty('--appSafeR', `${right}px`);
@@ -167,7 +201,6 @@ canvas{width:100%;height:100%;display:block}
     root.style.setProperty('--appExtraTop', `${extraTop}px`);
     root.style.setProperty('--appExtraBottom', `${extraBottom}px`);
   }
-
   applySafeArea();
   window.addEventListener('resize', applySafeArea, {passive:true});
   window.addEventListener('orientationchange', applySafeArea, {passive:true});
@@ -177,15 +210,17 @@ canvas{width:100%;height:100%;display:block}
     visualViewport.addEventListener('scroll', applySafeArea, {passive:true});
   }
 
+  // ---------- Canvas ----------
   const wrap=document.getElementById('boardWrap'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{alpha:true});
   let W=0,H=0;
   function resize(){
     const r=wrap.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.floor(r.width*dpr);canvas.height=Math.floor(r.height*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);W=r.width;H=r.height
+    ctx.setTransform(dpr,0,0,dpr,0,0);W=r.width;H=r.height;
   }
   window.addEventListener('resize',resize);resize();
 
+  // ---------- HUD refs ----------
   const $stage=document.getElementById('hudStage'),$wave=document.getElementById('hudWave'),$lv=document.getElementById('hudLv'),
         $score=document.getElementById('hudScore'),$hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $btnPause=document.getElementById('btnPause'),$toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack');
@@ -203,23 +238,36 @@ canvas{width:100%;height:100%;display:block}
     $btnPause.textContent=paused?'繼續':'暫停';
     $toast.textContent=paused?'Paused':'';
     $toast.classList.toggle('show',paused);
-    if(!paused)lastT=performance.now()
+    if(!paused) lastT=performance.now();
   });
 
-  const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),
-        lerp=(a,b,t)=>a+(b-a)*t,dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
+  // ---------- Utils ----------
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
 
+  // ---------- Touchpad ----------
   const pad=document.getElementById('touchpad'),thumb=document.getElementById('thumb');
   let padActive=false,padX=.5;
 
+  // ---------- Game constants (重要：HP 固定 300) ----------
+  const BASE_HP=300;
+
+  // ---------- State ----------
   const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:70,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
-  const player={x:W*.5,y:0,r:14,hp:300,hpMax:300,moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,spread:0,pierce:0,shield:0,shieldMax:0};
+  const player={
+    x:W*.5,y:0,r:14,
+    hp:BASE_HP,hpMax:BASE_HP,
+    moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,
+    spread:0,pierce:0,shield:0,shieldMax:0
+  };
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
   function setPadX(nx){
     padX=Math.max(0,Math.min(1,nx));
     thumb.style.left=`${padX*100}%`;
-    player.x=lerp(player.x,padX*W,1)
+    player.x=lerp(player.x,padX*W,1);
   }
   function pointerToPadX(e){const r=pad.getBoundingClientRect();return (e.clientX-r.left)/r.width}
   pad.addEventListener('pointerdown',e=>{e.preventDefault();pad.setPointerCapture(e.pointerId);padActive=true;setPadX(pointerToPadX(e))});
@@ -227,6 +275,8 @@ canvas{width:100%;height:100%;display:block}
   pad.addEventListener('pointerup',e=>{padActive=false;try{pad.releasePointerCapture(e.pointerId)}catch(_){}});pad.addEventListener('pointercancel',()=>padActive=false);
 
   function enemyHoldY(){return clamp(H*.18,110,190)}
+
+  // ---------- Balance ----------
   function waveConfig(stage,wave){
     const baseCount=5+Math.floor((stage-1)*1.25)+Math.floor((wave-1)*0.95);
     const count=clamp(baseCount,5,16);
@@ -237,19 +287,25 @@ canvas{width:100%;height:100%;display:block}
     return {count,hp,fire,bullet,dmg};
   }
 
+  // ---------- Spawning ----------
   function spawnWave(){
     enemies.length=0;eBullets.length=0;state.waveInProgress=true;
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY(),lanes=cfg.count;
     for(let i=0;i<lanes;i++){
       const x=(i+1)*(W/(lanes+1)),isStrafe=Math.random()<(0.38+state.stage*0.03);
-      enemies.push({type:'mob',x,y:-40-i*18,targetY:holdY+rand(-18,18),r:15,hp:cfg.hp,hpMax:cfg.hp,fireCd:rand(.35,1.15),fireRate:cfg.fire,bulletSpeed:cfg.bullet,bulletDmg:cfg.dmg,strafeAmp:isStrafe?rand(45,120):0,strafeSpd:isStrafe?rand(.85,1.85):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
+      enemies.push({type:'mob',x,y:-40-i*18,targetY:holdY+rand(-18,18),r:15,
+        hp:cfg.hp,hpMax:cfg.hp,fireCd:rand(.35,1.15),fireRate:cfg.fire,bulletSpeed:cfg.bullet,bulletDmg:cfg.dmg,
+        strafeAmp:isStrafe?rand(45,120):0,strafeSpd:isStrafe?rand(.85,1.85):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
     }
   }
   function spawnAdds(count=5,power=.92){
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
     for(let i=0;i<count;i++){
       const x=rand(40,W-40),isStrafe=Math.random()<.72,hp=Math.max(18,cfg.hp*power);
-      enemies.push({type:'mob',x,y:-60-i*24,targetY:holdY+rand(-14,14),r:14,hp,hpMax:hp,fireCd:rand(.25,.95),fireRate:cfg.fire*(1.05+rand(-.05,.12)),bulletSpeed:cfg.bullet*(.95+rand(-.03,.08)),bulletDmg:cfg.dmg*(.95+rand(-.05,.10)),strafeAmp:isStrafe?rand(55,140):0,strafeSpd:isStrafe?rand(.95,2.1):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
+      enemies.push({type:'mob',x,y:-60-i*24,targetY:holdY+rand(-14,14),r:14,
+        hp,hpMax:hp,fireCd:rand(.25,.95),fireRate:cfg.fire*(1.05+rand(-.05,.12)),
+        bulletSpeed:cfg.bullet*(.95+rand(-.03,.08)),bulletDmg:cfg.dmg*(.95+rand(-.05,.10)),
+        strafeAmp:isStrafe?rand(55,140):0,strafeSpd:isStrafe?rand(.95,2.1):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
     }
     toastMsg(`Boss 召喚小兵 x${count}`,0.7);
   }
@@ -257,7 +313,6 @@ canvas{width:100%;height:100%;display:block}
     const holdY=enemyHoldY()-12,hp=900+state.stage*240,baseFire=1.05+state.stage*0.13,baseSpd=320+state.stage*18;
     enemies.push({
       type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,
-      baseFireRate:baseFire,baseBulletSpeed:baseSpd,baseBulletDmg:12+state.stage*2.2,
       bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.2,
       strafeAmp:260,strafeSpd:1.10+state.stage*0.08,strafePhase:0,
       phase:1,ringCd:1.0,spiralCd:0.35,summonCd:999,
@@ -269,13 +324,14 @@ canvas{width:100%;height:100%;display:block}
   function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
   function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
+  // ---------- Drops / Buffs ----------
   const DROP_TYPES=[{key:'heal',w:26},{key:'shield',w:18},{key:'rapid',w:16},{key:'spread',w:14},{key:'bomb',w:8},{key:'magnet',w:10},{key:'slow',w:8}];
   function pickDrop(){const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);let r=Math.random()*total;for(const it of DROP_TYPES){r-=it.w;if(r<=0)return it.key}return 'heal'}
   function maybeDrop(x,y,isBoss=false){const p=isBoss?.95:.22;if(Math.random()>p)return;drops.push({x,y,r:10,vy:rand(40,90),type:pickDrop(),life:12})}
   const buffs={rapid:0,spread:0,magnet:0,slow:0};
   function applyDrop(type){
-    if(type==='heal'){player.hp=clamp(player.hp+25,0,player.hpMax);toastMsg('HP +25')}
-    else if(type==='shield'){player.shieldMax=Math.max(player.shieldMax,20);player.shield=clamp(player.shield+20,0,player.shieldMax);toastMsg('Shield +20')}
+    if(type==='heal'){player.hp=clamp(player.hp+35,0,player.hpMax);toastMsg('HP +35')}
+    else if(type==='shield'){player.shieldMax=Math.max(player.shieldMax,30);player.shield=clamp(player.shield+30,0,player.shieldMax);toastMsg('Shield +30')}
     else if(type==='rapid'){buffs.rapid=Math.max(buffs.rapid,7.0);toastMsg('Rapid Fire!')}
     else if(type==='spread'){buffs.spread=Math.max(buffs.spread,7.5);toastMsg('Spread!')}
     else if(type==='bomb'){let killed=0;for(const e of enemies){if(e.type!=='boss'){e.hp=0;killed++;maybeDrop(e.x,e.y,false);addBurst(e.x,e.y,12)}}eBullets.length=0;toastMsg(`BOMB! (+${killed} mobs)`)}
@@ -283,27 +339,41 @@ canvas{width:100%;height:100%;display:block}
     else if(type==='slow'){buffs.slow=Math.max(buffs.slow,7.5);toastMsg('Slow')}
   }
 
+  // ---------- Level-up ----------
   const overlay=document.getElementById('overlay'),opts=document.getElementById('opts');
-  const UPGRADES=[{key:'dmg',t:'火力提升',d:'傷害 +20%'},{key:'firerate',t:'射速提升',d:'射速 +18%'},{key:'hp',t:'擴充裝甲',d:'HP 上限 +20，回滿'},{key:'speed',t:'機動提升',d:'移動速度 +16%'},{key:'pierce',t:'穿透彈',d:'穿透 +1（最多 2）'},{key:'spread_perm',t:'永久散射',d:'散射 +1（最多 2）'},{key:'shield_cap',t:'護盾擴容',d:'護盾上限 +20，並回滿'}];
+  const UPGRADES=[
+    {key:'dmg',t:'火力提升',d:'傷害 +20%'},
+    {key:'firerate',t:'射速提升',d:'射速 +18%'},
+    {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，回滿'},
+    {key:'speed',t:'機動提升',d:'移動速度 +16%'},
+    {key:'pierce',t:'穿透彈',d:'穿透 +1（最多 2）'},
+    {key:'spread_perm',t:'永久散射',d:'散射 +1（最多 2）'},
+    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'}
+  ];
   function openLevelUp(){
     paused=true;$btnPause.textContent='繼續';$toast.textContent='Level Up';$toast.classList.add('show');
     overlay.classList.add('show');opts.innerHTML='';
     const pool=[...UPGRADES],picks=[];
     while(picks.length<3&&pool.length){const i=Math.floor(Math.random()*pool.length);picks.push(pool.splice(i,1)[0])}
     for(const u of picks){
-      const el=document.createElement('div');el.className='opt';el.innerHTML=`<div class="t">${u.t}</div><div class="d">${u.d}</div>`;
-      el.addEventListener('click',()=>{applyUpgrade(u.key);overlay.classList.remove('show');paused=false;$btnPause.textContent='暫停';$toast.classList.remove('show');lastT=performance.now()});
+      const el=document.createElement('div');el.className='opt';
+      el.innerHTML=`<div class="t">${u.t}</div><div class="d">${u.d}</div>`;
+      el.addEventListener('click',()=>{
+        applyUpgrade(u.key);
+        overlay.classList.remove('show');
+        paused=false;$btnPause.textContent='暫停';$toast.classList.remove('show');lastT=performance.now()
+      });
       opts.appendChild(el);
     }
   }
   function applyUpgrade(key){
     if(key==='dmg')player.dmg*=1.20;
     else if(key==='firerate')player.fireRate*=1.18;
-    else if(key==='hp'){player.hpMax+=20;player.hp=player.hpMax}
+    else if(key==='hp'){player.hpMax+=30;player.hp=player.hpMax}
     else if(key==='speed')player.moveSpeed*=1.16;
     else if(key==='pierce')player.pierce=Math.min(2,player.pierce+1);
     else if(key==='spread_perm')player.spread=Math.min(2,player.spread+1);
-    else if(key==='shield_cap'){player.shieldMax+=20;player.shield=player.shieldMax}
+    else if(key==='shield_cap'){player.shieldMax+=30;player.shield=player.shieldMax}
   }
   function addXp(xp){
     state.xp+=xp;
@@ -314,10 +384,15 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?380:120} // nerf: 650 -> 380
+  // ---------- Combat ----------
+  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?380:120} // keep boss playable
 
   let fireAcc=0;
-  function shoot(dt){const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);fireAcc+=dt*rate;while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}}
+  function shoot(dt){
+    const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);
+    fireAcc+=dt*rate;
+    while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
+  }
   function spreadMul(shots){return shots===2?.80:shots===3?.70:1}
   function spawnPlayerShot(){
     const s=clamp(player.spread+(buffs.spread>0?1:0),0,3);
@@ -329,7 +404,7 @@ canvas{width:100%;height:100%;display:block}
   }
   function enemyShoot(e,ang,sMul=1,dMul=1){
     if(eBullets.length>=enemyBulletCap())return;
-    let spd=(e.bulletSpeed??300)*sMul;if(buffs.slow>0)spd*=.75;
+    let spd=(e.bulletSpeed??300)*sMul; if(buffs.slow>0) spd*=.75;
     eBullets.push({x:e.x,y:e.y+e.r+4,r:4,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true});
   }
   function mobShoot(e){
@@ -341,7 +416,8 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function bossTick(e,dt){
-    const r=e.hp/e.hpMax;const newPhase=(r<=.40)?3:(r<=.70?2:1);
+    const r=e.hp/e.hpMax;
+    const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
       e.phase=newPhase;
       if(e.phase===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.55;e.spiralCd=.22}
@@ -360,8 +436,8 @@ canvas{width:100%;height:100%;display:block}
       e.burstGapCd-=dt;
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes=(e.phase===1?5:(e.phase===2?6:8));      // nerf
-        const spread=(e.phase===1?0.24:(e.phase===2?0.30:0.36)); // nerf
+        const lanes=(e.phase===1?5:(e.phase===2?6:8));
+        const spread=(e.phase===1?0.24:(e.phase===2?0.30:0.36));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul);
@@ -373,7 +449,7 @@ canvas{width:100%;height:100%;display:block}
 
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
-      const n=(e.phase===1?14:(e.phase===2?26:44)); // nerf
+      const n=(e.phase===1?14:(e.phase===2?26:44));
       const base=Math.random()*Math.PI*2;
       for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,spdMul*0.98,dmgMul*0.75)}
       e.ringCd=(e.phase===1?0.95:(e.phase===2?0.55:0.38));
@@ -402,34 +478,46 @@ canvas{width:100%;height:100%;display:block}
     if(dmg>0)player.hp=Math.max(0,player.hp-dmg);
     if(player.hp<=0){toastMsg('你倒了…重新開始',1.2);resetRun()}
   }
+
   function resetRun(){
+    // 注意：HP 上限固定 300，不會再被重設成 100
     state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=70;state.waveClearCooldown=0;state.waveInProgress=false;
-    player.hpMax=300;player.hp=300;player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;player.spread=0;player.pierce=0;player.shield=0;player.shieldMax=0;
+
+    player.hpMax=BASE_HP;   // ★固定
+    player.hp=BASE_HP;      // ★固定
+    player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;
+    player.spread=0;player.pierce=0;player.shield=0;player.shieldMax=0;
+
     for(const k in buffs)buffs[k]=0;
     pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
   }
 
+  // ---------- Particles / Toast ----------
   function addBurst(x,y,n=10){for(let i=0;i<n;i++)particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)})}
   let toastT=0;function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
 
+  // ---------- Update / Draw ----------
   function update(dt){
-    for(const k in buffs)if(buffs[k]>0)buffs[k]=Math.max(0,buffs[k]-dt);
+    for(const k in buffs) if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
 
-    player.y=H-42;player.x=clamp(player.x,player.r+8,W-player.r-8);
+    player.y=H-42;
+    player.x=clamp(player.x,player.r+8,W-player.r-8);
     shoot(dt);
 
     for(const e of enemies){
       e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
-      if(e.strafeAmp>0){e.strafePhase+=dt*e.strafeSpd;const ox=Math.sin(e.strafePhase)*e.strafeAmp;
-        if(e.type==='boss')e.x=W*.5+ox; else {if(e.baseX==null)e.baseX=e.x;e.x=e.baseX+ox}
+      if(e.strafeAmp>0){
+        e.strafePhase+=dt*e.strafeSpd;
+        const ox=Math.sin(e.strafePhase)*e.strafeAmp;
+        if(e.type==='boss') e.x=W*.5+ox;
+        else {if(e.baseX==null)e.baseX=e.x; e.x=e.baseX+ox}
       }
       e.x=clamp(e.x,e.r+10,W-e.r-10);
 
-      if(e.type==='boss'){bossTick(e,dt)}
-      else {e.fireCd-=dt;if(e.fireCd<=0){mobShoot(e);e.fireCd=1/e.fireRate}}
-
-      if(e.hitFlash>0)e.hitFlash=Math.max(0,e.hitFlash-dt);
+      if(e.type==='boss') bossTick(e,dt);
+      else {e.fireCd-=dt; if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}}
+      if(e.hitFlash>0) e.hitFlash=Math.max(0,e.hitFlash-dt);
     }
 
     for(const b of pBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.y<-20||b.x<-30||b.x>W+30)b.alive=false}
@@ -437,12 +525,19 @@ canvas{width:100%;height:100%;display:block}
 
     for(const d of drops){
       d.y+=d.vy*dt;d.life-=dt;
-      if(buffs.magnet>0){const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;d.x+=(dx/l)*240*dt;d.y+=(dy/l)*240*dt}
+      if(buffs.magnet>0){
+        const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
+        d.x+=(dx/l)*240*dt; d.y+=(dy/l)*240*dt;
+      }
       if(d.y>H+40||d.life<=0)d.dead=true;
       if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){d.dead=true;applyDrop(d.type)}
     }
 
-    for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=(1-dt*2.8);p.vy*=(1-dt*2.8);p.life-=dt;if(p.life<=0)p.dead=true}
+    for(const p of particles){
+      p.x+=p.vx*dt;p.y+=p.vy*dt;
+      p.vx*=(1-dt*2.8);p.vy*=(1-dt*2.8);
+      p.life-=dt;if(p.life<=0)p.dead=true
+    }
 
     for(const b of pBullets){
       if(!b.alive)continue;
@@ -492,7 +587,7 @@ canvas{width:100%;height:100%;display:block}
       }
     }else{
       if(enemies.length===0){
-        if(state.wave===state.bossEveryWaves)nextStage();
+        if(state.wave===state.bossEveryWaves) nextStage();
         else nextWave();
       }
     }
@@ -565,11 +660,13 @@ canvas{width:100%;height:100%;display:block}
     $wave.textContent=`波次 ${state.wave}`;
     $lv.textContent=`等級 ${state.level}`;
     $score.textContent=`分數 ${state.score}`;
-    const hpPct=clamp(player.hp/player.hpMax,0,1);$hpFill.style.width=`${hpPct*100}%`;
+    const hpPct=clamp(player.hp/player.hpMax,0,1);
+    $hpFill.style.width=`${hpPct*100}%`;
     const shieldTxt=player.shield>0?` +${Math.floor(player.shield)}`:'';
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
   }
 
+  // ---------- Loop ----------
   let lastT=performance.now();
   function frame(t){
     const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
@@ -578,6 +675,8 @@ canvas{width:100%;height:100%;display:block}
     requestAnimationFrame(frame);
   }
 
-  setPadX(.5);spawnWave();requestAnimationFrame(frame);
+  setPadX(.5);
+  spawnWave();
+  requestAnimationFrame(frame);
 })();
 </script></body></html>
