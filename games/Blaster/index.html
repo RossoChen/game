@@ -94,32 +94,38 @@ canvas{width:100%;height:100%;display:block}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
 
-/* ---------- Specials bar (below touchpad) ---------- */
+/* ---------- Specials bar (compact, horizontal) ---------- */
 .specials{
   flex:0 0 auto;
   display:flex;
   gap:8px;
-  align-items:stretch;
+  align-items:center;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-bottom:max(env(safe-area-inset-bottom), 6px);
 }
+.specials::-webkit-scrollbar{display:none}
 .sbtn{
-  flex:1 1 0;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
   border-radius:14px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.06);
   color:#e7eefc;
-  padding:10px 10px;
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:6px;
   -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
 }
 .sbtn:active{transform:scale(.99)}
-.sbtn .top{display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:.2px}
-.sbtn .meta{opacity:.78;font-size:12px;line-height:1.2}
-.sbtn .right{margin-left:auto;opacity:.9;font-variant-numeric:tabular-nums}
-.sbtn[disabled]{opacity:.45}
+.sbtn[disabled]{opacity:.45;cursor:default}
+.sbtn .ico{font-size:16px;line-height:1}
+.sbtn .name{font-weight:900;letter-spacing:.2px}
+.sbtn .cnt{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
 
+/* overlays */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
 .panel{width:min(720px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.14);background:rgba(15,22,40,.92);padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55)}
@@ -129,7 +135,6 @@ canvas{width:100%;height:100%;display:block}
 .opt{border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .opt:active{transform:scale(.99)}
 .opt .t{font-weight:900;margin-bottom:6px}.opt .d{opacity:.78;font-size:13px;line-height:1.4}
-
 .panel .sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px}
 .panel .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .panel .row .pill{padding:10px 12px}
@@ -172,26 +177,11 @@ canvas{width:100%;height:100%;display:block}
     </div>
 
     <div class="specials" id="specials">
-      <button class="sbtn" id="btnBomb">
-        <div class="top">💣 Bomb <span class="right" id="cntBomb">x3</span></div>
-        <div class="meta" id="metaBomb">清子彈＋清小兵，Boss -20%</div>
-      </button>
-      <button class="sbtn" id="btnInvuln">
-        <div class="top">🛡 無敵 <span class="right" id="cntInvuln">x3</span></div>
-        <div class="meta" id="metaInvuln">10 秒免傷</div>
-      </button>
-      <button class="sbtn" id="btnEMP">
-        <div class="top">⚡ EMP <span class="right" id="cntEMP">x2</span></div>
-        <div class="meta" id="metaEMP">3 秒停火＋敵彈變慢</div>
-      </button>
-      <button class="sbtn" id="btnArmor">
-        <div class="top">🎯 穿甲 <span class="right" id="cntArmor">x2</span></div>
-        <div class="meta" id="metaArmor">5 秒子彈不撞敵彈</div>
-      </button>
-      <button class="sbtn" id="btnHeal">
-        <div class="top">✚ 治療 <span class="right" id="cntHeal">x2</span></div>
-        <div class="meta" id="metaHeal">回 40% 最大 HP</div>
-      </button>
+      <button class="sbtn" id="btnBomb"><span class="ico">💣</span><span class="name">Bomb</span><span class="cnt" id="cntBomb">x3</span></button>
+      <button class="sbtn" id="btnInvuln"><span class="ico">🛡</span><span class="name">無敵</span><span class="cnt" id="cntInvuln">x3</span></button>
+      <button class="sbtn" id="btnEMP"><span class="ico">⚡</span><span class="name">EMP</span><span class="cnt" id="cntEMP">x2</span></button>
+      <button class="sbtn" id="btnArmor"><span class="ico">🎯</span><span class="name">穿甲</span><span class="cnt" id="cntArmor">x2</span></button>
+      <button class="sbtn" id="btnHeal"><span class="ico">✚</span><span class="name">治療</span><span class="cnt" id="cntHeal">x2</span></button>
     </div>
   </div>
 </div>
@@ -291,15 +281,12 @@ canvas{width:100%;height:100%;display:block}
   const $cntEMP=document.getElementById('cntEMP');
   const $cntArmor=document.getElementById('cntArmor');
   const $cntHeal=document.getElementById('cntHeal');
-  const $metaInvuln=document.getElementById('metaInvuln');
-  const $metaEMP=document.getElementById('metaEMP');
-  const $metaArmor=document.getElementById('metaArmor');
 
   $btnBack.addEventListener('click',()=>{
     if(document.referrer){
       try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
     }
-    location.href='/game/games/';
+    location.href='./games/';
   });
 
   let paused=false;
@@ -327,8 +314,6 @@ canvas{width:100%;height:100%;display:block}
   const BASE_HP=300;
   const SPREAD_CAP=3; // perm
   const PIERCE_CAP=3; // perm
-  const SPREAD_BONUS_MAX=1; // +1 (perm 3 -> total 4)
-  const PIERCE_BONUS_MAX=1; // +1 (perm 3 -> total 4)
 
   // ---------- State ----------
   const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:60,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
@@ -402,7 +387,6 @@ canvas{width:100%;height:100%;display:block}
         bulletSpeed:cfg.bullet*(.95+rand(-.03,.08)),bulletDmg:cfg.dmg*(.95+rand(-.05,.10)),
         strafeAmp:isStrafe?rand(55,140):0,strafeSpd:isStrafe?rand(.95,2.1):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
     }
-    toastMsg(`Boss 召喚小兵 x${count}`,0.7);
   }
   function spawnBoss(){
     const holdY=enemyHoldY()-12,
@@ -426,10 +410,9 @@ canvas{width:100%;height:100%;display:block}
     {key:'heal',w:24},
     {key:'shield',w:18},
     {key:'rapid',w:16},
-    {key:'spread',w:14},   // timed +1 spread
-    {key:'pierce',w:12},   // timed +1 pierce
+    {key:'spread',w:14},
+    {key:'pierce',w:12},
     {key:'magnet',w:10},
-    // removed: slow(🐢)
   ];
   function pickDrop(){
     const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);
@@ -440,30 +423,14 @@ canvas{width:100%;height:100%;display:block}
   function maybeDrop(x,y,isBoss=false){
     const p=isBoss?.92:.22;
     if(Math.random()>p) return;
-    drops.push({
-      x,y,r:10,
-      vy:rand(70,140), // faster
-      type:pickDrop(),
-      life:12
-    });
+    drops.push({x,y,r:10,vy:rand(70,140),type:pickDrop(),life:12});
   }
-
   function applyDrop(type){
     if(type==='heal'){player.hp=clamp(player.hp+35,0,player.hpMax);toastMsg('HP +35')}
-    else if(type==='shield'){
-      player.shieldMax=Math.max(player.shieldMax,30);
-      player.shield=clamp(player.shield+30,0,player.shieldMax);
-      toastMsg('Shield +30')
-    }
+    else if(type==='shield'){player.shieldMax=Math.max(player.shieldMax,30);player.shield=clamp(player.shield+30,0,player.shieldMax);toastMsg('Shield +30')}
     else if(type==='rapid'){buffs.rapid=Math.max(buffs.rapid,7.0);toastMsg('Rapid Fire!')}
-    else if(type==='spread'){
-      buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);
-      toastMsg('Spread +1（限時）')
-    }
-    else if(type==='pierce'){
-      buffs.pierceBonusT=Math.max(buffs.pierceBonusT,7.5);
-      toastMsg('Pierce +1（限時）')
-    }
+    else if(type==='spread'){buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);toastMsg('Spread +1（限時）')}
+    else if(type==='pierce'){buffs.pierceBonusT=Math.max(buffs.pierceBonusT,7.5);toastMsg('Pierce +1（限時）')}
     else if(type==='magnet'){buffs.magnet=Math.max(buffs.magnet,9.0);toastMsg('Magnet')}
   }
 
@@ -473,10 +440,8 @@ canvas{width:100%;height:100%;display:block}
     if(!canUseSpecial('bomb')) return;
     special.bomb.count--; special.bomb.cd=0.6;
 
-    // clear enemy bullets
     const cleared=eBullets.length; eBullets.length=0;
 
-    // kill mobs & damage boss 20% max HP
     let killed=0; let bossHit=false;
     for(const e of enemies){
       if(e.type==='boss'){
@@ -490,7 +455,7 @@ canvas{width:100%;height:100%;display:block}
         addBurst(e.x,e.y,10);
       }
     }
-    toastMsg(`💣 Bomb! 清彈 ${cleared} / 小兵 ${killed}${bossHit?' / Boss -20%':''}`,1.0);
+    toastMsg(`💣 Bomb! 清彈${cleared} 小兵${killed}${bossHit?' Boss-20%':''}`,1.0);
   }
   function useInvuln(){
     if(!canUseSpecial('invuln')) return;
@@ -502,13 +467,13 @@ canvas{width:100%;height:100%;display:block}
     if(!canUseSpecial('emp')) return;
     special.emp.count--; special.emp.cd=0.6;
     buffs.empT=Math.max(buffs.empT,3.0);
-    toastMsg('⚡ EMP：停火 + 敵彈變慢',0.9);
+    toastMsg('⚡ EMP',0.8);
   }
   function useArmor(){
     if(!canUseSpecial('armor')) return;
     special.armor.count--; special.armor.cd=0.6;
     buffs.armorT=Math.max(buffs.armorT,5.0);
-    toastMsg('🎯 穿甲：子彈不撞敵彈',0.9);
+    toastMsg('🎯 穿甲 5 秒',0.9);
   }
   function useHeal(){
     if(!canUseSpecial('heal')) return;
@@ -533,19 +498,16 @@ canvas{width:100%;height:100%;display:block}
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1（最多 3）'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1（最多 3）'},
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
-    // fillers (always useful)
     {key:'regen',t:'自動修復',d:'每秒回復 +0.7'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
     {key:'bullet_size',t:'彈體增強',d:'子彈更大（更容易清彈）'},
   ];
-
   function canPickUpgrade(key){
     if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
     if(key==='spread_perm') return player.spread_perm < SPREAD_CAP;
     if(key==='bullet_size') return player.bulletR < 6;
     return true;
   }
-
   function openLevelUp(){
     mode='levelup';
     paused=true;
@@ -560,10 +522,7 @@ canvas{width:100%;height:100%;display:block}
     $panelRow.innerHTML='';
     opts.innerHTML='';
 
-    // filter out maxed upgrades; always keep fillers
     const filtered=UPGRADES.filter(u=>canPickUpgrade(u.key));
-
-    // ensure at least 3 choices: if somehow low, add safe fillers
     const pool=[...filtered];
     const picks=[];
     const guardFillers=['regen','xp_gain','bullet_size','dmg','firerate','speed'];
@@ -595,7 +554,6 @@ canvas{width:100%;height:100%;display:block}
       opts.appendChild(el);
     }
   }
-
   function applyUpgrade(key){
     if(key==='dmg') player.dmg*=1.20;
     else if(key==='firerate') player.fireRate*=1.18;
@@ -608,14 +566,12 @@ canvas{width:100%;height:100%;display:block}
     else if(key==='xp_gain') player.xpGainMul*=1.15;
     else if(key==='bullet_size') player.bulletR=Math.min(6, player.bulletR+1);
   }
-
   function addXp(xp){
     xp*=player.xpGainMul;
     state.xp+=xp;
     while(state.xp>=state.nextXp){
       state.xp-=state.nextXp;
       state.level+=1;
-      // faster curve
       state.nextXp=Math.floor(state.nextXp*1.22+12);
       openLevelUp();
     }
@@ -625,43 +581,29 @@ canvas{width:100%;height:100%;display:block}
   function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?240:120}
 
   let fireAcc=0;
+  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); } // max 4
+  function pierceTotal(){ return player.pierce_perm + (buffs.pierceBonusT>0?1:0); } // max 4
 
-  function spreadTotal(){
-    const bonus = buffs.spreadBonusT>0 ? 1 : 0;
-    return player.spread_perm + bonus; // can reach 4
-  }
-  function pierceTotal(){
-    const bonus = buffs.pierceBonusT>0 ? 1 : 0;
-    return player.pierce_perm + bonus; // can reach 4
-  }
-
-  function shotsFromSpread(s){
-    // s: 0..4 => shots 1..5
-    return 1 + clamp(s,0,4);
-  }
+  function shotsFromSpread(s){ return 1 + clamp(s,0,4); }
   function spreadDmgMul(n){
-    // keep DPS reasonable when many shots
     if(n<=1) return 1;
     if(n===2) return .80;
     if(n===3) return .68;
     if(n===4) return .58;
-    return .50; // 5 shots
+    return .50;
   }
   function shotVXPattern(n){
-    // symmetric offsets
     if(n===1) return [0];
     if(n===2) return [-120,120];
     if(n===3) return [-160,0,160];
     if(n===4) return [-210,-70,70,210];
-    return [-240,-120,0,120,240]; // 5
+    return [-240,-120,0,120,240];
   }
-
   function shoot(dt){
     const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);
     fireAcc+=dt*rate;
     while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
   }
-
   function spawnPlayerShot(){
     const s=spreadTotal();
     const n=shotsFromSpread(s);
@@ -671,35 +613,17 @@ canvas{width:100%;height:100%;display:block}
     const baseY=player.y-player.r-6;
 
     for(const vx of vxArr){
-      pBullets.push({
-        x:player.x, y:baseY,
-        r:player.bulletR,
-        vx, vy:-player.bulletSpeed,
-        dmg,
-        pierce:pr,
-        alive:true
-      });
+      pBullets.push({x:player.x,y:baseY,r:player.bulletR,vx,vy:-player.bulletSpeed,dmg,pierce:pr,alive:true});
     }
   }
-
   function enemyShoot(e,ang,sMul=1,dMul=1){
     if(eBullets.length>=enemyBulletCap())return;
-
-    // EMP: existing bullets slowed in movement; new bullets are also slowed a bit
-    const empSpdMul = (buffs.empT>0)?0.55:1.0;
-
+    const empSpdMul=(buffs.empT>0)?0.55:1.0;
     let spd=(e.bulletSpeed??300)*sMul*empSpdMul;
-    eBullets.push({
-      x:e.x,y:e.y+e.r+4,r:4,
-      vx:Math.cos(ang)*spd,
-      vy:Math.sin(ang)*spd,
-      dmg:(e.bulletDmg??8)*dMul,
-      alive:true
-    });
+    eBullets.push({x:e.x,y:e.y+e.r+4,r:4,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true});
   }
-
   function mobShoot(e){
-    if(buffs.empT>0) return; // EMP stops shooting
+    if(buffs.empT>0) return;
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
     const en2=(state.stage>=3||state.wave>=4),en3=(state.stage>=5||state.wave>=6);
     if(en3&&Math.random()<.22){for(const da of [-.22,0,.22])enemyShoot(e,ang+da,1.0,.92)}
@@ -707,19 +631,15 @@ canvas{width:100%;height:100%;display:block}
     else enemyShoot(e,ang);
   }
 
-  // Boss per-frame tick (nerfed + EMP aware)
   function bossTick(e,dt){
-    if(buffs.empT>0){
-      // still moves/strafe but no shooting during EMP
-      return;
-    }
+    if(buffs.empT>0) return;
 
     const r=e.hp/e.hpMax;
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
       e.phase=newPhase;
-      if(e.phase===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.90;e.spiralCd=.40}
-      else if(e.phase===3){toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
+      if(e.phase===2){toastMsg('Boss：Phase 2',.7);e.ringCd=.90;e.spiralCd=.40}
+      else if(e.phase===3){toastMsg('Boss：Phase 3',.7);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
     }
     const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
     const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
@@ -782,26 +702,18 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function damagePlayer(dmg){
-    if(buffs.invulnT>0) return; // invincible
-    if(player.shield>0){
-      const use=Math.min(player.shield,dmg);
-      player.shield-=use; dmg-=use;
-    }
+    if(buffs.invulnT>0) return;
+    if(player.shield>0){const use=Math.min(player.shield,dmg);player.shield-=use;dmg-=use}
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
-
-    if(player.hp<=0){
-      gameOver();
-    }
+    if(player.hp<=0) gameOver();
   }
 
   function gameOver(){
     mode='gameover';
     paused=true;
     $btnPause.textContent='繼續';
-    $toast.textContent='';
     $toast.classList.remove('show');
 
-    // best score
     const bestKey='blaster_best_score_v1';
     const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
     localStorage.setItem(bestKey,String(best));
@@ -816,7 +728,6 @@ canvas{width:100%;height:100%;display:block}
       `本局分數：<b>${state.score}</b><br>`+
       `最高分：<b>${best}</b><br>`+
       `關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
-
     $panelRow.style.display='flex';
 
     const btn=document.createElement('button');
@@ -832,11 +743,11 @@ canvas{width:100%;height:100%;display:block}
     });
     $panelRow.appendChild(btn);
 
-    const btnClose=document.createElement('button');
-    btnClose.className='pill';
-    btnClose.textContent='留在這裡';
-    btnClose.addEventListener('click',()=>{ /* just keep paused */ });
-    $panelRow.appendChild(btnClose);
+    const btnStay=document.createElement('button');
+    btnStay.className='pill';
+    btnStay.textContent='留在這裡';
+    btnStay.addEventListener('click',()=>{});
+    $panelRow.appendChild(btnStay);
   }
 
   function resetRun(){
@@ -862,9 +773,7 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Particles / Toast ----------
   function addBurst(x,y,n=10){
-    for(let i=0;i<n;i++){
-      particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
-    }
+    for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
   }
   let toastT=0;
   function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
@@ -880,9 +789,7 @@ canvas{width:100%;height:100%;display:block}
     }
 
     // passive regen
-    if(player.regen>0 && player.hp>0){
-      player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
-    }
+    if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
     player.x=clamp(player.x,player.r+8,W-player.r-8);
@@ -906,16 +813,14 @@ canvas{width:100%;height:100%;display:block}
     }
 
     // bullet movement (EMP slows existing bullets)
-    const empMoveMul = (buffs.empT>0)?0.55:1.0;
+    const empMoveMul=(buffs.empT>0)?0.55:1.0;
 
     for(const b of pBullets){
-      b.x+=b.vx*dt;
-      b.y+=b.vy*dt;
+      b.x+=b.vx*dt; b.y+=b.vy*dt;
       if(b.y<-30||b.x<-40||b.x>W+40) b.alive=false;
     }
     for(const b of eBullets){
-      b.x+=b.vx*dt*empMoveMul;
-      b.y+=b.vy*dt*empMoveMul;
+      b.x+=b.vx*dt*empMoveMul; b.y+=b.vy*dt*empMoveMul;
       if(b.y>H+40||b.x<-40||b.x>W+40) b.alive=false;
     }
 
@@ -927,9 +832,7 @@ canvas{width:100%;height:100%;display:block}
         d.x+=(dx/l)*260*dt; d.y+=(dy/l)*260*dt;
       }
       if(d.y>H+60||d.life<=0) d.dead=true;
-      if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){
-        d.dead=true; applyDrop(d.type);
-      }
+      if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){d.dead=true;applyDrop(d.type)}
     }
 
     // particles
@@ -962,8 +865,7 @@ canvas{width:100%;height:100%;display:block}
         if(dist2(b.x,b.y,e.x,e.y)<(b.r+e.r)**2){
           e.hp-=b.dmg; e.hitFlash=.12;
           addBurst(b.x,b.y,4);
-          if(b.pierce<=0) b.alive=false;
-          else b.pierce-=1;
+          if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
             state.score+=(e.type==='boss'?320:18);
@@ -1097,27 +999,19 @@ canvas{width:100%;height:100%;display:block}
     const hpPct=clamp(player.hp/player.hpMax,0,1);
     $hpFill.style.width=`${hpPct*100}%`;
     const shieldTxt=player.shield>0?` +${Math.floor(player.shield)}`:'';
-    const sTot=spreadTotal(), pTot=pierceTotal();
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
 
-    // specials counts
     $cntBomb.textContent=`x${special.bomb.count}`;
     $cntInvuln.textContent=`x${special.invuln.count}`;
     $cntEMP.textContent=`x${special.emp.count}`;
     $cntArmor.textContent=`x${special.armor.count}`;
     $cntHeal.textContent=`x${special.heal.count}`;
 
-    // specials disabled state
-    $btnBomb.disabled = !canUseSpecial('bomb');
-    $btnInvuln.disabled = !canUseSpecial('invuln');
-    $btnEMP.disabled = !canUseSpecial('emp');
+    $btnBomb.disabled  = !canUseSpecial('bomb');
+    $btnInvuln.disabled= !canUseSpecial('invuln');
+    $btnEMP.disabled   = !canUseSpecial('emp');
     $btnArmor.disabled = !canUseSpecial('armor');
-    $btnHeal.disabled = !canUseSpecial('heal');
-
-    // timer meta for active effects
-    $metaInvuln.textContent = buffs.invulnT>0 ? `剩 ${buffs.invulnT.toFixed(1)} 秒免傷` : '10 秒免傷';
-    $metaEMP.textContent    = buffs.empT>0    ? `剩 ${buffs.empT.toFixed(1)} 秒停火`   : '3 秒停火＋敵彈變慢';
-    $metaArmor.textContent  = buffs.armorT>0  ? `剩 ${buffs.armorT.toFixed(1)} 秒穿甲` : '5 秒子彈不撞敵彈';
+    $btnHeal.disabled  = !canUseSpecial('heal');
   }
 
   // ---------- Loop ----------
