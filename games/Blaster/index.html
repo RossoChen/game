@@ -6,7 +6,6 @@
 html,body{height:100%;margin:0;background:#0b1220;color:#e7eefc;font-family:system-ui,"Noto Sans TC",sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;overflow:hidden}
 body{position:fixed;inset:0}
 .app{height:100svh;padding:calc(env(safe-area-inset-top)+10px) calc(env(safe-area-inset-right)+10px) calc(env(safe-area-inset-bottom)+10px) calc(env(safe-area-inset-left)+10px);display:flex;flex-direction:column;gap:10px;box-sizing:border-box}
-/* HUD anti-jump */
 .hud{display:flex;flex-wrap:nowrap;gap:10px;align-items:center;justify-content:space-between;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .hud::-webkit-scrollbar{display:none}
 .hudLeft,.hudRight{display:flex;flex-wrap:nowrap;gap:10px;align-items:center;white-space:nowrap}
@@ -78,19 +77,12 @@ canvas{width:100%;height:100%;display:block}
 </div>
 
 <script>
-(()=>{ // ===== setup =====
+(()=>{ // setup
 const wrap=document.getElementById('boardWrap'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{alpha:true});
 let W=0,H=0;function resize(){const r=wrap.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);canvas.width=Math.floor(r.width*dpr);canvas.height=Math.floor(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);W=r.width;H=r.height}window.addEventListener('resize',resize);resize();
 
 const $stage=document.getElementById('hudStage'),$wave=document.getElementById('hudWave'),$lv=document.getElementById('hudLv'),$score=document.getElementById('hudScore'),$hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),$btnPause=document.getElementById('btnPause'),$toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack');
-
-$btnBack.addEventListener('click',()=>{ // Back: no 404
-  if(document.referrer){try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
-  }
-  // Fallback：若入口是 /game/，改成 location.href='/game/';
-  location.href='/game/games/';
-});
-
+$btnBack.addEventListener('click',()=>{if(document.referrer){try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}}/*入口若是 /game/ 改這行*/location.href='/game/games/';});
 let paused=false;$btnPause.addEventListener('click',()=>{paused=!paused;$btnPause.textContent=paused?'繼續':'暫停';$toast.textContent=paused?'Paused':'';$toast.classList.toggle('show',paused);if(!paused)lastT=performance.now()});
 
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t,dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
@@ -102,14 +94,13 @@ pad.addEventListener('pointerdown',e=>{e.preventDefault();pad.setPointerCapture(
 pad.addEventListener('pointermove',e=>{if(!padActive)return;e.preventDefault();setPadX(pointerToPadX(e))});
 pad.addEventListener('pointerup',e=>{padActive=false;try{pad.releasePointerCapture(e.pointerId)}catch(_){}});pad.addEventListener('pointercancel',()=>padActive=false);
 
-// ===== state =====
+// state
 const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:70,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
 const player={x:W*.5,y:0,r:14,hp:100,hpMax:100,moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,spread:0,pierce:0,shield:0,shieldMax:0};
-
 let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 function enemyHoldY(){return clamp(H*.18,110,190)}
 
-// ===== balance =====
+// balance
 function waveConfig(stage,wave){
   const baseCount=5+Math.floor((stage-1)*1.25)+Math.floor((wave-1)*0.95);
   const count=clamp(baseCount,5,16);
@@ -120,7 +111,7 @@ function waveConfig(stage,wave){
   return {count,hp,fire,bullet,dmg};
 }
 
-// ===== spawning =====
+// spawning
 function spawnWave(){
   enemies.length=0;eBullets.length=0;state.waveInProgress=true;
   const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY(),lanes=cfg.count;
@@ -129,7 +120,7 @@ function spawnWave(){
     enemies.push({type:'mob',x,y:-40-i*18,targetY:holdY+rand(-18,18),r:15,hp:cfg.hp,hpMax:cfg.hp,fireCd:rand(.35,1.15),fireRate:cfg.fire,bulletSpeed:cfg.bullet,bulletDmg:cfg.dmg,strafeAmp:isStrafe?rand(45,120):0,strafeSpd:isStrafe?rand(.85,1.85):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
   }
 }
-function spawnAdds(count=4,power=.88){
+function spawnAdds(count=5,power=.92){
   const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
   for(let i=0;i<count;i++){
     const x=rand(40,W-40),isStrafe=Math.random()<.72,hp=Math.max(18,cfg.hp*power);
@@ -139,13 +130,21 @@ function spawnAdds(count=4,power=.88){
 }
 function spawnBoss(){
   const holdY=enemyHoldY()-12,hp=900+state.stage*240,baseFire=1.05+state.stage*0.13,baseSpd=320+state.stage*18;
-  enemies.push({type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,baseFireRate:baseFire,baseBulletSpeed:baseSpd,baseBulletDmg:12+state.stage*2.2,fireCd:.75,strafeAmp:260,strafeSpd:1.10+state.stage*0.08,strafePhase:0,phase:1,ringCd:1.6,spiralCd:.85,summonCd:999,spin:0,hitFlash:0});
+  enemies.push({
+    type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,
+    baseFireRate:baseFire,baseBulletSpeed:baseSpd,baseBulletDmg:12+state.stage*2.2,
+    bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.2,
+    strafeAmp:260,strafeSpd:1.10+state.stage*0.08,strafePhase:0,
+    phase:1,ringCd:1.0,spiralCd:0.35,summonCd:999,
+    burstCd:0.55,burstLeft:0,burstGap:0.10,burstGapCd:0,
+    spin:0,hitFlash:0
+  });
   toastMsg('Boss 入場',0.9);
 }
 function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
 function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
-// ===== drops / buffs =====
+// drops/buffs
 const DROP_TYPES=[{key:'heal',w:26},{key:'shield',w:18},{key:'rapid',w:16},{key:'spread',w:14},{key:'bomb',w:8},{key:'magnet',w:10},{key:'slow',w:8}];
 function pickDrop(){const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);let r=Math.random()*total;for(const it of DROP_TYPES){r-=it.w;if(r<=0)return it.key}return 'heal'}
 function maybeDrop(x,y,isBoss=false){const p=isBoss?.95:.22;if(Math.random()>p)return;drops.push({x,y,r:10,vy:rand(40,90),type:pickDrop(),life:12})}
@@ -160,7 +159,7 @@ function applyDrop(type){
   else if(type==='slow'){buffs.slow=Math.max(buffs.slow,7.5);toastMsg('Slow')}
 }
 
-// ===== level-up =====
+// level-up
 const overlay=document.getElementById('overlay'),opts=document.getElementById('opts');
 const UPGRADES=[{key:'dmg',t:'火力提升',d:'傷害 +20%'},{key:'firerate',t:'射速提升',d:'射速 +18%'},{key:'hp',t:'擴充裝甲',d:'HP 上限 +20，回滿'},{key:'speed',t:'機動提升',d:'移動速度 +16%'},{key:'pierce',t:'穿透彈',d:'穿透 +1（最多 2）'},{key:'spread_perm',t:'永久散射',d:'散射 +1（最多 2）'},{key:'shield_cap',t:'護盾擴容',d:'護盾上限 +20，並回滿'}];
 function openLevelUp(){
@@ -191,14 +190,10 @@ function addXp(xp){
   }
 }
 
-// ===== combat =====
-function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?220:90}
+// combat
+function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?650:120} // ★ Boss 戰滿版彈幕
 let fireAcc=0;
-function shoot(dt){
-  const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);
-  fireAcc+=dt*rate;
-  while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
-}
+function shoot(dt){const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);fireAcc+=dt*rate;while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}}
 function spreadMul(shots){return shots===2?.72:shots===3?.58:1}
 function spawnPlayerShot(){
   const s=clamp(player.spread+(buffs.spread>0?1:0),0,3);
@@ -220,34 +215,69 @@ function mobShoot(e){
   else if(en2&&Math.random()<.35){for(const da of [-.16,.16])enemyShoot(e,ang+da,1.0,.95)}
   else enemyShoot(e,ang);
 }
-function bossPhase(e){const r=e.hp/e.hpMax;return r<=.40?3:r<=.70?2:1}
-function bossOnPhaseChange(e){
-  const ph=bossPhase(e);if(ph===e.phase)return;
-  e.phase=ph;
-  if(ph===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.9;e.spiralCd=.55}
-  else {toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.ringCd=.65;e.spiralCd=.42;e.summonCd=1.2+Math.random()*.8}
-}
-function bossShootPattern(e,dt){
-  bossOnPhaseChange(e);
-  const ang=Math.atan2(player.y-e.y,player.x-e.x);
-  const burst=(e.phase===1?3:e.phase===2?5:7),spread=(e.phase===1?.20:e.phase===2?.26:.30);
-  for(let i=0;i<burst;i++){const t=(i-(burst-1)/2)/(((burst-1)/2)||1);enemyShoot(e,ang+t*spread,1.0,e.phase===3?1.05:1.0)}
-  e.ringCd-=dt;if(e.ringCd<=0){
-    const n=(e.phase===2?18:24),base=Math.random()*Math.PI*2;
-    for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,e.phase===3?1.02:.98,.85)}
-    e.ringCd=(e.phase===2?1.05:.78)+(Math.random()*.30-.12);
+
+// ★ Boss per-frame tick (continuous bullets + guaranteed summon)
+function bossTick(e,dt){
+  const r=e.hp/e.hpMax;const newPhase=(r<=.40)?3:(r<=.70?2:1);
+  if(newPhase!==e.phase){
+    e.phase=newPhase;
+    if(e.phase===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.55;e.spiralCd=.22}
+    else if(e.phase===3){toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.summonCd=1.0+Math.random()*1.0;e.ringCd=.38;e.spiralCd=.12;e.burstCd=.35}
   }
-  e.spiralCd-=dt;e.spin=(e.spin??0)+dt*(e.phase===2?1.9:2.6);
-  if(e.spiralCd<=0){
-    const n=(e.phase===2?6:8),base=e.spin;
-    for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,e.phase===3?1.02:.98,.78)}
-    e.spiralCd=(e.phase===2?.62:.45)+(Math.random()*.18-.08);
+  const spdMul=(e.phase===1?1.00:(e.phase===2?1.05:1.10));
+  const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.06));
+
+  // continuous burst (many volleys)
+  e.burstCd-=dt;
+  if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
+    e.burstLeft=(e.phase===1?2:(e.phase===2?4:6));
+    e.burstGapCd=0;
+    e.burstCd=(e.phase===1?0.70:(e.phase===2?0.55:0.40));
   }
+  if(e.burstLeft>0){
+    e.burstGapCd-=dt;
+    if(e.burstGapCd<=0){
+      const ang=Math.atan2(player.y-e.y,player.x-e.x);
+      const lanes=(e.phase===1?5:(e.phase===2?7:9));
+      const spread=(e.phase===1?0.26:(e.phase===2?0.34:0.42));
+      for(let i=0;i<lanes;i++){
+        const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+        enemyShoot(e,ang+t*spread,spdMul,dmgMul);
+      }
+      e.burstLeft-=1;
+      e.burstGapCd=(e.phase===3?0.08:0.10);
+    }
+  }
+
+  // ring - near full screen
+  e.ringCd-=dt;
+  if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
+    const n=(e.phase===1?16:(e.phase===2?34:46));
+    const base=Math.random()*Math.PI*2;
+    for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,spdMul*0.98,dmgMul*0.75)}
+    e.ringCd=(e.phase===1?0.95:(e.phase===2?0.55:0.38));
+  }
+
+  // spiral - keep pressure
+  e.spiralCd-=dt;
+  e.spin=(e.spin??0)+dt*(e.phase===1?1.6:(e.phase===2?2.4:3.2));
+  if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
+    const n=(e.phase===1?6:(e.phase===2?10:14));
+    const base=e.spin;
+    for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,spdMul*1.02,dmgMul*0.65)}
+    e.spiralCd=(e.phase===1?0.45:(e.phase===2?0.22:0.12));
+  }
+
+  // summon (phase3 guaranteed)
   if(e.phase===3){
     e.summonCd-=dt;
-    if(e.summonCd<=0){spawnAdds(4+(Math.random()<.45?1:0),.88);e.summonCd=5.6+(Math.random()*1.6-.7)}
+    if(e.summonCd<=0){
+      spawnAdds(5+(Math.random()<0.6?1:0),.92);
+      e.summonCd=4.8+(Math.random()*1.6-.6);
+    }
   }
 }
+
 function damagePlayer(dmg){
   if(player.shield>0){const use=Math.min(player.shield,dmg);player.shield-=use;dmg-=use}
   if(dmg>0)player.hp=Math.max(0,player.hp-dmg);
@@ -261,11 +291,11 @@ function resetRun(){
   spawnWave();
 }
 
-// ===== particles / toast =====
+// particles/toast
 function addBurst(x,y,n=10){for(let i=0;i<n;i++)particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)})}
 let toastT=0;function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
 
-// ===== update/draw =====
+// update/draw
 function update(dt){
   for(const k in buffs)if(buffs[k]>0)buffs[k]=Math.max(0,buffs[k]-dt);
 
@@ -279,11 +309,9 @@ function update(dt){
     }
     e.x=clamp(e.x,e.r+10,W-e.r-10);
 
-    e.fireCd-=dt;
-    if(e.fireCd<=0){
-      if(e.type==='boss'){bossShootPattern(e,dt);const mult=(e.phase===1?1.0:e.phase===2?1.15:1.35);e.fireCd=1/(e.baseFireRate*mult)}
-      else {mobShoot(e);e.fireCd=1/e.fireRate}
-    }
+    if(e.type==='boss'){bossTick(e,dt)}
+    else {e.fireCd-=dt;if(e.fireCd<=0){mobShoot(e);e.fireCd=1/e.fireRate}}
+
     if(e.hitFlash>0)e.hitFlash=Math.max(0,e.hitFlash-dt);
   }
 
@@ -299,7 +327,6 @@ function update(dt){
 
   for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=(1-dt*2.8);p.vy*=(1-dt*2.8);p.life-=dt;if(p.life<=0)p.dead=true}
 
-  // player bullets vs enemy bullets + enemies
   for(const b of pBullets){
     if(!b.alive)continue;
     for(const eb of eBullets){
@@ -317,8 +344,8 @@ function update(dt){
         e.hp-=b.dmg;e.hitFlash=.12;addBurst(b.x,b.y,4);
         if(b.pierce<=0)b.alive=false; else b.pierce-=1;
         if(e.hp<=0){
-          state.score+=(e.type==='boss'?280:18);
-          addXp(e.type==='boss'?165:5);
+          state.score+=(e.type==='boss'?320:18);
+          addXp(e.type==='boss'?200:5);
           maybeDrop(e.x,e.y,e.type==='boss');
           addBurst(e.x,e.y,e.type==='boss'?26:10);
         }
@@ -340,7 +367,6 @@ function update(dt){
   drops=drops.filter(d=>!d.dead);
   particles=particles.filter(p=>!p.dead);
 
-  // wave progression
   if(!state.waveInProgress){
     state.waveClearCooldown-=dt;
     if(state.waveClearCooldown<=0){
@@ -360,19 +386,16 @@ function update(dt){
 function draw(){
   ctx.clearRect(0,0,W,H);
 
-  // grid
   ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
   const step=48;
   for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
   for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
   ctx.restore();
 
-  // particles
   ctx.save();ctx.fillStyle='rgba(120,255,200,.7)';
   for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
   ctx.restore();
 
-  // drops
   for(const d of drops){
     ctx.save();
     ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
@@ -383,7 +406,6 @@ function draw(){
     ctx.fillText(icon,d.x,d.y+.5);ctx.restore();
   }
 
-  // enemies
   for(const e of enemies){
     ctx.save();
     const isBoss=e.type==='boss',flash=e.hitFlash>0;
@@ -405,7 +427,6 @@ function draw(){
     ctx.restore();
   }
 
-  // bullets
   ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
   for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
   ctx.restore();
@@ -414,7 +435,6 @@ function draw(){
   for(const b of eBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
   ctx.restore();
 
-  // player
   ctx.save();
   ctx.translate(player.x,player.y);
   ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
@@ -433,7 +453,7 @@ function syncHud(){
   $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
 }
 
-// ===== loop =====
+// loop
 let lastT=performance.now();
 function frame(t){
   const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
@@ -441,9 +461,6 @@ function frame(t){
   draw();syncHud();
   requestAnimationFrame(frame);
 }
-setPadX(.5);
-state.waveClearCooldown=0;spawnWave();
-requestAnimationFrame(frame);
+setPadX(.5);spawnWave();requestAnimationFrame(frame);
 })();
-</script>
-</body></html>
+</script></body></html>
