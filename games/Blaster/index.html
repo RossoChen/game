@@ -2,15 +2,19 @@
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <title>Blaster</title><meta name="theme-color" content="#0b1220"/>
 <style>
-:root{color-scheme:dark; --appSafeTop:24px; --appSafeR:0px; --appSafeB:0px; --appSafeL:0px;}
+:root{
+  color-scheme:dark;
+  --appSafeTop:24px; --appSafeR:0px; --appSafeB:0px; --appSafeL:0px;
+  --appExtraTop:10px; --appExtraBottom:10px;
+}
 html,body{height:100%;margin:0;background:#0b1220;color:#e7eefc;font-family:system-ui,"Noto Sans TC",sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation;overflow:hidden}
 body{position:fixed;inset:0}
 .app{
   height:100svh;
   padding:
-    calc(var(--appSafeTop) + 10px)
+    calc(var(--appSafeTop) + var(--appExtraTop))
     calc(var(--appSafeR) + 10px)
-    calc(var(--appSafeB) + 10px)
+    calc(var(--appSafeB) + var(--appExtraBottom))
     calc(var(--appSafeL) + 10px);
   display:flex;flex-direction:column;gap:10px;box-sizing:border-box
 }
@@ -102,12 +106,7 @@ canvas{width:100%;height:100%;display:block}
     const w=Math.min(screen.width, screen.height);
     const h=Math.max(screen.width, screen.height);
     const key=`${w}x${h}`;
-    const DI=new Set([
-      '393x852', // 14 Pro
-      '430x932', // 14 Pro Max / 15 Plus
-      '402x874', // 15 Pro
-      '440x956', // 15 Pro Max
-    ]);
+    const DI=new Set(['393x852','430x932','402x874','440x956']);
     return DI.has(key);
   }
   function applySafeArea(){
@@ -118,17 +117,25 @@ canvas{width:100%;height:100%;display:block}
     let bottom=readEnvInsetPx('bottom');
     let left=readEnvInsetPx('left');
 
-    // iOS 某些情境 env() 會回 0；做 fallback 避免 HUD 被動態島壓住
+    const standalone =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (navigator.standalone === true);
+
     if(isIOS() && top < 10){
       top = isDynamicIslandSize() ? 54 : 44;
     }else{
       top = Math.max(top, 24);
     }
 
+    const extraTop = standalone ? 18 : 10;
+    const extraBottom = standalone ? 4 : 10;
+
     root.style.setProperty('--appSafeTop', `${top}px`);
     root.style.setProperty('--appSafeR', `${right}px`);
     root.style.setProperty('--appSafeB', `${bottom}px`);
     root.style.setProperty('--appSafeL', `${left}px`);
+    root.style.setProperty('--appExtraTop', `${extraTop}px`);
+    root.style.setProperty('--appExtraBottom', `${extraBottom}px`);
   }
 
   applySafeArea();
@@ -176,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
   let padActive=false,padX=.5;
 
   const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:70,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
-  const player={x:W*.5,y:0,r:14,hp:100,hpMax:100,moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,spread:0,pierce:0,shield:0,shieldMax:0};
+  const player={x:W*.5,y:0,r:14,hp:300,hpMax:300,moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,spread:0,pierce:0,shield:0,shieldMax:0};
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
   function setPadX(nx){
@@ -277,7 +284,8 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?650:120}
+  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?380:120} // nerf: 650 -> 380
+
   let fireAcc=0;
   function shoot(dt){const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);fireAcc+=dt*rate;while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}}
   function spreadMul(shots){return shots===2?.80:shots===3?.70:1}
@@ -322,8 +330,8 @@ canvas{width:100%;height:100%;display:block}
       e.burstGapCd-=dt;
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes=(e.phase===1?5:(e.phase===2?7:9));
-        const spread=(e.phase===1?0.26:(e.phase===2?0.34:0.42));
+        const lanes=(e.phase===1?5:(e.phase===2?6:8));      // nerf
+        const spread=(e.phase===1?0.24:(e.phase===2?0.30:0.36)); // nerf
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul);
@@ -335,7 +343,7 @@ canvas{width:100%;height:100%;display:block}
 
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
-      const n=(e.phase===1?16:(e.phase===2?34:60));
+      const n=(e.phase===1?14:(e.phase===2?26:44)); // nerf
       const base=Math.random()*Math.PI*2;
       for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,spdMul*0.98,dmgMul*0.75)}
       e.ringCd=(e.phase===1?0.95:(e.phase===2?0.55:0.38));
