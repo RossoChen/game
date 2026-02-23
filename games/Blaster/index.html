@@ -1,0 +1,1354 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <title>One-Thumb Blaster</title>
+
+  <meta name="theme-color" content="#0b1220" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Blaster" />
+
+  <!-- 用相對路徑：本機測試 / GitHub Pages / 加入主畫面都比較不會翻車 -->
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../../icons/icon-192.png">
+
+  <style>
+    :root{
+      color-scheme: dark;
+      --homebar-guard: max(env(safe-area-inset-bottom), 34px);
+      --homebar-extra: 18px;
+      --maxw: 560px;
+    }
+    html[data-theme="dark"]{
+      --bg:#0b1220;
+      --panel:rgba(255,255,255,.08);
+      --panel2:rgba(255,255,255,.06);
+      --border:rgba(255,255,255,.18);
+      --border2:rgba(255,255,255,.14);
+      --fg:#e7eefc;
+      --muted:rgba(231,238,252,.82);
+      --board:#0a0f1c;
+      --danger:#ff668a;
+      --good:#7cf7b6;
+      --accent:#57b8ff;
+      --warn:#ffcc66;
+    }
+
+    html, body{
+      margin:0; height:100%;
+      overflow:hidden;
+      overscroll-behavior:none;
+      background:var(--bg);
+      color:var(--fg);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
+      -webkit-user-select:none; user-select:none;
+      touch-action:none;
+    }
+    body{ position:fixed; inset:0; }
+
+    .app{
+      height:100svh;
+      padding-top: calc(env(safe-area-inset-top) + 14px);
+      padding-right: calc(env(safe-area-inset-right) + 12px);
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
+      padding-left: calc(env(safe-area-inset-left) + 12px);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:center;
+    }
+
+    .hud{
+      width:min(var(--maxw), 96vw);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      position:relative;
+    }
+    .hudTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .pill{
+      border:1px solid var(--border2);
+      background:var(--panel2);
+      border-radius:999px;
+      padding:10px 12px;
+      font-size:13px;
+      text-align:center;
+      white-space:nowrap;
+      backdrop-filter: blur(8px);
+    }
+    .pill strong{ font-weight:900; }
+
+    .btn{
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--fg);
+      border-radius:16px;
+      padding:12px 14px;
+      font-size:14px;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+      white-space:nowrap;
+      min-height:46px;
+      touch-action:manipulation;
+      backdrop-filter: blur(8px);
+    }
+    .btn:active{ transform:scale(0.985); }
+
+    .hpWrap{
+      flex:1;
+      min-width: 220px;
+      border:1px solid var(--border2);
+      background:var(--panel2);
+      border-radius:999px;
+      padding:8px 10px;
+      backdrop-filter: blur(8px);
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .hpBar{
+      flex:1;
+      height:10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      overflow:hidden;
+      position:relative;
+    }
+    .hpFill{ height:100%; width:0%; background: var(--good); }
+    .shFill{ position:absolute; inset:0; width:0%; background: rgba(87,184,255,.85); mix-blend-mode: screen; }
+    .hpText{ font-size:12px; opacity:.9; white-space:nowrap; }
+
+    .stage{
+      width:min(var(--maxw), 96vw);
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      min-height:0;
+    }
+
+    .board{
+      width: min(var(--maxw), 96vw);
+      height: min(72svh, 720px);
+      border-radius:18px;
+      border:1px solid var(--border2);
+      background:var(--board);
+      position:relative;
+      overflow:hidden;
+      pointer-events:none;
+    }
+    canvas{ width:100%; height:100%; display:block; }
+
+    .overlay{
+      position:absolute; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      text-align:center;
+      padding:16px;
+      background:rgba(0,0,0,.40);
+      backdrop-filter:blur(10px);
+      pointer-events:auto;
+    }
+    .overlay.show{ display:flex; }
+
+    .panel{
+      width:min(520px, 92%);
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .panel h2{ margin:0 0 8px; font-size:18px; }
+    .panel p{ margin:0 0 12px; opacity:.86; font-size:13px; line-height:1.6; color:var(--muted); }
+    .panel .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+      margin-top:12px;
+    }
+    .choice{
+      text-align:left;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.07);
+      color:var(--fg);
+      border-radius:16px;
+      padding:12px 12px;
+      font-weight:900;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .choice small{ display:block; font-weight:600; opacity:.8; margin-top:6px; line-height:1.45; }
+    .choice:active{ transform: scale(.99); }
+
+    /* Touchpad（相對位移） */
+    .touchpad{
+      width:min(var(--maxw), 96vw);
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      min-height:84px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      overflow:hidden;
+      touch-action:none;
+      backdrop-filter: blur(8px);
+      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
+    }
+    .touchpadHint{
+      position:absolute; inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:14px;
+      opacity:.72;
+      pointer-events:none;
+    }
+    .touchpadBar{
+      position:absolute;
+      left:14px; right:14px;
+      height:8px;
+      bottom: calc(14px + var(--homebar-guard));
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.10);
+      pointer-events:none;
+    }
+    .knob{
+      position:absolute;
+      width:44px; height:44px;
+      border-radius:999px;
+      border:1px solid var(--border2);
+      background: rgba(255,255,255,.10);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:18px;
+      font-weight:1000;
+      transform: translate(-50%, -50%);
+      opacity:0;
+      pointer-events:none;
+    }
+    .knob.show{ opacity:1; }
+
+    .mini{
+      font-size:12px;
+      opacity:.8;
+    }
+    a.link{
+      color:inherit;
+      opacity:.85;
+      text-decoration:none;
+      border:1px solid var(--border2);
+      padding:10px 12px;
+      border-radius:16px;
+      background: rgba(255,255,255,.06);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="hud">
+      <div class="hudTop">
+        <div class="row">
+          <a class="link" href="../../">← Hub</a>
+          <div class="pill">關卡 <strong id="stage">1</strong></div>
+          <div class="pill">波次 <strong id="wave">1</strong></div>
+          <div class="pill">等級 <strong id="lvl">1</strong></div>
+          <div class="pill">分數 <strong id="score">0</strong></div>
+        </div>
+        <div class="row" style="flex:1; min-width: 240px;">
+          <div class="hpWrap" title="HP / Shield">
+            <div class="mini">HP</div>
+            <div class="hpBar">
+              <div class="hpFill" id="hpFill"></div>
+              <div class="shFill" id="shFill"></div>
+            </div>
+            <div class="hpText" id="hpText">--</div>
+          </div>
+          <button class="btn" id="btnPause" type="button">暫停</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="board" id="board">
+        <canvas id="c"></canvas>
+
+        <div class="overlay show" id="ovStart">
+          <div class="panel">
+            <h2>One‑Thumb Blaster</h2>
+            <p>
+              左右拖曳移動，角色會自動開火。<br>
+              你要做的事很單純：<b>把怪物跟子彈一起打掉</b>，撐到 Boss，然後讓它知道誰才是 KPI。<br>
+              <span class="mini">提示：升級時會跳出 3 選 1，選錯也沒關係，反正 Boss 會幫你做回顧。</span>
+            </p>
+            <div class="grid">
+              <button class="btn" id="btnStart" type="button">開始</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="ovPause">
+          <div class="panel">
+            <h2>暫停</h2>
+            <p>休息可以，但不要忘了你剛剛差點被一顆豆豆子彈帶走。</p>
+            <div class="grid">
+              <button class="btn" id="btnResume" type="button">繼續</button>
+              <button class="btn" id="btnRestart" type="button">重開</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="ovLevel">
+          <div class="panel">
+            <h2>升級：選 1 個強化</h2>
+            <p id="lvDesc">你變強了。現在把強化選對，下一波就不會像在加班。</p>
+            <div class="grid" id="choices"></div>
+          </div>
+        </div>
+
+        <div class="overlay" id="ovClear">
+          <div class="panel">
+            <h2>Boss 清場 ✅</h2>
+            <p id="clearDesc">下一關會更兇（合理，因為你也更強）。</p>
+            <div class="grid">
+              <button class="btn" id="btnNext" type="button">下一關</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay" id="ovOver">
+          <div class="panel">
+            <h2>你倒了</h2>
+            <p id="overDesc">復盤：不是你不夠強，是怪太不講武德（好啦其實是你沒撿道具）。</p>
+            <div class="grid">
+              <button class="btn" id="btnAgain" type="button">再來</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="touchpad" id="pad">
+        <div class="touchpadHint">左右拖曳＝移動（自動射擊）</div>
+        <div class="touchpadBar"></div>
+        <div class="knob" id="knob">⦿</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ===== Canvas setup =====
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha:false });
+  const board = document.getElementById('board');
+
+  function resize(){
+    const r = board.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.floor(r.width * dpr);
+    canvas.height = Math.floor(r.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  addEventListener('resize', resize, { passive:true });
+  resize();
+
+  // ===== UI refs =====
+  const $stage = document.getElementById('stage');
+  const $wave  = document.getElementById('wave');
+  const $lvl   = document.getElementById('lvl');
+  const $score = document.getElementById('score');
+  const $hpFill = document.getElementById('hpFill');
+  const $shFill = document.getElementById('shFill');
+  const $hpText = document.getElementById('hpText');
+
+  const ovStart = document.getElementById('ovStart');
+  const ovPause = document.getElementById('ovPause');
+  const ovLevel = document.getElementById('ovLevel');
+  const ovClear = document.getElementById('ovClear');
+  const ovOver  = document.getElementById('ovOver');
+
+  const btnStart = document.getElementById('btnStart');
+  const btnPause = document.getElementById('btnPause');
+  const btnResume = document.getElementById('btnResume');
+  const btnRestart = document.getElementById('btnRestart');
+  const btnNext = document.getElementById('btnNext');
+  const btnAgain = document.getElementById('btnAgain');
+  const choicesBox = document.getElementById('choices');
+  const clearDesc = document.getElementById('clearDesc');
+  const overDesc = document.getElementById('overDesc');
+
+  // ===== Helpers =====
+  const clamp = (v,a,b)=> Math.max(a, Math.min(b,v));
+  const rand = (a,b)=> a + Math.random()*(b-a);
+  const irand = (a,b)=> Math.floor(rand(a,b+1));
+
+  function show(el){ el.classList.add('show'); }
+  function hide(el){ el.classList.remove('show'); }
+
+  // ===== Game state =====
+  const STATE = { MENU:0, RUN:1, PAUSE:2, LEVEL:3, CLEAR:4, OVER:5 };
+  let state = STATE.MENU;
+
+  // World units in CSS pixels
+  function W(){ return board.getBoundingClientRect().width; }
+  function H(){ return board.getBoundingClientRect().height; }
+
+  const world = {
+    stage: 1,
+    wave: 1,
+    score: 0,
+    time: 0,
+    bossAlive: false,
+    waveSpawnsLeft: 0,
+    waveTimer: 0,
+    nextWaveDelay: 0,
+  };
+
+  const fx = {
+    rapid: 0,
+    spread: 0,
+    slow: 0,
+    magnet: 0,
+  };
+
+  const player = {
+    x: 0,
+    y: 0,
+    r: 14,
+    hp: 100,
+    maxHp: 100,
+    shield: 0,
+    maxShield: 60,
+    lvl: 1,
+    xp: 0,
+    nextXp: 25,
+    dmg: 10,
+    fireCd: 0,
+    fireRate: 7.0,     // bullets/sec base
+    bulletSpeed: 520,
+    moveSpeed: 780,
+    spreadN: 1,        // permanent spread
+    pierce: 0,         // pierce count
+  };
+
+  let targetX = 0;
+  const enemies = [];
+  const bulletsP = [];
+  const bulletsE = [];
+  const items = [];
+
+  // ===== Touchpad control =====
+  const pad = document.getElementById('pad');
+  const knob = document.getElementById('knob');
+  let dragging = false;
+  let lastPX = 0;
+
+  function setKnob(clientX, clientY){
+    const r = pad.getBoundingClientRect();
+    const x = clamp(clientX - r.left, 14, r.width - 14);
+    const y = clamp(clientY - r.top, 18, r.height - 18);
+    knob.style.left = x + 'px';
+    knob.style.top = y + 'px';
+  }
+
+  pad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    pad.setPointerCapture(e.pointerId);
+    dragging = true;
+    lastPX = e.clientX;
+    knob.classList.add('show');
+    setKnob(e.clientX, e.clientY);
+  });
+  pad.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    setKnob(e.clientX, e.clientY);
+    const dx = e.clientX - lastPX;
+    lastPX = e.clientX;
+    // relative move
+    targetX += dx * 1.35;
+  });
+  function endDrag(){
+    dragging = false;
+    knob.classList.remove('show');
+  }
+  pad.addEventListener('pointerup', (e) => { e.preventDefault(); endDrag(); });
+  pad.addEventListener('pointercancel', (e) => { e.preventDefault(); endDrag(); });
+
+  // Keyboard (desktop fallback)
+  const keys = { left:false, right:false };
+  addEventListener('keydown', (e)=>{
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+    if (e.key === 'Escape') togglePause();
+  });
+  addEventListener('keyup', (e)=>{
+    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+  });
+
+  // ===== Entities =====
+  function spawnEnemy(type){
+    const ww = W(), hh = H();
+    const margin = 26;
+    const x = rand(margin, ww - margin);
+    const y = -20;
+
+    const s = 1 + (world.stage - 1) * 0.18 + (world.wave - 1) * 0.06;
+
+    const base = {
+      grunt:  { r:14, hp: 24,  spd: 70,  cd: 1.2, shot: 260, score: 10 },
+      zig:    { r:14, hp: 30,  spd: 72,  cd: 1.3, shot: 260, score: 12 },
+      tank:   { r:18, hp: 70,  spd: 48,  cd: 1.7, shot: 240, score: 18 },
+      sniper: { r:14, hp: 34,  spd: 62,  cd: 1.0, shot: 320, score: 14 },
+      rush:   { r:12, hp: 18,  spd: 115, cd: 999, shot: 0,   score: 9  },
+    }[type];
+
+    const e = {
+      type,
+      x, y,
+      r: base.r,
+      hp: Math.round(base.hp * s),
+      maxHp: Math.round(base.hp * s),
+      vy: base.spd * (1 + (world.stage-1)*0.04),
+      t: 0,
+      shootCd: rand(0.2, base.cd),
+      shootEvery: base.cd / (1 + (world.stage-1)*0.05),
+      shotSpeed: base.shot,
+      score: base.score,
+    };
+    enemies.push(e);
+  }
+
+  function spawnBoss(){
+    const ww = W();
+    const s = 1 + (world.stage - 1) * 0.22;
+    const e = {
+      type: 'boss',
+      x: ww/2,
+      y: 90,
+      r: 44,
+      hp: Math.round(420 * s),
+      maxHp: Math.round(420 * s),
+      vx: 120 * (0.9 + world.stage*0.02),
+      vy: 0,
+      t: 0,
+      phase: 1,
+      shootCd: 0.8,
+      shootEvery: Math.max(0.35, 0.85 - world.stage*0.03),
+      score: 350 + world.stage*80,
+    };
+    enemies.push(e);
+    world.bossAlive = true;
+  }
+
+  function shootPlayer(){
+    const ww = W();
+    const spreadTemp = fx.spread > 0 ? 2 : 0;
+    const n = clamp(player.spreadN + spreadTemp, 1, 5);
+    const angles = [];
+    if (n === 1) angles.push(0);
+    else {
+      const max = 0.28; // radians
+      for (let i=0;i<n;i++){
+        const t = (n===1)?0 : (i/(n-1))*2-1;
+        angles.push(t * max);
+      }
+    }
+
+    const speed = player.bulletSpeed;
+    for (const a of angles){
+      const vx = Math.sin(a) * speed;
+      const vy = -Math.cos(a) * speed;
+      bulletsP.push({
+        x: player.x,
+        y: player.y - player.r - 8,
+        vx, vy,
+        r: 4,
+        dmg: player.dmg,
+        pierce: player.pierce,
+      });
+    }
+  }
+
+  function shootEnemy(e){
+    const slow = fx.slow > 0 ? 0.58 : 1.0;
+
+    if (e.type === 'boss'){
+      // Boss patterns: phase based on hp
+      const hpRate = e.hp / e.maxHp;
+      e.phase = hpRate > 0.66 ? 1 : (hpRate > 0.33 ? 2 : 3);
+
+      const speed = (300 + world.stage*10) * slow;
+      const count = e.phase === 1 ? 5 : (e.phase === 2 ? 7 : 9);
+      const max = e.phase === 1 ? 0.55 : (e.phase === 2 ? 0.75 : 0.95);
+      for (let i=0;i<count;i++){
+        const t = (i/(count-1))*2-1;
+        const ang = t * max;
+        bulletsE.push({
+          x: e.x,
+          y: e.y + e.r + 10,
+          vx: Math.sin(ang)*speed,
+          vy: Math.cos(ang)*speed,
+          r: 5,
+          dmg: 8 + world.stage*1.2,
+        });
+      }
+
+      // 追加：鎖定射（偶爾）
+      if (e.phase >= 2 && Math.random() < 0.35){
+        const tx = player.x, ty = player.y;
+        const dx = tx - e.x;
+        const dy = ty - e.y;
+        const len = Math.max(1, Math.hypot(dx,dy));
+        const v = (360 + world.stage*12) * slow;
+        bulletsE.push({ x:e.x, y:e.y + e.r + 10, vx: dx/len*v, vy: dy/len*v, r:6, dmg: 10 + world.stage*1.4 });
+      }
+
+      // 召喚小怪
+      if (e.phase === 3 && Math.random() < 0.18){
+        spawnEnemy(['grunt','zig','sniper'][irand(0,2)]);
+      }
+
+      return;
+    }
+
+    if (e.type === 'rush') return;
+
+    const speed = e.shotSpeed * slow;
+    // 少量散射，讓你不能站樁
+    const spread = (e.type === 'sniper') ? 0.06 : 0.18;
+
+    const tx = player.x + rand(-18,18);
+    const ty = player.y;
+    const dx = tx - e.x;
+    const dy = ty - e.y;
+    const len = Math.max(1, Math.hypot(dx,dy));
+    const nx = dx/len, ny = dy/len;
+
+    const ang = Math.atan2(nx, ny);
+    const a2 = ang + rand(-spread, spread);
+    const vx = Math.sin(a2) * speed;
+    const vy = Math.cos(a2) * speed;
+
+    bulletsE.push({ x:e.x, y:e.y + e.r + 8, vx, vy, r:4.5, dmg: 7 + world.stage*0.8 });
+  }
+
+  function dropItem(x,y){
+    // 機率與種類：不要太常，不然變成撿垃圾模擬器
+    if (Math.random() > 0.18) return;
+
+    const pool = [
+      { t:'heal',   w: 18 },
+      { t:'shield', w: 20 },
+      { t:'rapid',  w: 18 },
+      { t:'spread', w: 18 },
+      { t:'slow',   w: 14 },
+      { t:'bomb',   w: 12 },
+      { t:'magnet', w: 10 },
+    ];
+    const sum = pool.reduce((a,b)=>a+b.w,0);
+    let r = Math.random()*sum;
+    let t = 'heal';
+    for (const p of pool){ r -= p.w; if (r <= 0){ t = p.t; break; } }
+
+    items.push({ x, y, r: 10, vy: 110, t });
+  }
+
+  function applyItem(t){
+    if (t === 'heal'){
+      player.hp = clamp(player.hp + Math.round(player.maxHp*0.28), 0, player.maxHp);
+      return '回復 +HP';
+    }
+    if (t === 'shield'){
+      player.shield = clamp(player.shield + 22, 0, player.maxShield);
+      return '護盾 +22';
+    }
+    if (t === 'rapid'){
+      fx.rapid = Math.max(fx.rapid, 8.0);
+      return '道具：加速射擊';
+    }
+    if (t === 'spread'){
+      fx.spread = Math.max(fx.spread, 10.0);
+      return '道具：散射';
+    }
+    if (t === 'slow'){
+      fx.slow = Math.max(fx.slow, 6.0);
+      return '道具：緩速';
+    }
+    if (t === 'bomb'){
+      // 清子彈 + 傷害全敵
+      bulletsE.length = 0;
+      for (const e of enemies){
+        if (e.type === 'boss') e.hp -= 50;
+        else e.hp -= 35;
+      }
+      return '炸彈：清場';
+    }
+    if (t === 'magnet'){
+      fx.magnet = Math.max(fx.magnet, 8.0);
+      return '道具：磁鐵';
+    }
+    return '';
+  }
+
+  // ===== Level-up choices =====
+  const UPG = [
+    {
+      id:'hp',
+      name:'最大 HP +20',
+      desc:'容錯率上升，Boss 也比較難把你一拳送下班。',
+      apply(){ player.maxHp += 20; player.hp += 20; }
+    },
+    {
+      id:'dmg',
+      name:'傷害 +3',
+      desc:'把怪物的血條當成待辦清單，一項一項刪掉。',
+      apply(){ player.dmg += 3; }
+    },
+    {
+      id:'rof',
+      name:'射速 +12%',
+      desc:'輸出更穩，彈幕更像在開會（密集到喘不過氣）。',
+      apply(){ player.fireRate *= 1.12; }
+    },
+    {
+      id:'ms',
+      name:'移動速度 +10%',
+      desc:'走位更好看，失誤更難被抓到。',
+      apply(){ player.moveSpeed *= 1.10; }
+    },
+    {
+      id:'spreadP',
+      name:'永久散射 +1',
+      desc:'子彈不只打怪，也順便清怪的 KPI。',
+      apply(){ player.spreadN = clamp(player.spreadN + 1, 1, 4); }
+    },
+    {
+      id:'shieldMax',
+      name:'護盾上限 +15',
+      desc:'護盾更厚，容錯更爽。',
+      apply(){ player.maxShield += 15; player.shield += 10; }
+    },
+    {
+      id:'pierce',
+      name:'穿透 +1',
+      desc:'子彈可以順便打第二個，效率部會愛你。',
+      apply(){ player.pierce = clamp(player.pierce + 1, 0, 2); }
+    },
+  ];
+
+  function pick3(){
+    const copy = [...UPG];
+    const out = [];
+    while (out.length < 3 && copy.length){
+      out.push(copy.splice(irand(0, copy.length-1), 1)[0]);
+    }
+    return out;
+  }
+
+  function openLevelUp(){
+    state = STATE.LEVEL;
+    show(ovLevel);
+    choicesBox.innerHTML = '';
+
+    const opts = pick3();
+    for (const o of opts){
+      const b = document.createElement('button');
+      b.className = 'choice';
+      b.type = 'button';
+      b.innerHTML = `${o.name}<small>${o.desc}</small>`;
+      b.addEventListener('click', () => {
+        o.apply();
+        hide(ovLevel);
+        state = STATE.RUN;
+      });
+      choicesBox.appendChild(b);
+    }
+  }
+
+  function addXP(xp){
+    player.xp += xp;
+    while (player.xp >= player.nextXp){
+      player.xp -= player.nextXp;
+      player.lvl += 1;
+      // 成長曲線不要太硬：不然你會覺得遊戲在勒索
+      player.nextXp = Math.round(25 + (player.lvl-1) * 12 + Math.pow(player.lvl-1, 1.35) * 3);
+      openLevelUp();
+    }
+  }
+
+  // ===== Wave / stage flow =====
+  function setupStage(n){
+    world.stage = n;
+    world.wave = 1;
+    world.bossAlive = false;
+    world.waveSpawnsLeft = 0;
+    world.waveTimer = 0;
+    world.nextWaveDelay = 0;
+
+    enemies.length = 0;
+    bulletsP.length = 0;
+    bulletsE.length = 0;
+    items.length = 0;
+
+    // 進下一關小補血，避免「一滴血打 Boss」的負面情緒
+    player.hp = clamp(player.hp + Math.round(player.maxHp*0.22), 1, player.maxHp);
+    player.shield = clamp(player.shield + 10, 0, player.maxShield);
+
+    startWave();
+  }
+
+  function wavePlan(){
+    const w = world.wave;
+    const s = world.stage;
+    const baseCount = 7 + Math.floor(s*1.3) + Math.floor(w*0.8);
+
+    const mix = [];
+    for (let i=0;i<baseCount;i++){
+      let t = 'grunt';
+      const r = Math.random();
+      if (s >= 2 && r < 0.20) t = 'zig';
+      if (s >= 3 && r >= 0.20 && r < 0.34) t = 'sniper';
+      if (s >= 4 && r >= 0.34 && r < 0.46) t = 'tank';
+      if (s >= 2 && r >= 0.46 && r < 0.56) t = 'rush';
+      mix.push(t);
+    }
+
+    const interval = Math.max(0.36, 0.70 - s*0.05 - w*0.03);
+    return { list: mix, interval };
+  }
+
+  let waveQueue = [];
+  let waveInterval = 0.6;
+
+  function startWave(){
+    const { list, interval } = wavePlan();
+    waveQueue = list;
+    waveInterval = interval;
+    world.waveSpawnsLeft = list.length;
+    world.waveTimer = 0;
+  }
+
+  function maybeAdvance(){
+    if (world.bossAlive) return;
+
+    const wavesTotal = 4 + Math.min(4, Math.floor(world.stage*0.6));
+    const waveDone = world.waveSpawnsLeft <= 0 && enemies.length === 0;
+
+    if (!waveDone) return;
+
+    if (world.wave < wavesTotal){
+      world.nextWaveDelay = 1.1;
+    } else {
+      // Boss time
+      spawnBoss();
+    }
+  }
+
+  function clearStage(){
+    state = STATE.CLEAR;
+    show(ovClear);
+    clearDesc.textContent = `關卡 ${world.stage} 完成。分數 ${world.score}。下一關怪更兇，但你也更強。`;
+  }
+
+  function gameOver(){
+    state = STATE.OVER;
+    show(ovOver);
+    overDesc.textContent = `關卡 ${world.stage} / 波次 ${world.wave}，分數 ${world.score}。再來一次，把 Boss 的自信打掉。`;
+  }
+
+  // ===== Pause =====
+  function togglePause(){
+    if (state === STATE.RUN){
+      state = STATE.PAUSE;
+      show(ovPause);
+      btnPause.textContent = '繼續';
+    } else if (state === STATE.PAUSE){
+      hide(ovPause);
+      state = STATE.RUN;
+      btnPause.textContent = '暫停';
+    }
+  }
+
+  btnPause.addEventListener('click', togglePause);
+  btnResume.addEventListener('click', () => {
+    hide(ovPause);
+    state = STATE.RUN;
+    btnPause.textContent = '暫停';
+  });
+  btnRestart.addEventListener('click', () => restart());
+
+  btnStart.addEventListener('click', () => {
+    hide(ovStart);
+    restart();
+  });
+
+  btnNext.addEventListener('click', () => {
+    hide(ovClear);
+    state = STATE.RUN;
+    setupStage(world.stage + 1);
+  });
+
+  btnAgain.addEventListener('click', () => {
+    hide(ovOver);
+    state = STATE.RUN;
+    restart();
+  });
+
+  function restart(){
+    // reset progression
+    world.stage = 1;
+    world.wave = 1;
+    world.score = 0;
+    world.time = 0;
+
+    fx.rapid = fx.spread = fx.slow = fx.magnet = 0;
+
+    player.x = W()/2;
+    player.y = H() - 42;
+    targetX = player.x;
+
+    player.r = 14;
+    player.maxHp = 100;
+    player.hp = 100;
+    player.maxShield = 60;
+    player.shield = 0;
+
+    player.lvl = 1;
+    player.xp = 0;
+    player.nextXp = 25;
+
+    player.dmg = 10;
+    player.fireRate = 7.0;
+    player.bulletSpeed = 520;
+    player.moveSpeed = 780;
+    player.spreadN = 1;
+    player.pierce = 0;
+
+    enemies.length = 0;
+    bulletsP.length = 0;
+    bulletsE.length = 0;
+    items.length = 0;
+
+    hide(ovPause);
+    hide(ovLevel);
+    hide(ovClear);
+    hide(ovOver);
+
+    state = STATE.RUN;
+    btnPause.textContent = '暫停';
+
+    startWave();
+  }
+
+  // ===== Update & collisions =====
+  function updateHUD(){
+    $stage.textContent = String(world.stage);
+    $wave.textContent = String(world.wave);
+    $lvl.textContent = String(player.lvl);
+    $score.textContent = String(world.score);
+
+    const hpPct = clamp(player.hp / player.maxHp, 0, 1) * 100;
+    const shPct = clamp(player.shield / player.maxShield, 0, 1) * 100;
+    $hpFill.style.width = hpPct.toFixed(1) + '%';
+    $shFill.style.width = shPct.toFixed(1) + '%';
+    $hpText.textContent = `${Math.ceil(player.hp)}/${player.maxHp}  +${Math.ceil(player.shield)}`;
+  }
+
+  function hitPlayer(dmg){
+    let left = dmg;
+    if (player.shield > 0){
+      const use = Math.min(player.shield, left);
+      player.shield -= use;
+      left -= use;
+    }
+    if (left > 0){
+      player.hp -= left;
+      if (player.hp <= 0) gameOver();
+    }
+  }
+
+  function circleHit(ax,ay,ar,bx,by,br){
+    const dx = ax-bx, dy = ay-by;
+    const rr = ar+br;
+    return dx*dx + dy*dy <= rr*rr;
+  }
+
+  function update(dt){
+    world.time += dt;
+
+    // effects
+    fx.rapid = Math.max(0, fx.rapid - dt);
+    fx.spread = Math.max(0, fx.spread - dt);
+    fx.slow = Math.max(0, fx.slow - dt);
+    fx.magnet = Math.max(0, fx.magnet - dt);
+
+    const ww = W(), hh = H();
+
+    // movement target
+    targetX = clamp(targetX, 20, ww-20);
+
+    // keyboard nudge
+    const k = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
+    if (k !== 0) targetX += k * player.moveSpeed * dt;
+
+    // player lerp to target
+    const dx = targetX - player.x;
+    const maxStep = player.moveSpeed * dt;
+    player.x += clamp(dx, -maxStep, maxStep);
+    player.y = hh - 44;
+
+    // firing
+    const fireMul = fx.rapid > 0 ? 1.75 : 1.0;
+    const fireEvery = 1 / (player.fireRate * fireMul);
+    player.fireCd -= dt;
+    if (player.fireCd <= 0){
+      player.fireCd = fireEvery;
+      shootPlayer();
+    }
+
+    // wave spawning
+    if (!world.bossAlive){
+      if (world.nextWaveDelay > 0){
+        world.nextWaveDelay -= dt;
+        if (world.nextWaveDelay <= 0){
+          world.wave += 1;
+          startWave();
+        }
+      } else {
+        world.waveTimer -= dt;
+        if (world.waveSpawnsLeft > 0){
+          if (world.waveTimer <= 0){
+            const t = waveQueue.shift();
+            spawnEnemy(t);
+            world.waveSpawnsLeft -= 1;
+            world.waveTimer = waveInterval;
+          }
+        }
+      }
+    }
+
+    // enemies update
+    for (let i=enemies.length-1;i>=0;i--){
+      const e = enemies[i];
+      e.t += dt;
+
+      if (e.type === 'boss'){
+        e.x += e.vx * dt;
+        if (e.x < 60){ e.x = 60; e.vx = Math.abs(e.vx); }
+        if (e.x > ww-60){ e.x = ww-60; e.vx = -Math.abs(e.vx); }
+      } else if (e.type === 'zig'){
+        e.y += e.vy * dt;
+        e.x += Math.sin(e.t*2.2) * 70 * dt;
+      } else if (e.type === 'rush'){
+        e.y += e.vy * dt;
+      } else {
+        e.y += e.vy * dt;
+      }
+
+      // shooting
+      e.shootCd -= dt;
+      if (e.shootCd <= 0){
+        e.shootCd = e.shootEvery;
+        shootEnemy(e);
+      }
+
+      // offscreen fail-safe
+      if (e.y > hh + 80){
+        enemies.splice(i,1);
+        continue;
+      }
+
+      // collide with player
+      if (state === STATE.RUN && circleHit(e.x,e.y,e.r, player.x,player.y, player.r)){
+        hitPlayer(18 + world.stage*2);
+        e.hp -= 60; // mutual damage
+      }
+
+      if (e.hp <= 0){
+        // kill
+        if (e.type === 'boss'){
+          world.score += e.score;
+          addXP(120 + world.stage*25);
+          dropItem(e.x, e.y);
+          enemies.splice(i,1);
+          world.bossAlive = false;
+          clearStage();
+        } else {
+          world.score += e.score;
+          addXP(6 + Math.floor(world.stage*1.2));
+          dropItem(e.x, e.y);
+          enemies.splice(i,1);
+        }
+      }
+    }
+
+    // bullets update
+    function stepBullets(arr, isEnemy){
+      for (let i=arr.length-1;i>=0;i--){
+        const b = arr[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        if (b.x < -40 || b.x > ww+40 || b.y < -60 || b.y > hh+60){
+          arr.splice(i,1);
+          continue;
+        }
+
+        if (isEnemy){
+          // enemy bullet hit player
+          if (state === STATE.RUN && circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
+            hitPlayer(b.dmg);
+            arr.splice(i,1);
+          }
+        }
+      }
+    }
+    stepBullets(bulletsP, false);
+    stepBullets(bulletsE, true);
+
+    // bullet-bullet collision (player vs enemy)
+    for (let i=bulletsP.length-1;i>=0;i--){
+      const p = bulletsP[i];
+      for (let j=bulletsE.length-1;j>=0;j--){
+        const e = bulletsE[j];
+        if (circleHit(p.x,p.y,p.r, e.x,e.y,e.r)){
+          bulletsE.splice(j,1);
+          // player bullet also消失
+          bulletsP.splice(i,1);
+          break;
+        }
+      }
+    }
+
+    // player bullet hit enemies
+    for (let i=bulletsP.length-1;i>=0;i--){
+      const b = bulletsP[i];
+      let consumed = false;
+      for (let j=enemies.length-1;j>=0;j--){
+        const e = enemies[j];
+        if (circleHit(b.x,b.y,b.r, e.x,e.y,e.r)){
+          e.hp -= b.dmg;
+          if (b.pierce > 0){
+            b.pierce -= 1;
+          } else {
+            bulletsP.splice(i,1);
+            consumed = true;
+          }
+          break;
+        }
+      }
+      if (consumed) continue;
+    }
+
+    // items update
+    for (let i=items.length-1;i>=0;i--){
+      const it = items[i];
+      it.y += it.vy * dt;
+
+      // magnet
+      if (fx.magnet > 0){
+        const dxm = player.x - it.x;
+        const dym = player.y - it.y;
+        const len = Math.max(1, Math.hypot(dxm,dym));
+        const pull = 260;
+        it.x += (dxm/len) * pull * dt;
+        it.y += (dym/len) * pull * dt;
+      }
+
+      if (it.y > hh + 40){
+        items.splice(i,1);
+        continue;
+      }
+
+      if (circleHit(it.x,it.y,it.r, player.x,player.y, player.r+6)){
+        applyItem(it.t);
+        items.splice(i,1);
+      }
+    }
+
+    // stage flow
+    maybeAdvance();
+  }
+
+  // ===== Render =====
+  function draw(){
+    const ww = W(), hh = H();
+
+    // background
+    ctx.fillStyle = '#0a0f1c';
+    ctx.fillRect(0,0,ww,hh);
+
+    // subtle grid
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = '#e7eefc';
+    ctx.lineWidth = 1;
+    const step = 40;
+    for (let x=0;x<=ww;x+=step){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,hh); ctx.stroke();
+    }
+    for (let y=0;y<=hh;y+=step){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ww,y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // items
+    for (const it of items){
+      const icon = ({
+        heal:'❤', shield:'🛡', rapid:'⚡', spread:'✦', slow:'⏱', bomb:'💣', magnet:'🧲'
+      })[it.t] || '•';
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(255,255,255,.10)';
+      ctx.arc(it.x, it.y, it.r+6, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = '#e7eefc';
+      ctx.font = '900 14px system-ui, "Noto Sans TC"';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(icon, it.x, it.y+0.5);
+    }
+
+    // enemies
+    for (const e of enemies){
+      // body
+      ctx.beginPath();
+      if (e.type === 'boss'){
+        ctx.fillStyle = 'rgba(255,102,138,.18)';
+        ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,102,138,.70)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        const col = (e.type==='tank') ? 'rgba(255,204,102,.16)' : 'rgba(255,255,255,.10)';
+        ctx.fillStyle = col;
+        ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(231,238,252,.35)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      // hp bar
+      const w = e.r*2;
+      const pct = clamp(e.hp/e.maxHp, 0, 1);
+      ctx.fillStyle = 'rgba(255,255,255,.10)';
+      ctx.fillRect(e.x-w/2, e.y - e.r - 10, w, 4);
+      ctx.fillStyle = (e.type==='boss') ? '#ff668a' : '#ffcc66';
+      ctx.fillRect(e.x-w/2, e.y - e.r - 10, w*pct, 4);
+    }
+
+    // bullets
+    for (const b of bulletsP){
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(124,247,182,.95)';
+      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill();
+    }
+    for (const b of bulletsE){
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(87,184,255,.90)';
+      ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    // player
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(231,238,252,.14)';
+    ctx.arc(0,0,player.r+6,0,Math.PI*2);
+    ctx.fill();
+
+    // ship
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(231,238,252,.85)';
+    ctx.moveTo(0, -player.r);
+    ctx.lineTo(player.r*0.9, player.r);
+    ctx.lineTo(-player.r*0.9, player.r);
+    ctx.closePath();
+    ctx.fill();
+
+    // shield ring
+    if (player.shield > 0){
+      const pct = clamp(player.shield/player.maxShield,0,1);
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(87,184,255,.85)';
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.30 + pct*0.45;
+      ctx.arc(0,0,player.r+10, -Math.PI/2, -Math.PI/2 + Math.PI*2*pct);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // status text
+    ctx.fillStyle = 'rgba(231,238,252,.78)';
+    ctx.font = '900 12px system-ui, "Noto Sans TC"';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    const eff = [];
+    if (fx.rapid>0) eff.push(`⚡${fx.rapid.toFixed(0)}s`);
+    if (fx.spread>0) eff.push(`✦${fx.spread.toFixed(0)}s`);
+    if (fx.slow>0) eff.push(`⏱${fx.slow.toFixed(0)}s`);
+    if (fx.magnet>0) eff.push(`🧲${fx.magnet.toFixed(0)}s`);
+
+    const line1 = eff.length ? `道具：${eff.join('  ')}` : '';
+    if (line1) ctx.fillText(line1, 12, 10);
+
+    // xp bar (small)
+    const xpPct = clamp(player.xp/player.nextXp,0,1);
+    const xbW = 120;
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    ctx.fillRect(12, 30, xbW, 6);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.fillRect(12, 30, xbW*xpPct, 6);
+  }
+
+  // ===== Main loop =====
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(0.033, (now-last)/1000);
+    last = now;
+
+    if (state === STATE.RUN){
+      update(dt);
+    }
+    draw();
+    updateHUD();
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

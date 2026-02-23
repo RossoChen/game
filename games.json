@@ -3,12 +3,30 @@
     "title": "Snake",
     "href": "./games/snake/",
     "desc": "經典貪食蛇：碰牆/碰身體結束。支援大按鍵與滑動操作。",
-    "tags": ["經典", "單手"]
+    "tags": [
+      "經典",
+      "單手"
+    ]
   },
   {
     "title": "Dodger",
     "href": "./games/Dodger/index.html",
     "desc": "單手躲避：左右拖曳閃子彈，撿道具拿護盾/減速/清場/吸附/縮小。",
-    "tags": ["反應", "單手"]
+    "tags": [
+      "反應",
+      "單手"
+    ]
+  },
+  {
+    "title": "Blaster",
+    "href": "./games/Blaster/index.html",
+    "desc": "左右移動自動射擊：打掉怪物與子彈、撿道具升級，撐到 Boss 並一路變更強。",
+    "tags": [
+      "射擊",
+      "單手",
+      "升級",
+      "Boss"
+    ],
+    "new": true
   }
 ]
