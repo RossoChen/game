@@ -222,7 +222,7 @@ function bossTick(e,dt){
   if(newPhase!==e.phase){
     e.phase=newPhase;
     if(e.phase===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.55;e.spiralCd=.22}
-    else if(e.phase===3){toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.summonCd=1.0+Math.random()*1.0;e.ringCd=.38;e.spiralCd=.12;e.burstCd=.35}
+    else if(e.phase===3){toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.summonCd=1.0+Math.random()*1.0;e.ringCd=.18;e.spiralCd=.12;e.burstCd=.35}
   }
   const spdMul=(e.phase===1?1.00:(e.phase===2?1.05:1.10));
   const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.06));
@@ -252,7 +252,7 @@ function bossTick(e,dt){
   // ring - near full screen
   e.ringCd-=dt;
   if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
-    const n=(e.phase===1?16:(e.phase===2?34:46));
+    const n=(e.phase===1?16:(e.phase===2?34:100));
     const base=Math.random()*Math.PI*2;
     for(let i=0;i<n;i++){const a=base+(i/n)*Math.PI*2;enemyShoot(e,a,spdMul*0.98,dmgMul*0.75)}
     e.ringCd=(e.phase===1?0.95:(e.phase===2?0.55:0.38));
