@@ -18,6 +18,7 @@
 
   <style>
     :root { color-scheme: dark; }
+
     html, body{
       height:100%;
       margin:0;
@@ -42,7 +43,7 @@
     }
 
     .wrap{
-      width:min(980px, 92vw);
+      width:min(900px, 92vw);
       overflow:auto;
       -webkit-overflow-scrolling: touch;
       display:flex;
@@ -50,56 +51,12 @@
       gap:12px;
     }
 
-    .top{
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-    }
-    h1{ margin:0; font-size:28px; letter-spacing:.3px; }
-    .sub{ margin:0; opacity:.72; font-size:13px; }
-
-    .searchRow{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      width:min(520px, 100%);
-      margin-top:8px;
-    }
-    .search{
-      flex:1;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color:#e7eefc;
-      padding:12px 12px;
-      outline:none;
-      font-size:14px;
-    }
-    .pill{
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color:#e7eefc;
-      padding:10px 12px;
-      font-size:12px;
-      white-space:nowrap;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .pill[aria-pressed="true"]{
-      background: rgba(255,255,255,.12);
-      border-color: rgba(255,255,255,.22);
-    }
+    h1{ margin:0 0 4px; font-size:28px; letter-spacing:.3px; }
 
     .grid{
       display:grid;
       grid-template-columns: 1fr;
       gap:12px;
-    }
-    @media (min-width: 720px){
-      .grid{ grid-template-columns: 1fr 1fr; }
     }
 
     a.card{
@@ -116,7 +73,15 @@
     a.card:hover{ background: rgba(255,255,255,.09); }
     a.card:active{ transform: scale(.99); }
 
-    .t{ font-weight:900; margin-bottom:6px; font-size:18px; display:flex; gap:10px; align-items:center; }
+    .t{
+      font-weight:900;
+      margin-bottom:6px;
+      font-size:18px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
     .badge{
       font-size:11px;
       padding:6px 10px;
@@ -124,8 +89,10 @@
       border:1px solid rgba(255,255,255,.16);
       background: rgba(255,255,255,.06);
       opacity:.9;
+      white-space:nowrap;
     }
-    .d{ opacity:.78; font-size:13px; line-height:1.45; }
+
+    .d{ opacity:.78; font-size:13px; line-height:1.4; }
 
     .tagRow{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
     .tag{
@@ -155,38 +122,25 @@
 <body>
   <div class="app">
     <div class="wrap">
-      <div class="top">
-        <div>
-          <h1>Games Hub</h1>
-          <p class="sub"></p>
-
-          <div class="searchRow">
-            <input id="q" class="search" placeholder="搜尋遊戲 / 標籤，例如：單手、反應、休閒" autocomplete="off" inputmode="search">
-            <button id="onlyNew" class="pill" type="button" aria-pressed="false">只看 NEW</button>
-          </div>
-        </div>
+      <div>
+        <h1>Games Hub</h1>
       </div>
 
       <div id="grid" class="grid"></div>
-      <div id="empty" class="empty" style="display:none;"></div>
+      <div id="empty" class="empty" style="display:none;">目前沒有可顯示的遊戲。</div>
     </div>
   </div>
 
 <script>
 (() => {
   const $grid = document.getElementById('grid');
-  const $q = document.getElementById('q');
-  const $onlyNew = document.getElementById('onlyNew');
   const $empty = document.getElementById('empty');
 
   let games = [];
-  let onlyNew = false;
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[m]));
-
-  const normalize = (s) => String(s ?? '').toLowerCase().trim();
 
   function makeCard(g){
     const tags = Array.isArray(g.tags) ? g.tags : [];
@@ -194,12 +148,11 @@
     if (g.new) badges.push('<span class="badge">NEW</span>');
     if (g.badge) badges.push(`<span class="badge">${esc(g.badge)}</span>`);
 
-    // 用相對路徑：更不怕搬家/改 repo 名
     const href = g.href || '#';
 
     return `
       <a class="card" href="${esc(href)}">
-        <div class="t">${esc(g.title)} ${badges.join(' ')}</div>
+        <div class="t">${esc(g.title || 'Untitled')} ${badges.join(' ')}</div>
         <div class="d">${esc(g.desc || '')}</div>
         ${tags.length ? `<div class="tagRow">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>` : ``}
       </a>
@@ -207,26 +160,9 @@
   }
 
   function render(){
-    const query = normalize($q.value);
-    const filtered = games.filter(g => {
-      if (onlyNew && !g.new) return false;
-      const hay = [
-        g.title, g.desc,
-        ...(Array.isArray(g.tags) ? g.tags : [])
-      ].map(normalize).join(' ');
-      return !query || hay.includes(query);
-    });
-
-    $grid.innerHTML = filtered.map(makeCard).join('');
-    $empty.style.display = filtered.length ? 'none' : 'block';
-    if (!filtered.length){
-      $empty.innerHTML =
-        `找不到符合條件的遊戲。<br>` +
-        `你可以：<br>` +
-        `1) 清空搜尋字<br>` +
-        `2) 關掉「只看 NEW」<br>` +
-        `3) 或者…新增一款遊戲讓它出現（這是最硬的解法）。`;
-    }
+    const hasAny = games.length > 0;
+    $grid.innerHTML = hasAny ? games.map(makeCard).join('') : '';
+    $empty.style.display = hasAny ? 'none' : 'block';
   }
 
   async function load(){
@@ -236,24 +172,13 @@
       const data = await res.json();
       games = Array.isArray(data) ? data : (data.games || []);
     }catch(e){
-      // fallback：避免你在飛機上測試時入口頁直接死給你看
-      games = [
-        { title:'Snake', href:'./games/snake/', desc:'經典貪食蛇：碰牆/碰身體結束。支援大按鍵與滑動操作。', tags:['經典','單手'] },
-        { title:'Dodger', href:'./games/Dodger/index.html', desc:'左右拖曳閃子彈，撿道具拿護盾/減速/清場/吸附/縮小。', tags:['反應','單手'] },
-        { title:'Fishing', href:'./games/Fishing/', desc:'派遣 → 結算 → 賣魚升級，離線也算進度。', tags:['放置','養成'] },
-      ];
+      console.warn('games.json 讀取失敗：', e);
+      games = [];
     }
     render();
   }
 
-  $q.addEventListener('input', render);
-  $onlyNew.addEventListener('click', () => {
-    onlyNew = !onlyNew;
-    $onlyNew.setAttribute('aria-pressed', String(onlyNew));
-    render();
-  });
-
-  // 可選：PWA SW（若你有放 sw.js）
+  // 可選：如果你有 sw.js，就會自動註冊；沒有也不會炸
   if ('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
