@@ -1,1353 +1,1107 @@
 <!doctype html>
-<html lang="zh-Hant" data-theme="dark">
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
-  <title>One-Thumb Blaster</title>
-
+  <title>Blaster</title>
   <meta name="theme-color" content="#0b1220" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Blaster" />
-
-  <!-- 用相對路徑：本機測試 / GitHub Pages / 加入主畫面都比較不會翻車 -->
-  <link rel="manifest" href="../../manifest.webmanifest">
-  <link rel="apple-touch-icon" href="../../icons/icon-192.png">
 
   <style>
-    :root{
-      color-scheme: dark;
-      --homebar-guard: max(env(safe-area-inset-bottom), 34px);
-      --homebar-extra: 18px;
-      --maxw: 560px;
-    }
-    html[data-theme="dark"]{
-      --bg:#0b1220;
-      --panel:rgba(255,255,255,.08);
-      --panel2:rgba(255,255,255,.06);
-      --border:rgba(255,255,255,.18);
-      --border2:rgba(255,255,255,.14);
-      --fg:#e7eefc;
-      --muted:rgba(231,238,252,.82);
-      --board:#0a0f1c;
-      --danger:#ff668a;
-      --good:#7cf7b6;
-      --accent:#57b8ff;
-      --warn:#ffcc66;
-    }
-
+    :root { color-scheme: dark; }
     html, body{
-      margin:0; height:100%;
-      overflow:hidden;
-      overscroll-behavior:none;
-      background:var(--bg);
-      color:var(--fg);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", Arial, sans-serif;
+      height:100%;
+      margin:0;
+      background:#0b1220;
+      color:#e7eefc;
+      font-family: system-ui, "Noto Sans TC", sans-serif;
       -webkit-user-select:none; user-select:none;
-      touch-action:none;
+      touch-action: manipulation;
+      overflow:hidden;
     }
     body{ position:fixed; inset:0; }
 
     .app{
       height:100svh;
-      padding-top: calc(env(safe-area-inset-top) + 14px);
-      padding-right: calc(env(safe-area-inset-right) + 12px);
-      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
-      padding-left: calc(env(safe-area-inset-left) + 12px);
+      padding-top: calc(env(safe-area-inset-top) + 10px);
+      padding-right: calc(env(safe-area-inset-right) + 10px);
+      padding-bottom: calc(env(safe-area-inset-bottom) + 10px);
+      padding-left: calc(env(safe-area-inset-left) + 10px);
       display:flex;
       flex-direction:column;
-      gap:12px;
-      align-items:center;
+      gap:10px;
+      box-sizing:border-box;
     }
 
     .hud{
-      width:min(var(--maxw), 96vw);
       display:flex;
-      flex-direction:column;
+      flex-wrap:wrap;
       gap:10px;
-      position:relative;
-    }
-    .hudTop{
-      display:flex;
+      align-items:center;
       justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
     }
-    .row{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-
-    .pill{
-      border:1px solid var(--border2);
-      background:var(--panel2);
+    .hudLeft, .hudRight{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .pill, button.pill{
       border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:#e7eefc;
       padding:10px 12px;
-      font-size:13px;
-      text-align:center;
-      white-space:nowrap;
-      backdrop-filter: blur(8px);
-    }
-    .pill strong{ font-weight:900; }
-
-    .btn{
-      border:1px solid var(--border);
-      background:var(--panel);
-      color:var(--fg);
-      border-radius:16px;
-      padding:12px 14px;
       font-size:14px;
-      font-weight:900;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
+      line-height:1;
       white-space:nowrap;
-      min-height:46px;
-      touch-action:manipulation;
-      backdrop-filter: blur(8px);
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn:active{ transform:scale(0.985); }
+    button.pill{ cursor:pointer; }
+    button.pill:active{ transform: scale(.99); }
 
-    .hpWrap{
-      flex:1;
-      min-width: 220px;
-      border:1px solid var(--border2);
-      background:var(--panel2);
-      border-radius:999px;
-      padding:8px 10px;
-      backdrop-filter: blur(8px);
+    .hpbar{
       display:flex;
       align-items:center;
       gap:10px;
+      padding:10px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
     }
-    .hpBar{
-      flex:1;
-      height:10px;
+    .hpbar .label{ opacity:.85; font-weight:700; }
+    .hpbar .track{
+      width:min(420px, 46vw);
+      height:14px;
       border-radius:999px;
       background: rgba(255,255,255,.10);
       overflow:hidden;
-      position:relative;
+      border:1px solid rgba(255,255,255,.10);
     }
-    .hpFill{ height:100%; width:0%; background: var(--good); }
-    .shFill{ position:absolute; inset:0; width:0%; background: rgba(87,184,255,.85); mix-blend-mode: screen; }
-    .hpText{ font-size:12px; opacity:.9; white-space:nowrap; }
+    .hpbar .fill{
+      height:100%;
+      width:50%;
+      background: rgba(120,255,200,.95);
+    }
+    .hpbar .num{ opacity:.85; font-variant-numeric: tabular-nums; }
 
-    .stage{
-      width:min(var(--maxw), 96vw);
+    /* 主區域：用 flex 讓 board 自動吃剩餘高度，保證 touchpad 不被擠出畫面 */
+    .main{
       flex:1;
+      min-height:0; /* 讓內部 canvas 可以縮，不會把底部擠走 */
       display:flex;
       flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      min-height:0;
+      gap:10px;
     }
 
-    .board{
-      width: min(var(--maxw), 96vw);
-      height: min(72svh, 720px);
+    .boardWrap{
+      flex:1;
+      min-height:0;
       border-radius:18px;
-      border:1px solid var(--border2);
-      background:var(--board);
+      border:1px solid rgba(255,255,255,.12);
+      background: radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),
+                  rgba(255,255,255,.03);
+      overflow:hidden;
+      position:relative;
+    }
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    .touchpad{
+      flex:0 0 auto;
+      height: max(86px, 13svh);
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
       position:relative;
       overflow:hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .touchpad .hint{
+      position:absolute;
+      inset:auto 0 10px 0;
+      text-align:center;
+      font-size:14px;
+      opacity:.75;
       pointer-events:none;
     }
-    canvas{ width:100%; height:100%; display:block; }
+    .touchpad .bar{
+      position:absolute;
+      left:10px; right:10px;
+      top:16px; bottom:16px;
+      border-radius:14px;
+      border:1px dashed rgba(255,255,255,.18);
+      opacity:.7;
+    }
+    .touchpad .thumb{
+      position:absolute;
+      top:50%;
+      width:46px; height:46px;
+      transform: translate(-50%,-50%);
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      pointer-events:none;
+    }
 
+    /* 升級選單 */
     .overlay{
-      position:absolute; inset:0;
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.58);
       display:none;
-      align-items:center; justify-content:center;
-      text-align:center;
+      align-items:center;
+      justify-content:center;
       padding:16px;
-      background:rgba(0,0,0,.40);
-      backdrop-filter:blur(10px);
-      pointer-events:auto;
+      z-index: 50;
     }
     .overlay.show{ display:flex; }
-
     .panel{
-      width:min(520px, 92%);
-      border:1px solid var(--border2);
-      background: rgba(255,255,255,.08);
+      width:min(720px, 92vw);
       border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(15,22,40,.92);
       padding:16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      box-shadow: 0 18px 70px rgba(0,0,0,.55);
     }
-    .panel h2{ margin:0 0 8px; font-size:18px; }
-    .panel p{ margin:0 0 12px; opacity:.86; font-size:13px; line-height:1.6; color:var(--muted); }
-    .panel .grid{
+    .panel h2{
+      margin:0 0 10px;
+      font-size:18px;
+      letter-spacing:.2px;
+    }
+    .opts{
       display:grid;
       grid-template-columns: 1fr;
       gap:10px;
-      margin-top:12px;
     }
-    .choice{
-      text-align:left;
-      border:1px solid var(--border);
-      background: rgba(255,255,255,.07);
-      color:var(--fg);
+    @media (min-width: 720px){
+      .opts{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .opt{
       border-radius:16px;
-      padding:12px 12px;
-      font-weight:900;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .choice small{ display:block; font-weight:600; opacity:.8; margin-top:6px; line-height:1.45; }
-    .choice:active{ transform: scale(.99); }
-
-    /* Touchpad（相對位移） */
-    .touchpad{
-      width:min(var(--maxw), 96vw);
-      border-radius:18px;
-      border:1px solid var(--border);
-      background:var(--panel);
-      min-height:84px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      position:relative;
-      overflow:hidden;
-      touch-action:none;
-      backdrop-filter: blur(8px);
-      padding-bottom: calc(var(--homebar-guard) + var(--homebar-extra));
-    }
-    .touchpadHint{
-      position:absolute; inset:0;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:900;
-      font-size:14px;
-      opacity:.72;
-      pointer-events:none;
-    }
-    .touchpadBar{
-      position:absolute;
-      left:14px; right:14px;
-      height:8px;
-      bottom: calc(14px + var(--homebar-guard));
-      border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.10);
-      pointer-events:none;
-    }
-    .knob{
-      position:absolute;
-      width:44px; height:44px;
-      border-radius:999px;
-      border:1px solid var(--border2);
-      background: rgba(255,255,255,.10);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      font-weight:1000;
-      transform: translate(-50%, -50%);
-      opacity:0;
-      pointer-events:none;
-    }
-    .knob.show{ opacity:1; }
-
-    .mini{
-      font-size:12px;
-      opacity:.8;
-    }
-    a.link{
-      color:inherit;
-      opacity:.85;
-      text-decoration:none;
-      border:1px solid var(--border2);
-      padding:10px 12px;
-      border-radius:16px;
+      border:1px solid rgba(255,255,255,.14);
       background: rgba(255,255,255,.06);
+      padding:14px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
     }
+    .opt:active{ transform: scale(.99); }
+    .opt .t{ font-weight:900; margin-bottom:6px; }
+    .opt .d{ opacity:.78; font-size:13px; line-height:1.4; }
+
+    /* 暫停/提示 */
+    .toast{
+      position:absolute;
+      left:50%;
+      top:16px;
+      transform: translateX(-50%);
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35);
+      font-size:13px;
+      opacity:.9;
+      display:none;
+      pointer-events:none;
+    }
+    .toast.show{ display:block; }
   </style>
 </head>
 
 <body>
   <div class="app">
     <div class="hud">
-      <div class="hudTop">
-        <div class="row">
-          <a class="link" href="../../">← Hub</a>
-          <div class="pill">關卡 <strong id="stage">1</strong></div>
-          <div class="pill">波次 <strong id="wave">1</strong></div>
-          <div class="pill">等級 <strong id="lvl">1</strong></div>
-          <div class="pill">分數 <strong id="score">0</strong></div>
+      <div class="hudLeft">
+        <button class="pill" id="btnHub">← Hub</button>
+        <span class="pill" id="hudStage">關卡 1</span>
+        <span class="pill" id="hudWave">波次 1</span>
+        <span class="pill" id="hudLv">等級 1</span>
+        <span class="pill" id="hudScore">分數 0</span>
+      </div>
+      <div class="hudRight">
+        <div class="hpbar">
+          <span class="label">HP</span>
+          <div class="track"><div class="fill" id="hpFill"></div></div>
+          <span class="num" id="hpNum">100/100</span>
         </div>
-        <div class="row" style="flex:1; min-width: 240px;">
-          <div class="hpWrap" title="HP / Shield">
-            <div class="mini">HP</div>
-            <div class="hpBar">
-              <div class="hpFill" id="hpFill"></div>
-              <div class="shFill" id="shFill"></div>
-            </div>
-            <div class="hpText" id="hpText">--</div>
-          </div>
-          <button class="btn" id="btnPause" type="button">暫停</button>
-        </div>
+        <button class="pill" id="btnPause">暫停</button>
       </div>
     </div>
 
-    <div class="stage">
-      <div class="board" id="board">
+    <div class="main">
+      <div class="boardWrap" id="boardWrap">
         <canvas id="c"></canvas>
-
-        <div class="overlay show" id="ovStart">
-          <div class="panel">
-            <h2>One‑Thumb Blaster</h2>
-            <p>
-              左右拖曳移動，角色會自動開火。<br>
-              你要做的事很單純：<b>把怪物跟子彈一起打掉</b>，撐到 Boss，然後讓它知道誰才是 KPI。<br>
-              <span class="mini">提示：升級時會跳出 3 選 1，選錯也沒關係，反正 Boss 會幫你做回顧。</span>
-            </p>
-            <div class="grid">
-              <button class="btn" id="btnStart" type="button">開始</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="overlay" id="ovPause">
-          <div class="panel">
-            <h2>暫停</h2>
-            <p>休息可以，但不要忘了你剛剛差點被一顆豆豆子彈帶走。</p>
-            <div class="grid">
-              <button class="btn" id="btnResume" type="button">繼續</button>
-              <button class="btn" id="btnRestart" type="button">重開</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="overlay" id="ovLevel">
-          <div class="panel">
-            <h2>升級：選 1 個強化</h2>
-            <p id="lvDesc">你變強了。現在把強化選對，下一波就不會像在加班。</p>
-            <div class="grid" id="choices"></div>
-          </div>
-        </div>
-
-        <div class="overlay" id="ovClear">
-          <div class="panel">
-            <h2>Boss 清場 ✅</h2>
-            <p id="clearDesc">下一關會更兇（合理，因為你也更強）。</p>
-            <div class="grid">
-              <button class="btn" id="btnNext" type="button">下一關</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="overlay" id="ovOver">
-          <div class="panel">
-            <h2>你倒了</h2>
-            <p id="overDesc">復盤：不是你不夠強，是怪太不講武德（好啦其實是你沒撿道具）。</p>
-            <div class="grid">
-              <button class="btn" id="btnAgain" type="button">再來</button>
-            </div>
-          </div>
-        </div>
+        <div class="toast" id="toast">Paused</div>
       </div>
 
-      <div class="touchpad" id="pad">
-        <div class="touchpadHint">左右拖曳＝移動（自動射擊）</div>
-        <div class="touchpadBar"></div>
-        <div class="knob" id="knob">⦿</div>
+      <div class="touchpad" id="touchpad" aria-label="touchpad">
+        <div class="bar"></div>
+        <div class="thumb" id="thumb" style="left:50%;"></div>
+        <div class="hint">左右拖曳＝移動（自動射擊）</div>
       </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="panel">
+      <h2>升級：選一個</h2>
+      <div class="opts" id="opts"></div>
     </div>
   </div>
 
 <script>
 (() => {
-  // ===== Canvas setup =====
+  // -----------------------
+  // Canvas / Resize
+  // -----------------------
+  const wrap = document.getElementById('boardWrap');
   const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d', { alpha:false });
-  const board = document.getElementById('board');
+  const ctx = canvas.getContext('2d', { alpha: true });
 
   function resize(){
-    const r = board.getBoundingClientRect();
+    const r = wrap.getBoundingClientRect();
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.floor(r.width * dpr);
     canvas.height = Math.floor(r.height * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
+    W = r.width; H = r.height;
   }
-  addEventListener('resize', resize, { passive:true });
+  let W=0, H=0;
+  window.addEventListener('resize', resize);
   resize();
 
-  // ===== UI refs =====
-  const $stage = document.getElementById('stage');
-  const $wave  = document.getElementById('wave');
-  const $lvl   = document.getElementById('lvl');
-  const $score = document.getElementById('score');
-  const $hpFill = document.getElementById('hpFill');
-  const $shFill = document.getElementById('shFill');
-  const $hpText = document.getElementById('hpText');
+  // -----------------------
+  // HUD / UI
+  // -----------------------
+  const $stage = document.getElementById('hudStage');
+  const $wave  = document.getElementById('hudWave');
+  const $lv    = document.getElementById('hudLv');
+  const $score = document.getElementById('hudScore');
+  const $hpFill= document.getElementById('hpFill');
+  const $hpNum = document.getElementById('hpNum');
+  const $btnPause = document.getElementById('btnPause');
+  const $toast = document.getElementById('toast');
+  const $btnHub = document.getElementById('btnHub');
 
-  const ovStart = document.getElementById('ovStart');
-  const ovPause = document.getElementById('ovPause');
-  const ovLevel = document.getElementById('ovLevel');
-  const ovClear = document.getElementById('ovClear');
-  const ovOver  = document.getElementById('ovOver');
+  // Hub link：回上一層（/game/games/）
+  $btnHub.addEventListener('click', () => {
+    // 你Hub在 /game/ ，Blaster在 /game/games/Blaster/
+    // 往上兩層 -> /game/games/
+    location.href = '../';
+  });
 
-  const btnStart = document.getElementById('btnStart');
-  const btnPause = document.getElementById('btnPause');
-  const btnResume = document.getElementById('btnResume');
-  const btnRestart = document.getElementById('btnRestart');
-  const btnNext = document.getElementById('btnNext');
-  const btnAgain = document.getElementById('btnAgain');
-  const choicesBox = document.getElementById('choices');
-  const clearDesc = document.getElementById('clearDesc');
-  const overDesc = document.getElementById('overDesc');
+  let paused = false;
+  $btnPause.addEventListener('click', () => {
+    paused = !paused;
+    $btnPause.textContent = paused ? '繼續' : '暫停';
+    $toast.textContent = paused ? 'Paused' : '';
+    $toast.classList.toggle('show', paused);
+    if (!paused) lastT = performance.now();
+  });
 
-  // ===== Helpers =====
-  const clamp = (v,a,b)=> Math.max(a, Math.min(b,v));
+  // -----------------------
+  // Touchpad control
+  // -----------------------
+  const pad = document.getElementById('touchpad');
+  const thumb = document.getElementById('thumb');
+  let padActive = false;
+  let padX = 0.5; // 0..1
+  function setPadX(nx){
+    padX = Math.max(0, Math.min(1, nx));
+    thumb.style.left = `${padX*100}%`;
+    // player x uses padX
+    player.x = lerp(player.x, padX * W, 1); // snap-ish
+  }
+  function pointerToPadX(e){
+    const r = pad.getBoundingClientRect();
+    return (e.clientX - r.left) / r.width;
+  }
+  pad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    pad.setPointerCapture(e.pointerId);
+    padActive = true;
+    setPadX(pointerToPadX(e));
+  });
+  pad.addEventListener('pointermove', (e) => {
+    if (!padActive) return;
+    e.preventDefault();
+    setPadX(pointerToPadX(e));
+  });
+  pad.addEventListener('pointerup', (e) => {
+    padActive = false;
+    try{ pad.releasePointerCapture(e.pointerId); }catch(_){}
+  });
+  pad.addEventListener('pointercancel', () => padActive = false);
+
+  // -----------------------
+  // Helpers
+  // -----------------------
   const rand = (a,b)=> a + Math.random()*(b-a);
-  const irand = (a,b)=> Math.floor(rand(a,b+1));
+  const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+  const lerp = (a,b,t)=> a + (b-a)*t;
+  const dist2 = (ax,ay,bx,by)=> { const dx=ax-bx, dy=ay-by; return dx*dx + dy*dy; };
 
-  function show(el){ el.classList.add('show'); }
-  function hide(el){ el.classList.remove('show'); }
-
-  // ===== Game state =====
-  const STATE = { MENU:0, RUN:1, PAUSE:2, LEVEL:3, CLEAR:4, OVER:5 };
-  let state = STATE.MENU;
-
-  // World units in CSS pixels
-  function W(){ return board.getBoundingClientRect().width; }
-  function H(){ return board.getBoundingClientRect().height; }
-
-  const world = {
+  // -----------------------
+  // Game State
+  // -----------------------
+  const state = {
     stage: 1,
     wave: 1,
     score: 0,
     time: 0,
+    xp: 0,
+    level: 1,
+    nextXp: 40,
+    waveClearCooldown: 0,
+    waveInProgress: false,
     bossAlive: false,
-    waveSpawnsLeft: 0,
-    waveTimer: 0,
-    nextWaveDelay: 0,
+    bossEveryWaves: 5, // 每關第5波Boss
   };
 
-  const fx = {
-    rapid: 0,
-    spread: 0,
-    slow: 0,
-    magnet: 0,
-  };
-
+  // Player build
   const player = {
-    x: 0,
+    x: W*0.5,
     y: 0,
     r: 14,
     hp: 100,
-    maxHp: 100,
-    shield: 0,
-    maxShield: 60,
-    lvl: 1,
-    xp: 0,
-    nextXp: 25,
-    dmg: 10,
-    fireCd: 0,
-    fireRate: 7.0,     // bullets/sec base
-    bulletSpeed: 520,
-    moveSpeed: 780,
-    spreadN: 1,        // permanent spread
-    pierce: 0,         // pierce count
+    hpMax: 100,
+    moveSpeed: 520,      // px/s
+    fireRate: 8,         // shots per sec
+    dmg: 12,
+    bulletSpeed: 820,
+    spread: 0,           // 0..2
+    pierce: 0,           // 0..2
+    shield: 0,           // hit points shield
+    shieldMax: 0,
+    magnet: 0,           // 0/1
+    slowAura: 0,         // 0/1
   };
 
-  let targetX = 0;
-  const enemies = [];
-  const bulletsP = [];
-  const bulletsE = [];
-  const items = [];
+  // Entities
+  let pBullets = [];
+  let eBullets = [];
+  let enemies  = [];
+  let drops    = [];
+  let particles= [];
 
-  // ===== Touchpad control =====
-  const pad = document.getElementById('pad');
-  const knob = document.getElementById('knob');
-  let dragging = false;
-  let lastPX = 0;
-
-  function setKnob(clientX, clientY){
-    const r = pad.getBoundingClientRect();
-    const x = clamp(clientX - r.left, 14, r.width - 14);
-    const y = clamp(clientY - r.top, 18, r.height - 18);
-    knob.style.left = x + 'px';
-    knob.style.top = y + 'px';
+  // Spawn lines (enemies settle here)
+  function enemyHoldY(){
+    // 讓怪停在上半部（別太靠近頂端）
+    return clamp(H * 0.18, 110, 190);
   }
 
-  pad.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    pad.setPointerCapture(e.pointerId);
-    dragging = true;
-    lastPX = e.clientX;
-    knob.classList.add('show');
-    setKnob(e.clientX, e.clientY);
-  });
-  pad.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    e.preventDefault();
-    setKnob(e.clientX, e.clientY);
-    const dx = e.clientX - lastPX;
-    lastPX = e.clientX;
-    // relative move
-    targetX += dx * 1.35;
-  });
-  function endDrag(){
-    dragging = false;
-    knob.classList.remove('show');
+  // -----------------------
+  // Wave system (一波一波)
+  // -----------------------
+  function waveConfig(stage, wave){
+    // 隨關卡上升，怪更多/更硬/射更快
+    const baseCount = 4 + Math.floor((stage-1)*1.2) + Math.floor((wave-1)*0.8);
+    const count = clamp(baseCount, 4, 14);
+
+    const hp = 22 + stage*6 + wave*3;
+    const fire = 0.6 + stage*0.08 + wave*0.06; // shots/sec
+    const bullet = 260 + stage*18 + wave*10;
+
+    return { count, hp, fire, bullet };
   }
-  pad.addEventListener('pointerup', (e) => { e.preventDefault(); endDrag(); });
-  pad.addEventListener('pointercancel', (e) => { e.preventDefault(); endDrag(); });
 
-  // Keyboard (desktop fallback)
-  const keys = { left:false, right:false };
-  addEventListener('keydown', (e)=>{
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
-    if (e.key === 'Escape') togglePause();
-  });
-  addEventListener('keyup', (e)=>{
-    if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
-    if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
-  });
+  function spawnWave(){
+    enemies.length = 0;
+    eBullets.length = 0;
+    state.waveInProgress = true;
+    state.bossAlive = false;
 
-  // ===== Entities =====
-  function spawnEnemy(type){
-    const ww = W(), hh = H();
-    const margin = 26;
-    const x = rand(margin, ww - margin);
-    const y = -20;
+    const cfg = waveConfig(state.stage, state.wave);
+    const holdY = enemyHoldY();
+    const lanes = cfg.count;
 
-    const s = 1 + (world.stage - 1) * 0.18 + (world.wave - 1) * 0.06;
+    for (let i=0;i<lanes;i++){
+      const x = (i+1) * (W/(lanes+1));
+      const isStrafe = Math.random() < (0.35 + state.stage*0.03); // 有些左右走位
+      const strafeAmp = isStrafe ? rand(40, 120) : 0;
+      const strafeSpd = isStrafe ? rand(0.8, 1.8) : 0;
 
-    const base = {
-      grunt:  { r:14, hp: 24,  spd: 70,  cd: 1.2, shot: 260, score: 10 },
-      zig:    { r:14, hp: 30,  spd: 72,  cd: 1.3, shot: 260, score: 12 },
-      tank:   { r:18, hp: 70,  spd: 48,  cd: 1.7, shot: 240, score: 18 },
-      sniper: { r:14, hp: 34,  spd: 62,  cd: 1.0, shot: 320, score: 14 },
-      rush:   { r:12, hp: 18,  spd: 115, cd: 999, shot: 0,   score: 9  },
-    }[type];
-
-    const e = {
-      type,
-      x, y,
-      r: base.r,
-      hp: Math.round(base.hp * s),
-      maxHp: Math.round(base.hp * s),
-      vy: base.spd * (1 + (world.stage-1)*0.04),
-      t: 0,
-      shootCd: rand(0.2, base.cd),
-      shootEvery: base.cd / (1 + (world.stage-1)*0.05),
-      shotSpeed: base.shot,
-      score: base.score,
-    };
-    enemies.push(e);
+      enemies.push({
+        type: 'mob',
+        x,
+        y: -40 - i*18,
+        targetY: holdY + rand(-18, 18),
+        r: 15,
+        hp: cfg.hp,
+        hpMax: cfg.hp,
+        fireCd: rand(0.3, 1.2),
+        fireRate: cfg.fire,
+        bulletSpeed: cfg.bullet,
+        strafeAmp,
+        strafeSpd,
+        strafePhase: rand(0, Math.PI*2),
+        hitFlash: 0,
+      });
+    }
   }
 
   function spawnBoss(){
-    const ww = W();
-    const s = 1 + (world.stage - 1) * 0.22;
-    const e = {
+    // Boss 進場後停在固定線位 + 左右移動射擊
+    state.bossAlive = true;
+    const holdY = enemyHoldY() - 10;
+    enemies.push({
       type: 'boss',
-      x: ww/2,
-      y: 90,
-      r: 44,
-      hp: Math.round(420 * s),
-      maxHp: Math.round(420 * s),
-      vx: 120 * (0.9 + world.stage*0.02),
-      vy: 0,
-      t: 0,
+      x: W*0.5,
+      y: -80,
+      targetY: holdY,
+      r: 28,
+      hp: 520 + state.stage*140,
+      hpMax: 520 + state.stage*140,
+      fireCd: 0.8,
+      fireRate: 1.0 + state.stage*0.12,
+      bulletSpeed: 320 + state.stage*20,
+      strafeAmp: 220,
+      strafeSpd: 1.05 + state.stage*0.08,
+      strafePhase: 0,
       phase: 1,
-      shootCd: 0.8,
-      shootEvery: Math.max(0.35, 0.85 - world.stage*0.03),
-      score: 350 + world.stage*80,
-    };
-    enemies.push(e);
-    world.bossAlive = true;
+      hitFlash: 0,
+    });
   }
 
-  function shootPlayer(){
-    const ww = W();
-    const spreadTemp = fx.spread > 0 ? 2 : 0;
-    const n = clamp(player.spreadN + spreadTemp, 1, 5);
-    const angles = [];
-    if (n === 1) angles.push(0);
-    else {
-      const max = 0.28; // radians
-      for (let i=0;i<n;i++){
-        const t = (n===1)?0 : (i/(n-1))*2-1;
-        angles.push(t * max);
-      }
-    }
-
-    const speed = player.bulletSpeed;
-    for (const a of angles){
-      const vx = Math.sin(a) * speed;
-      const vy = -Math.cos(a) * speed;
-      bulletsP.push({
-        x: player.x,
-        y: player.y - player.r - 8,
-        vx, vy,
-        r: 4,
-        dmg: player.dmg,
-        pierce: player.pierce,
-      });
-    }
+  function nextWave(){
+    state.wave += 1;
+    state.waveClearCooldown = 0.55; // 給玩家喘氣
+    state.waveInProgress = false;
+    // 每關到第 bossEveryWaves 波出 Boss
+    // Boss 死了才算過關（stage+1, wave回1）
   }
 
-  function shootEnemy(e){
-    const slow = fx.slow > 0 ? 0.58 : 1.0;
-
-    if (e.type === 'boss'){
-      // Boss patterns: phase based on hp
-      const hpRate = e.hp / e.maxHp;
-      e.phase = hpRate > 0.66 ? 1 : (hpRate > 0.33 ? 2 : 3);
-
-      const speed = (300 + world.stage*10) * slow;
-      const count = e.phase === 1 ? 5 : (e.phase === 2 ? 7 : 9);
-      const max = e.phase === 1 ? 0.55 : (e.phase === 2 ? 0.75 : 0.95);
-      for (let i=0;i<count;i++){
-        const t = (i/(count-1))*2-1;
-        const ang = t * max;
-        bulletsE.push({
-          x: e.x,
-          y: e.y + e.r + 10,
-          vx: Math.sin(ang)*speed,
-          vy: Math.cos(ang)*speed,
-          r: 5,
-          dmg: 8 + world.stage*1.2,
-        });
-      }
-
-      // 追加：鎖定射（偶爾）
-      if (e.phase >= 2 && Math.random() < 0.35){
-        const tx = player.x, ty = player.y;
-        const dx = tx - e.x;
-        const dy = ty - e.y;
-        const len = Math.max(1, Math.hypot(dx,dy));
-        const v = (360 + world.stage*12) * slow;
-        bulletsE.push({ x:e.x, y:e.y + e.r + 10, vx: dx/len*v, vy: dy/len*v, r:6, dmg: 10 + world.stage*1.4 });
-      }
-
-      // 召喚小怪
-      if (e.phase === 3 && Math.random() < 0.18){
-        spawnEnemy(['grunt','zig','sniper'][irand(0,2)]);
-      }
-
-      return;
-    }
-
-    if (e.type === 'rush') return;
-
-    const speed = e.shotSpeed * slow;
-    // 少量散射，讓你不能站樁
-    const spread = (e.type === 'sniper') ? 0.06 : 0.18;
-
-    const tx = player.x + rand(-18,18);
-    const ty = player.y;
-    const dx = tx - e.x;
-    const dy = ty - e.y;
-    const len = Math.max(1, Math.hypot(dx,dy));
-    const nx = dx/len, ny = dy/len;
-
-    const ang = Math.atan2(nx, ny);
-    const a2 = ang + rand(-spread, spread);
-    const vx = Math.sin(a2) * speed;
-    const vy = Math.cos(a2) * speed;
-
-    bulletsE.push({ x:e.x, y:e.y + e.r + 8, vx, vy, r:4.5, dmg: 7 + world.stage*0.8 });
+  function nextStage(){
+    state.stage += 1;
+    state.wave = 1;
+    state.waveClearCooldown = 0.8;
+    state.waveInProgress = false;
   }
 
-  function dropItem(x,y){
-    // 機率與種類：不要太常，不然變成撿垃圾模擬器
-    if (Math.random() > 0.18) return;
-
-    const pool = [
-      { t:'heal',   w: 18 },
-      { t:'shield', w: 20 },
-      { t:'rapid',  w: 18 },
-      { t:'spread', w: 18 },
-      { t:'slow',   w: 14 },
-      { t:'bomb',   w: 12 },
-      { t:'magnet', w: 10 },
-    ];
-    const sum = pool.reduce((a,b)=>a+b.w,0);
-    let r = Math.random()*sum;
-    let t = 'heal';
-    for (const p of pool){ r -= p.w; if (r <= 0){ t = p.t; break; } }
-
-    items.push({ x, y, r: 10, vy: 110, t });
-  }
-
-  function applyItem(t){
-    if (t === 'heal'){
-      player.hp = clamp(player.hp + Math.round(player.maxHp*0.28), 0, player.maxHp);
-      return '回復 +HP';
-    }
-    if (t === 'shield'){
-      player.shield = clamp(player.shield + 22, 0, player.maxShield);
-      return '護盾 +22';
-    }
-    if (t === 'rapid'){
-      fx.rapid = Math.max(fx.rapid, 8.0);
-      return '道具：加速射擊';
-    }
-    if (t === 'spread'){
-      fx.spread = Math.max(fx.spread, 10.0);
-      return '道具：散射';
-    }
-    if (t === 'slow'){
-      fx.slow = Math.max(fx.slow, 6.0);
-      return '道具：緩速';
-    }
-    if (t === 'bomb'){
-      // 清子彈 + 傷害全敵
-      bulletsE.length = 0;
-      for (const e of enemies){
-        if (e.type === 'boss') e.hp -= 50;
-        else e.hp -= 35;
-      }
-      return '炸彈：清場';
-    }
-    if (t === 'magnet'){
-      fx.magnet = Math.max(fx.magnet, 8.0);
-      return '道具：磁鐵';
-    }
-    return '';
-  }
-
-  // ===== Level-up choices =====
-  const UPG = [
-    {
-      id:'hp',
-      name:'最大 HP +20',
-      desc:'容錯率上升，Boss 也比較難把你一拳送下班。',
-      apply(){ player.maxHp += 20; player.hp += 20; }
-    },
-    {
-      id:'dmg',
-      name:'傷害 +3',
-      desc:'把怪物的血條當成待辦清單，一項一項刪掉。',
-      apply(){ player.dmg += 3; }
-    },
-    {
-      id:'rof',
-      name:'射速 +12%',
-      desc:'輸出更穩，彈幕更像在開會（密集到喘不過氣）。',
-      apply(){ player.fireRate *= 1.12; }
-    },
-    {
-      id:'ms',
-      name:'移動速度 +10%',
-      desc:'走位更好看，失誤更難被抓到。',
-      apply(){ player.moveSpeed *= 1.10; }
-    },
-    {
-      id:'spreadP',
-      name:'永久散射 +1',
-      desc:'子彈不只打怪，也順便清怪的 KPI。',
-      apply(){ player.spreadN = clamp(player.spreadN + 1, 1, 4); }
-    },
-    {
-      id:'shieldMax',
-      name:'護盾上限 +15',
-      desc:'護盾更厚，容錯更爽。',
-      apply(){ player.maxShield += 15; player.shield += 10; }
-    },
-    {
-      id:'pierce',
-      name:'穿透 +1',
-      desc:'子彈可以順便打第二個，效率部會愛你。',
-      apply(){ player.pierce = clamp(player.pierce + 1, 0, 2); }
-    },
+  // -----------------------
+  // Drop system
+  // -----------------------
+  const DROP_TYPES = [
+    { key:'heal',  t:'回血',   d:'+25 HP', w: 26 },
+    { key:'shield',t:'護盾',   d:'+20 Shield', w: 18 },
+    { key:'rapid', t:'急速射擊', d:'射速 +25%（短效）', w: 16 },
+    { key:'spread',t:'散射',  d:'散射 +1（短效）', w: 14 },
+    { key:'bomb',  t:'炸彈',  d:'清場（敵/彈）', w: 8 },
+    { key:'magnet',t:'磁鐵',  d:'吸道具（短效）', w: 10 },
+    { key:'slow',  t:'緩速',  d:'敵彈變慢（短效）', w: 8 },
   ];
 
-  function pick3(){
-    const copy = [...UPG];
-    const out = [];
-    while (out.length < 3 && copy.length){
-      out.push(copy.splice(irand(0, copy.length-1), 1)[0]);
+  function pickDrop(){
+    const total = DROP_TYPES.reduce((s,a)=>s+a.w,0);
+    let r = Math.random()*total;
+    for (const it of DROP_TYPES){
+      r -= it.w;
+      if (r<=0) return it.key;
     }
-    return out;
+    return 'heal';
   }
+
+  function maybeDrop(x,y, isBoss=false){
+    const p = isBoss ? 0.95 : 0.22;
+    if (Math.random() > p) return;
+    drops.push({
+      x, y,
+      r: 10,
+      vy: rand(40, 90),
+      type: pickDrop(),
+      life: 12,
+    });
+  }
+
+  // Timed buffs
+  const buffs = {
+    rapid: 0,
+    spread: 0,
+    magnet: 0,
+    slow: 0,
+  };
+
+  function applyDrop(type){
+    if (type === 'heal'){
+      player.hp = clamp(player.hp + 25, 0, player.hpMax);
+      toastMsg('HP +25');
+    } else if (type === 'shield'){
+      player.shieldMax = Math.max(player.shieldMax, 20);
+      player.shield = clamp(player.shield + 20, 0, player.shieldMax);
+      toastMsg('Shield +20');
+    } else if (type === 'rapid'){
+      buffs.rapid = Math.max(buffs.rapid, 7.5);
+      toastMsg('Rapid Fire!');
+    } else if (type === 'spread'){
+      buffs.spread = Math.max(buffs.spread, 7.5);
+      toastMsg('Spread!');
+    } else if (type === 'bomb'){
+      // 清場：清怪 + 清敵彈
+      let killed = 0;
+      for (const e of enemies){
+        if (e.type !== 'boss'){
+          e.hp = 0;
+          killed++;
+          maybeDrop(e.x, e.y, false);
+          addBurst(e.x,e.y, 12);
+        }
+      }
+      eBullets.length = 0;
+      toastMsg(`BOMB! (+${killed} mobs)`);
+    } else if (type === 'magnet'){
+      buffs.magnet = Math.max(buffs.magnet, 9.0);
+      toastMsg('Magnet');
+    } else if (type === 'slow'){
+      buffs.slow = Math.max(buffs.slow, 7.5);
+      toastMsg('Slow');
+    }
+  }
+
+  // -----------------------
+  // Level-up (3選1)
+  // -----------------------
+  const overlay = document.getElementById('overlay');
+  const opts = document.getElementById('opts');
+
+  const UPGRADES = [
+    { key:'dmg', t:'火力提升', d:'傷害 +20%' },
+    { key:'firerate', t:'射速提升', d:'射速 +18%' },
+    { key:'hp', t:'擴充裝甲', d:'HP 上限 +20，回滿' },
+    { key:'speed', t:'機動提升', d:'移動速度 +16%' },
+    { key:'pierce', t:'穿透彈', d:'穿透 +1（最多 2）' },
+    { key:'spread_perm', t:'永久散射', d:'散射 +1（最多 2）' },
+    { key:'shield_cap', t:'護盾擴容', d:'護盾上限 +20，並回滿' },
+  ];
 
   function openLevelUp(){
-    state = STATE.LEVEL;
-    show(ovLevel);
-    choicesBox.innerHTML = '';
+    paused = true;
+    $btnPause.textContent = '繼續';
+    $toast.textContent = 'Level Up';
+    $toast.classList.add('show');
 
-    const opts = pick3();
-    for (const o of opts){
-      const b = document.createElement('button');
-      b.className = 'choice';
-      b.type = 'button';
-      b.innerHTML = `${o.name}<small>${o.desc}</small>`;
-      b.addEventListener('click', () => {
-        o.apply();
-        hide(ovLevel);
-        state = STATE.RUN;
+    overlay.classList.add('show');
+    opts.innerHTML = '';
+
+    // 抽3個不重複
+    const pool = [...UPGRADES];
+    const picks = [];
+    while (picks.length < 3 && pool.length){
+      const i = Math.floor(Math.random()*pool.length);
+      picks.push(pool.splice(i,1)[0]);
+    }
+
+    for (const u of picks){
+      const el = document.createElement('div');
+      el.className = 'opt';
+      el.innerHTML = `<div class="t">${u.t}</div><div class="d">${u.d}</div>`;
+      el.addEventListener('click', () => {
+        applyUpgrade(u.key);
+        overlay.classList.remove('show');
+        paused = false;
+        $btnPause.textContent = '暫停';
+        $toast.classList.remove('show');
+        lastT = performance.now();
       });
-      choicesBox.appendChild(b);
+      opts.appendChild(el);
     }
   }
 
-  function addXP(xp){
-    player.xp += xp;
-    while (player.xp >= player.nextXp){
-      player.xp -= player.nextXp;
-      player.lvl += 1;
-      // 成長曲線不要太硬：不然你會覺得遊戲在勒索
-      player.nextXp = Math.round(25 + (player.lvl-1) * 12 + Math.pow(player.lvl-1, 1.35) * 3);
+  function applyUpgrade(key){
+    if (key === 'dmg'){
+      player.dmg *= 1.20;
+    } else if (key === 'firerate'){
+      player.fireRate *= 1.18;
+    } else if (key === 'hp'){
+      player.hpMax += 20;
+      player.hp = player.hpMax;
+    } else if (key === 'speed'){
+      player.moveSpeed *= 1.16;
+    } else if (key === 'pierce'){
+      player.pierce = Math.min(2, player.pierce + 1);
+    } else if (key === 'spread_perm'){
+      player.spread = Math.min(2, player.spread + 1);
+    } else if (key === 'shield_cap'){
+      player.shieldMax += 20;
+      player.shield = player.shieldMax;
+    }
+  }
+
+  function addXp(xp){
+    state.xp += xp;
+    while (state.xp >= state.nextXp){
+      state.xp -= state.nextXp;
+      state.level += 1;
+      // nextXp grows
+      state.nextXp = Math.floor(state.nextXp * 1.22 + 10);
       openLevelUp();
     }
   }
 
-  // ===== Wave / stage flow =====
-  function setupStage(n){
-    world.stage = n;
-    world.wave = 1;
-    world.bossAlive = false;
-    world.waveSpawnsLeft = 0;
-    world.waveTimer = 0;
-    world.nextWaveDelay = 0;
+  // -----------------------
+  // Combat
+  // -----------------------
+  let fireAcc = 0;
 
-    enemies.length = 0;
-    bulletsP.length = 0;
-    bulletsE.length = 0;
-    items.length = 0;
-
-    // 進下一關小補血，避免「一滴血打 Boss」的負面情緒
-    player.hp = clamp(player.hp + Math.round(player.maxHp*0.22), 1, player.maxHp);
-    player.shield = clamp(player.shield + 10, 0, player.maxShield);
-
-    startWave();
-  }
-
-  function wavePlan(){
-    const w = world.wave;
-    const s = world.stage;
-    const baseCount = 7 + Math.floor(s*1.3) + Math.floor(w*0.8);
-
-    const mix = [];
-    for (let i=0;i<baseCount;i++){
-      let t = 'grunt';
-      const r = Math.random();
-      if (s >= 2 && r < 0.20) t = 'zig';
-      if (s >= 3 && r >= 0.20 && r < 0.34) t = 'sniper';
-      if (s >= 4 && r >= 0.34 && r < 0.46) t = 'tank';
-      if (s >= 2 && r >= 0.46 && r < 0.56) t = 'rush';
-      mix.push(t);
+  function shoot(dt){
+    const rate = player.fireRate * (buffs.rapid > 0 ? 1.25 : 1.0);
+    fireAcc += dt * rate;
+    while (fireAcc >= 1){
+      fireAcc -= 1;
+      spawnPlayerShot();
     }
-
-    const interval = Math.max(0.36, 0.70 - s*0.05 - w*0.03);
-    return { list: mix, interval };
   }
 
-  let waveQueue = [];
-  let waveInterval = 0.6;
+  function spawnPlayerShot(){
+    const spreadBonus = (buffs.spread > 0 ? 1 : 0);
+    const s = clamp(player.spread + spreadBonus, 0, 3);
 
-  function startWave(){
-    const { list, interval } = wavePlan();
-    waveQueue = list;
-    waveInterval = interval;
-    world.waveSpawnsLeft = list.length;
-    world.waveTimer = 0;
-  }
+    const base = { x: player.x, y: player.y - player.r - 6, r: 4, vx:0, vy: -player.bulletSpeed, dmg: player.dmg, pierce: player.pierce, alive:true };
+    const shots = [];
 
-  function maybeAdvance(){
-    if (world.bossAlive) return;
-
-    const wavesTotal = 4 + Math.min(4, Math.floor(world.stage*0.6));
-    const waveDone = world.waveSpawnsLeft <= 0 && enemies.length === 0;
-
-    if (!waveDone) return;
-
-    if (world.wave < wavesTotal){
-      world.nextWaveDelay = 1.1;
+    if (s <= 0){
+      shots.push(base);
+    } else if (s === 1){
+      shots.push({ ...base, vx: -120, vy: -player.bulletSpeed });
+      shots.push({ ...base, vx:  120, vy: -player.bulletSpeed });
     } else {
-      // Boss time
-      spawnBoss();
+      shots.push({ ...base, vx: -160, vy: -player.bulletSpeed });
+      shots.push({ ...base, vx:   0,  vy: -player.bulletSpeed });
+      shots.push({ ...base, vx:  160, vy: -player.bulletSpeed });
     }
+
+    for (const b of shots) pBullets.push(b);
   }
 
-  function clearStage(){
-    state = STATE.CLEAR;
-    show(ovClear);
-    clearDesc.textContent = `關卡 ${world.stage} 完成。分數 ${world.score}。下一關怪更兇，但你也更強。`;
+  function enemyShoot(e){
+    // 朝玩家方向射
+    const dx = player.x - e.x;
+    const dy = player.y - e.y;
+    const len = Math.hypot(dx,dy) || 1;
+    let spd = e.bulletSpeed;
+    if (buffs.slow > 0) spd *= 0.75;
+
+    const vx = (dx/len) * spd;
+    const vy = (dy/len) * spd;
+
+    eBullets.push({ x:e.x, y:e.y+e.r+4, r:4, vx, vy, dmg: (e.type==='boss'? 12+state.stage*2 : 7+state.stage), alive:true });
   }
 
-  function gameOver(){
-    state = STATE.OVER;
-    show(ovOver);
-    overDesc.textContent = `關卡 ${world.stage} / 波次 ${world.wave}，分數 ${world.score}。再來一次，把 Boss 的自信打掉。`;
-  }
-
-  // ===== Pause =====
-  function togglePause(){
-    if (state === STATE.RUN){
-      state = STATE.PAUSE;
-      show(ovPause);
-      btnPause.textContent = '繼續';
-    } else if (state === STATE.PAUSE){
-      hide(ovPause);
-      state = STATE.RUN;
-      btnPause.textContent = '暫停';
-    }
-  }
-
-  btnPause.addEventListener('click', togglePause);
-  btnResume.addEventListener('click', () => {
-    hide(ovPause);
-    state = STATE.RUN;
-    btnPause.textContent = '暫停';
-  });
-  btnRestart.addEventListener('click', () => restart());
-
-  btnStart.addEventListener('click', () => {
-    hide(ovStart);
-    restart();
-  });
-
-  btnNext.addEventListener('click', () => {
-    hide(ovClear);
-    state = STATE.RUN;
-    setupStage(world.stage + 1);
-  });
-
-  btnAgain.addEventListener('click', () => {
-    hide(ovOver);
-    state = STATE.RUN;
-    restart();
-  });
-
-  function restart(){
-    // reset progression
-    world.stage = 1;
-    world.wave = 1;
-    world.score = 0;
-    world.time = 0;
-
-    fx.rapid = fx.spread = fx.slow = fx.magnet = 0;
-
-    player.x = W()/2;
-    player.y = H() - 42;
-    targetX = player.x;
-
-    player.r = 14;
-    player.maxHp = 100;
-    player.hp = 100;
-    player.maxShield = 60;
-    player.shield = 0;
-
-    player.lvl = 1;
-    player.xp = 0;
-    player.nextXp = 25;
-
-    player.dmg = 10;
-    player.fireRate = 7.0;
-    player.bulletSpeed = 520;
-    player.moveSpeed = 780;
-    player.spreadN = 1;
-    player.pierce = 0;
-
-    enemies.length = 0;
-    bulletsP.length = 0;
-    bulletsE.length = 0;
-    items.length = 0;
-
-    hide(ovPause);
-    hide(ovLevel);
-    hide(ovClear);
-    hide(ovOver);
-
-    state = STATE.RUN;
-    btnPause.textContent = '暫停';
-
-    startWave();
-  }
-
-  // ===== Update & collisions =====
-  function updateHUD(){
-    $stage.textContent = String(world.stage);
-    $wave.textContent = String(world.wave);
-    $lvl.textContent = String(player.lvl);
-    $score.textContent = String(world.score);
-
-    const hpPct = clamp(player.hp / player.maxHp, 0, 1) * 100;
-    const shPct = clamp(player.shield / player.maxShield, 0, 1) * 100;
-    $hpFill.style.width = hpPct.toFixed(1) + '%';
-    $shFill.style.width = shPct.toFixed(1) + '%';
-    $hpText.textContent = `${Math.ceil(player.hp)}/${player.maxHp}  +${Math.ceil(player.shield)}`;
-  }
-
-  function hitPlayer(dmg){
-    let left = dmg;
+  function damagePlayer(dmg){
     if (player.shield > 0){
-      const use = Math.min(player.shield, left);
+      const use = Math.min(player.shield, dmg);
       player.shield -= use;
-      left -= use;
+      dmg -= use;
     }
-    if (left > 0){
-      player.hp -= left;
-      if (player.hp <= 0) gameOver();
+    if (dmg > 0){
+      player.hp = Math.max(0, player.hp - dmg);
+    }
+    if (player.hp <= 0){
+      // game over: reset (簡單粗暴)
+      toastMsg('你倒了…重新開始', 1.2);
+      resetRun();
     }
   }
 
-  function circleHit(ax,ay,ar,bx,by,br){
-    const dx = ax-bx, dy = ay-by;
-    const rr = ar+br;
-    return dx*dx + dy*dy <= rr*rr;
+  function resetRun(){
+    // 保留：你可以想要「跨局養成」時再改成不重置部分參數
+    state.stage = 1;
+    state.wave  = 1;
+    state.score = 0;
+    state.xp = 0;
+    state.level = 1;
+    state.nextXp = 40;
+    state.waveClearCooldown = 0;
+    state.waveInProgress = false;
+    state.bossAlive = false;
+
+    player.hpMax = 100;
+    player.hp = 100;
+    player.moveSpeed = 520;
+    player.fireRate = 8;
+    player.dmg = 12;
+    player.bulletSpeed = 820;
+    player.spread = 0;
+    player.pierce = 0;
+    player.shield = 0;
+    player.shieldMax = 0;
+
+    for (const k in buffs) buffs[k]=0;
+
+    pBullets = [];
+    eBullets = [];
+    enemies  = [];
+    drops    = [];
+    particles= [];
+
+    spawnWave();
   }
 
+  // -----------------------
+  // Particles / Toast
+  // -----------------------
+  function addBurst(x,y,n=10){
+    for (let i=0;i<n;i++){
+      particles.push({
+        x,y,
+        vx: rand(-220,220),
+        vy: rand(-220,220),
+        life: rand(0.25, 0.55),
+      });
+    }
+  }
+
+  let toastT = 0;
+  function toastMsg(text, sec=0.75){
+    $toast.textContent = text;
+    $toast.classList.add('show');
+    toastT = sec;
+  }
+
+  // -----------------------
+  // Update / Draw
+  // -----------------------
   function update(dt){
-    world.time += dt;
-
-    // effects
-    fx.rapid = Math.max(0, fx.rapid - dt);
-    fx.spread = Math.max(0, fx.spread - dt);
-    fx.slow = Math.max(0, fx.slow - dt);
-    fx.magnet = Math.max(0, fx.magnet - dt);
-
-    const ww = W(), hh = H();
-
-    // movement target
-    targetX = clamp(targetX, 20, ww-20);
-
-    // keyboard nudge
-    const k = (keys.left ? -1 : 0) + (keys.right ? 1 : 0);
-    if (k !== 0) targetX += k * player.moveSpeed * dt;
-
-    // player lerp to target
-    const dx = targetX - player.x;
-    const maxStep = player.moveSpeed * dt;
-    player.x += clamp(dx, -maxStep, maxStep);
-    player.y = hh - 44;
-
-    // firing
-    const fireMul = fx.rapid > 0 ? 1.75 : 1.0;
-    const fireEvery = 1 / (player.fireRate * fireMul);
-    player.fireCd -= dt;
-    if (player.fireCd <= 0){
-      player.fireCd = fireEvery;
-      shootPlayer();
+    // buffs
+    for (const k in buffs){
+      if (buffs[k] > 0) buffs[k] = Math.max(0, buffs[k] - dt);
     }
 
-    // wave spawning
-    if (!world.bossAlive){
-      if (world.nextWaveDelay > 0){
-        world.nextWaveDelay -= dt;
-        if (world.nextWaveDelay <= 0){
-          world.wave += 1;
-          startWave();
-        }
-      } else {
-        world.waveTimer -= dt;
-        if (world.waveSpawnsLeft > 0){
-          if (world.waveTimer <= 0){
-            const t = waveQueue.shift();
-            spawnEnemy(t);
-            world.waveSpawnsLeft -= 1;
-            world.waveTimer = waveInterval;
-          }
-        }
-      }
-    }
+    // player position: pad controls; clamp to board
+    player.y = H - 42;
+    player.x = clamp(player.x, player.r+8, W - player.r - 8);
 
-    // enemies update
-    for (let i=enemies.length-1;i>=0;i--){
-      const e = enemies[i];
-      e.t += dt;
+    // auto shoot
+    shoot(dt);
 
-      if (e.type === 'boss'){
-        e.x += e.vx * dt;
-        if (e.x < 60){ e.x = 60; e.vx = Math.abs(e.vx); }
-        if (e.x > ww-60){ e.x = ww-60; e.vx = -Math.abs(e.vx); }
-      } else if (e.type === 'zig'){
-        e.y += e.vy * dt;
-        e.x += Math.sin(e.t*2.2) * 70 * dt;
-      } else if (e.type === 'rush'){
-        e.y += e.vy * dt;
-      } else {
-        e.y += e.vy * dt;
-      }
+    // enemies behavior
+    const holdY = enemyHoldY();
+    let aliveBoss = false;
 
-      // shooting
-      e.shootCd -= dt;
-      if (e.shootCd <= 0){
-        e.shootCd = e.shootEvery;
-        shootEnemy(e);
-      }
+    for (const e of enemies){
+      // enter to targetY, then hold/strafe
+      e.y = lerp(e.y, e.targetY, clamp(dt*2.6, 0, 1));
 
-      // offscreen fail-safe
-      if (e.y > hh + 80){
-        enemies.splice(i,1);
-        continue;
-      }
-
-      // collide with player
-      if (state === STATE.RUN && circleHit(e.x,e.y,e.r, player.x,player.y, player.r)){
-        hitPlayer(18 + world.stage*2);
-        e.hp -= 60; // mutual damage
-      }
-
-      if (e.hp <= 0){
-        // kill
+      // strafe if any
+      if (e.strafeAmp > 0){
+        e.strafePhase += dt * e.strafeSpd;
+        const ox = Math.sin(e.strafePhase) * e.strafeAmp;
+        // boss: center around mid
         if (e.type === 'boss'){
-          world.score += e.score;
-          addXP(120 + world.stage*25);
-          dropItem(e.x, e.y);
-          enemies.splice(i,1);
-          world.bossAlive = false;
-          clearStage();
-        } else {
-          world.score += e.score;
-          addXP(6 + Math.floor(world.stage*1.2));
-          dropItem(e.x, e.y);
-          enemies.splice(i,1);
+          e.x = W*0.5 + ox;
+        }else{
+          // mobs: center around original lane x (store base?)
+          if (e.baseX == null) e.baseX = e.x;
+          e.x = e.baseX + ox;
         }
       }
-    }
+      e.x = clamp(e.x, e.r+10, W-e.r-10);
 
-    // bullets update
-    function stepBullets(arr, isEnemy){
-      for (let i=arr.length-1;i>=0;i--){
-        const b = arr[i];
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
-        if (b.x < -40 || b.x > ww+40 || b.y < -60 || b.y > hh+60){
-          arr.splice(i,1);
-          continue;
-        }
-
-        if (isEnemy){
-          // enemy bullet hit player
-          if (state === STATE.RUN && circleHit(b.x,b.y,b.r, player.x,player.y, player.r)){
-            hitPlayer(b.dmg);
-            arr.splice(i,1);
+      // fire
+      e.fireCd -= dt;
+      if (e.fireCd <= 0){
+        enemyShoot(e);
+        // boss 偶爾扇形彈
+        if (e.type === 'boss' && (e.hp/e.hpMax) < 0.65 && Math.random() < 0.45){
+          // extra 2 bullets
+          const spd = (buffs.slow>0? e.bulletSpeed*0.75 : e.bulletSpeed);
+          const ang = Math.atan2(player.y - e.y, player.x - e.x);
+          for (const da of [-0.22, 0.22]){
+            eBullets.push({ x:e.x, y:e.y+e.r+4, r:4, vx: Math.cos(ang+da)*spd, vy: Math.sin(ang+da)*spd, dmg: 11+state.stage*2, alive:true });
           }
         }
+        e.fireCd = 1 / e.fireRate;
       }
-    }
-    stepBullets(bulletsP, false);
-    stepBullets(bulletsE, true);
 
-    // bullet-bullet collision (player vs enemy)
-    for (let i=bulletsP.length-1;i>=0;i--){
-      const p = bulletsP[i];
-      for (let j=bulletsE.length-1;j>=0;j--){
-        const e = bulletsE[j];
-        if (circleHit(p.x,p.y,p.r, e.x,e.y,e.r)){
-          bulletsE.splice(j,1);
-          // player bullet also消失
-          bulletsP.splice(i,1);
-          break;
-        }
-      }
+      if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
+
+      if (e.type === 'boss' && e.hp > 0) aliveBoss = true;
     }
 
-    // player bullet hit enemies
-    for (let i=bulletsP.length-1;i>=0;i--){
-      const b = bulletsP[i];
-      let consumed = false;
-      for (let j=enemies.length-1;j>=0;j--){
-        const e = enemies[j];
-        if (circleHit(b.x,b.y,b.r, e.x,e.y,e.r)){
-          e.hp -= b.dmg;
-          if (b.pierce > 0){
-            b.pierce -= 1;
-          } else {
-            bulletsP.splice(i,1);
-            consumed = true;
-          }
-          break;
-        }
-      }
-      if (consumed) continue;
+    // bullets
+    for (const b of pBullets){
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y < -20 || b.x < -30 || b.x > W+30) b.alive = false;
+    }
+    for (const b of eBullets){
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y > H+30 || b.x < -30 || b.x > W+30) b.alive = false;
     }
 
-    // items update
-    for (let i=items.length-1;i>=0;i--){
-      const it = items[i];
-      it.y += it.vy * dt;
-
+    // drops
+    for (const d of drops){
+      d.y += d.vy * dt;
+      d.life -= dt;
       // magnet
-      if (fx.magnet > 0){
-        const dxm = player.x - it.x;
-        const dym = player.y - it.y;
-        const len = Math.max(1, Math.hypot(dxm,dym));
-        const pull = 260;
-        it.x += (dxm/len) * pull * dt;
-        it.y += (dym/len) * pull * dt;
+      if (buffs.magnet > 0){
+        const dx = player.x - d.x;
+        const dy = player.y - d.y;
+        const l = Math.hypot(dx,dy) || 1;
+        d.x += (dx/l) * 240 * dt;
+        d.y += (dy/l) * 240 * dt;
       }
+      if (d.y > H+40 || d.life <= 0) d.dead = true;
 
-      if (it.y > hh + 40){
-        items.splice(i,1);
-        continue;
-      }
-
-      if (circleHit(it.x,it.y,it.r, player.x,player.y, player.r+6)){
-        applyItem(it.t);
-        items.splice(i,1);
+      // collect
+      if (dist2(d.x,d.y, player.x, player.y) < (d.r + player.r + 8)**2){
+        d.dead = true;
+        applyDrop(d.type);
       }
     }
 
-    // stage flow
-    maybeAdvance();
+    // particles
+    for (const p of particles){
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= (1 - dt*2.8);
+      p.vy *= (1 - dt*2.8);
+      p.life -= dt;
+      if (p.life <= 0) p.dead = true;
+    }
+
+    // collisions: player bullets vs enemies
+    for (const b of pBullets){
+      if (!b.alive) continue;
+
+      // also allow shooting enemy bullets
+      for (const eb of eBullets){
+        if (!eb.alive) continue;
+        if (dist2(b.x,b.y, eb.x, eb.y) < (b.r + eb.r + 2)**2){
+          eb.alive = false;
+          // bullet can continue unless no pierce, we treat as small hit
+          if (b.pierce <= 0) b.alive = false;
+          else b.pierce -= 1;
+          addBurst(eb.x, eb.y, 4);
+          state.score += 1;
+        }
+      }
+      if (!b.alive) continue;
+
+      for (const e of enemies){
+        if (e.hp <= 0) continue;
+        if (dist2(b.x,b.y, e.x, e.y) < (b.r + e.r)**2){
+          e.hp -= b.dmg;
+          e.hitFlash = 0.12;
+          addBurst(b.x,b.y, 4);
+
+          if (b.pierce <= 0) b.alive = false;
+          else b.pierce -= 1;
+
+          if (e.hp <= 0){
+            // kill
+            state.score += (e.type==='boss'? 220 : 18);
+            addXp(e.type==='boss'? 90 : 8);
+            maybeDrop(e.x, e.y, e.type==='boss');
+            addBurst(e.x, e.y, e.type==='boss'? 22 : 10);
+          }
+          break;
+        }
+      }
+    }
+
+    // collisions: enemy bullets vs player
+    for (const eb of eBullets){
+      if (!eb.alive) continue;
+      if (dist2(eb.x,eb.y, player.x, player.y) < (eb.r + player.r)**2){
+        eb.alive = false;
+        damagePlayer(eb.dmg);
+        addBurst(player.x, player.y, 10);
+      }
+    }
+
+    // cleanup
+    pBullets = pBullets.filter(b=>b.alive);
+    eBullets = eBullets.filter(b=>b.alive);
+    enemies  = enemies.filter(e=>e.hp>0);
+    drops    = drops.filter(d=>!d.dead);
+    particles= particles.filter(p=>!p.dead);
+
+    // wave progression
+    if (!state.waveInProgress){
+      state.waveClearCooldown -= dt;
+      if (state.waveClearCooldown <= 0){
+        // decide spawn: wave or boss or next stage
+        if (state.wave === state.bossEveryWaves){
+          spawnBoss();
+          state.waveInProgress = true;
+        }else{
+          spawnWave();
+        }
+      }
+    }else{
+      // if wave in progress, check cleared
+      if (enemies.length === 0){
+        // if boss was wave boss => stage up
+        if (state.wave === state.bossEveryWaves){
+          nextStage();
+        }else{
+          nextWave();
+        }
+      }
+    }
+
+    // toast timer
+    if (toastT > 0){
+      toastT = Math.max(0, toastT - dt);
+      if (toastT === 0 && !paused) $toast.classList.remove('show');
+    }
   }
 
-  // ===== Render =====
   function draw(){
-    const ww = W(), hh = H();
+    // clear (no trail!)
+    ctx.clearRect(0,0,W,H);
 
-    // background
-    ctx.fillStyle = '#0a0f1c';
-    ctx.fillRect(0,0,ww,hh);
-
-    // subtle grid
-    ctx.globalAlpha = 0.08;
+    // background grid
+    ctx.save();
+    ctx.globalAlpha = 0.10;
     ctx.strokeStyle = '#e7eefc';
-    ctx.lineWidth = 1;
-    const step = 40;
-    for (let x=0;x<=ww;x+=step){
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,hh); ctx.stroke();
+    const step = 48;
+    for (let x=0;x<=W;x+=step){
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
     }
-    for (let y=0;y<=hh;y+=step){
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ww,y); ctx.stroke();
+    for (let y=0;y<=H;y+=step){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
 
-    // items
-    for (const it of items){
-      const icon = ({
-        heal:'❤', shield:'🛡', rapid:'⚡', spread:'✦', slow:'⏱', bomb:'💣', magnet:'🧲'
-      })[it.t] || '•';
+    // particles
+    ctx.save();
+    ctx.fillStyle = 'rgba(120,255,200,.7)';
+    for (const p of particles){
+      ctx.globalAlpha = clamp(p.life*2.0, 0, 1);
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(255,255,255,.10)';
-      ctx.arc(it.x, it.y, it.r+6, 0, Math.PI*2);
+      ctx.arc(p.x,p.y,2.2,0,Math.PI*2);
       ctx.fill();
+    }
+    ctx.restore();
 
-      ctx.fillStyle = '#e7eefc';
-      ctx.font = '900 14px system-ui, "Noto Sans TC"';
+    // drops
+    for (const d of drops){
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+      ctx.fill(); ctx.stroke();
+
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = 'rgba(120,255,200,.95)';
+      ctx.font = '12px system-ui, "Noto Sans TC"';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(icon, it.x, it.y+0.5);
+      const icon = d.type==='heal'?'✚': d.type==='shield'?'⛨': d.type==='rapid'?'⚡': d.type==='spread'?'✦': d.type==='bomb'?'💣': d.type==='magnet'?'🧲':'🐢';
+      ctx.fillText(icon, d.x, d.y+0.5);
+      ctx.restore();
     }
 
     // enemies
     for (const e of enemies){
-      // body
+      ctx.save();
+      const isBoss = e.type==='boss';
+      const flash = e.hitFlash > 0;
+      ctx.fillStyle = flash ? 'rgba(255,255,255,.18)' : (isBoss ? 'rgba(255,120,120,.14)' : 'rgba(255,255,255,.10)');
+      ctx.strokeStyle = isBoss ? 'rgba(255,120,120,.35)' : 'rgba(255,255,255,.20)';
+      ctx.lineWidth = isBoss ? 2 : 1;
+
       ctx.beginPath();
-      if (e.type === 'boss'){
-        ctx.fillStyle = 'rgba(255,102,138,.18)';
-        ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,102,138,.70)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      } else {
-        const col = (e.type==='tank') ? 'rgba(255,204,102,.16)' : 'rgba(255,255,255,.10)';
-        ctx.fillStyle = col;
-        ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(231,238,252,.35)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
+      ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
 
       // hp bar
-      const w = e.r*2;
-      const pct = clamp(e.hp/e.maxHp, 0, 1);
+      const w = isBoss ? 90 : 52;
+      const h = 6;
+      const x = e.x - w/2;
+      const y = e.y - e.r - 14;
+      ctx.globalAlpha = 0.9;
       ctx.fillStyle = 'rgba(255,255,255,.10)';
-      ctx.fillRect(e.x-w/2, e.y - e.r - 10, w, 4);
-      ctx.fillStyle = (e.type==='boss') ? '#ff668a' : '#ffcc66';
-      ctx.fillRect(e.x-w/2, e.y - e.r - 10, w*pct, 4);
+      ctx.fillRect(x,y,w,h);
+      ctx.fillStyle = isBoss ? 'rgba(255,120,120,.9)' : 'rgba(120,255,200,.9)';
+      ctx.fillRect(x,y, w * clamp(e.hp/e.hpMax,0,1), h);
+      ctx.restore();
     }
 
-    // bullets
-    for (const b of bulletsP){
+    // player bullets
+    ctx.save();
+    ctx.fillStyle = 'rgba(120,255,200,.95)';
+    for (const b of pBullets){
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(124,247,182,.95)';
       ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
       ctx.fill();
     }
-    for (const b of bulletsE){
+    ctx.restore();
+
+    // enemy bullets
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,160,160,.92)';
+    for (const b of eBullets){
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(87,184,255,.90)';
       ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
       ctx.fill();
     }
+    ctx.restore();
 
     // player
     ctx.save();
+    // body (triangle-ish)
     ctx.translate(player.x, player.y);
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    ctx.strokeStyle = 'rgba(255,255,255,.22)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(231,238,252,.14)';
-    ctx.arc(0,0,player.r+6,0,Math.PI*2);
-    ctx.fill();
-
-    // ship
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(231,238,252,.85)';
-    ctx.moveTo(0, -player.r);
-    ctx.lineTo(player.r*0.9, player.r);
-    ctx.lineTo(-player.r*0.9, player.r);
+    ctx.moveTo(0, -player.r-2);
+    ctx.lineTo(player.r+2, player.r+4);
+    ctx.lineTo(-player.r-2, player.r+4);
     ctx.closePath();
-    ctx.fill();
+    ctx.fill(); ctx.stroke();
 
     // shield ring
     if (player.shield > 0){
-      const pct = clamp(player.shield/player.maxShield,0,1);
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = 'rgba(120,255,200,.45)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(87,184,255,.85)';
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = 0.30 + pct*0.45;
-      ctx.arc(0,0,player.r+10, -Math.PI/2, -Math.PI/2 + Math.PI*2*pct);
+      ctx.arc(0,0, player.r+10, 0, Math.PI*2);
       ctx.stroke();
-      ctx.globalAlpha = 1;
     }
-
     ctx.restore();
-
-    // status text
-    ctx.fillStyle = 'rgba(231,238,252,.78)';
-    ctx.font = '900 12px system-ui, "Noto Sans TC"';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-
-    const eff = [];
-    if (fx.rapid>0) eff.push(`⚡${fx.rapid.toFixed(0)}s`);
-    if (fx.spread>0) eff.push(`✦${fx.spread.toFixed(0)}s`);
-    if (fx.slow>0) eff.push(`⏱${fx.slow.toFixed(0)}s`);
-    if (fx.magnet>0) eff.push(`🧲${fx.magnet.toFixed(0)}s`);
-
-    const line1 = eff.length ? `道具：${eff.join('  ')}` : '';
-    if (line1) ctx.fillText(line1, 12, 10);
-
-    // xp bar (small)
-    const xpPct = clamp(player.xp/player.nextXp,0,1);
-    const xbW = 120;
-    ctx.fillStyle = 'rgba(255,255,255,.10)';
-    ctx.fillRect(12, 30, xbW, 6);
-    ctx.fillStyle = 'rgba(255,255,255,.55)';
-    ctx.fillRect(12, 30, xbW*xpPct, 6);
   }
 
-  // ===== Main loop =====
-  let last = performance.now();
-  function frame(now){
-    const dt = Math.min(0.033, (now-last)/1000);
-    last = now;
+  function syncHud(){
+    $stage.textContent = `關卡 ${state.stage}`;
+    $wave.textContent  = `波次 ${state.wave}`;
+    $lv.textContent    = `等級 ${state.level}`;
+    $score.textContent = `分數 ${state.score}`;
 
-    if (state === STATE.RUN){
+    const hpPct = clamp(player.hp / player.hpMax, 0, 1);
+    $hpFill.style.width = `${hpPct*100}%`;
+
+    // 顯示護盾加成在數字後（不佔太多空間）
+    const shieldTxt = player.shield > 0 ? ` +${Math.floor(player.shield)}` : '';
+    $hpNum.textContent = `${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
+  }
+
+  // -----------------------
+  // Main loop
+  // -----------------------
+  let lastT = performance.now();
+  function frame(t){
+    const dt = Math.min(0.033, (t - lastT)/1000);
+    lastT = t;
+
+    if (!paused){
       update(dt);
     }
     draw();
-    updateHUD();
+    syncHud();
 
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
 
+  // init
+  setPadX(0.5);
+  spawnWave();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
