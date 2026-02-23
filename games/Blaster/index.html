@@ -79,10 +79,9 @@
     }
     .hpbar .num{ opacity:.85; font-variant-numeric: tabular-nums; }
 
-    /* 主區域：用 flex 讓 board 自動吃剩餘高度，保證 touchpad 不被擠出畫面 */
     .main{
       flex:1;
-      min-height:0; /* 讓內部 canvas 可以縮，不會把底部擠走 */
+      min-height:0;
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -142,7 +141,6 @@
       pointer-events:none;
     }
 
-    /* 升級選單 */
     .overlay{
       position:fixed;
       inset:0;
@@ -187,7 +185,6 @@
     .opt .t{ font-weight:900; margin-bottom:6px; }
     .opt .d{ opacity:.78; font-size:13px; line-height:1.4; }
 
-    /* 暫停/提示 */
     .toast{
       position:absolute;
       left:50%;
@@ -281,10 +278,7 @@
   const $toast = document.getElementById('toast');
   const $btnHub = document.getElementById('btnHub');
 
-  // Hub link：回上一層（/game/games/）
   $btnHub.addEventListener('click', () => {
-    // 你Hub在 /game/ ，Blaster在 /game/games/Blaster/
-    // 往上兩層 -> /game/games/
     location.href = '../';
   });
 
@@ -304,11 +298,13 @@
   const thumb = document.getElementById('thumb');
   let padActive = false;
   let padX = 0.5; // 0..1
+
+  const lerp = (a,b,t)=> a + (b-a)*t;
+  const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
   function setPadX(nx){
     padX = Math.max(0, Math.min(1, nx));
     thumb.style.left = `${padX*100}%`;
-    // player x uses padX
-    player.x = lerp(player.x, padX * W, 1); // snap-ish
+    player.x = lerp(player.x, padX * W, 1);
   }
   function pointerToPadX(e){
     const r = pad.getBoundingClientRect();
@@ -335,8 +331,6 @@
   // Helpers
   // -----------------------
   const rand = (a,b)=> a + Math.random()*(b-a);
-  const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
-  const lerp = (a,b,t)=> a + (b-a)*t;
   const dist2 = (ax,ay,bx,by)=> { const dx=ax-bx, dy=ay-by; return dx*dx + dy*dy; };
 
   // -----------------------
@@ -349,11 +343,13 @@
     time: 0,
     xp: 0,
     level: 1,
-    nextXp: 40,
+
+    // B) 升級變慢：起始 nextXp 拉高 + 成長倍率提高
+    nextXp: 70,
     waveClearCooldown: 0,
     waveInProgress: false,
     bossAlive: false,
-    bossEveryWaves: 5, // 每關第5波Boss
+    bossEveryWaves: 5,
   };
 
   // Player build
@@ -363,16 +359,14 @@
     r: 14,
     hp: 100,
     hpMax: 100,
-    moveSpeed: 520,      // px/s
-    fireRate: 8,         // shots per sec
+    moveSpeed: 520,
+    fireRate: 8,
     dmg: 12,
     bulletSpeed: 820,
-    spread: 0,           // 0..2
+    spread: 0,           // 0..2 (perm)
     pierce: 0,           // 0..2
-    shield: 0,           // hit points shield
+    shield: 0,
     shieldMax: 0,
-    magnet: 0,           // 0/1
-    slowAura: 0,         // 0/1
   };
 
   // Entities
@@ -382,25 +376,29 @@
   let drops    = [];
   let particles= [];
 
-  // Spawn lines (enemies settle here)
   function enemyHoldY(){
-    // 讓怪停在上半部（別太靠近頂端）
     return clamp(H * 0.18, 110, 190);
   }
 
   // -----------------------
-  // Wave system (一波一波)
+  // Wave system
   // -----------------------
+  // C) 小怪：血量/射速/彈速更有感上升
   function waveConfig(stage, wave){
-    // 隨關卡上升，怪更多/更硬/射更快
-    const baseCount = 4 + Math.floor((stage-1)*1.2) + Math.floor((wave-1)*0.8);
-    const count = clamp(baseCount, 4, 14);
+    const baseCount = 5 + Math.floor((stage-1)*1.35) + Math.floor((wave-1)*1.05);
+    const count = clamp(baseCount, 5, 16);
 
-    const hp = 22 + stage*6 + wave*3;
-    const fire = 0.6 + stage*0.08 + wave*0.06; // shots/sec
-    const bullet = 260 + stage*18 + wave*10;
+    // 更硬
+    const hp = 28 + stage*10 + wave*6;
 
-    return { count, hp, fire, bullet };
+    // 更兇：射更頻、彈更快
+    const fire = 0.75 + stage*0.14 + wave*0.12; // shots/sec
+    const bullet = 285 + stage*28 + wave*20;
+
+    // 讓傷害也跟著有感（避免變成純彈幕表演）
+    const dmg = 7 + stage*1.2 + wave*0.8;
+
+    return { count, hp, fire, bullet, dmg };
   }
 
   function spawnWave(){
@@ -415,9 +413,9 @@
 
     for (let i=0;i<lanes;i++){
       const x = (i+1) * (W/(lanes+1));
-      const isStrafe = Math.random() < (0.35 + state.stage*0.03); // 有些左右走位
-      const strafeAmp = isStrafe ? rand(40, 120) : 0;
-      const strafeSpd = isStrafe ? rand(0.8, 1.8) : 0;
+      const isStrafe = Math.random() < (0.42 + state.stage*0.04);
+      const strafeAmp = isStrafe ? rand(60, 150) : 0;
+      const strafeSpd = isStrafe ? rand(0.95, 2.05) : 0;
 
       enemies.push({
         type: 'mob',
@@ -427,9 +425,10 @@
         r: 15,
         hp: cfg.hp,
         hpMax: cfg.hp,
-        fireCd: rand(0.3, 1.2),
+        fireCd: rand(0.25, 1.1),
         fireRate: cfg.fire,
         bulletSpeed: cfg.bullet,
+        bulletDmg: cfg.dmg,
         strafeAmp,
         strafeSpd,
         strafePhase: rand(0, Math.PI*2),
@@ -438,41 +437,91 @@
     }
   }
 
+  // 召喚用：不重置波次，直接加怪
+  function spawnAdds(count=4, power=0.78){
+    const cfg = waveConfig(state.stage, state.wave);
+    const holdY = enemyHoldY() + rand(8, 22);
+    for (let i=0;i<count;i++){
+      const x = rand(40, W-40);
+      const isStrafe = Math.random() < 0.7;
+      const strafeAmp = isStrafe ? rand(60, 140) : 0;
+      const strafeSpd = isStrafe ? rand(1.0, 2.2) : 0;
+
+      const hp = Math.max(18, cfg.hp * power);
+      enemies.push({
+        type: 'mob',
+        x,
+        y: -60 - i*24,
+        targetY: holdY + rand(-14, 14),
+        r: 14,
+        hp: hp,
+        hpMax: hp,
+        fireCd: rand(0.25, 0.95),
+        fireRate: cfg.fire * (0.95 + rand(-0.05,0.10)),
+        bulletSpeed: cfg.bullet * (0.92 + rand(-0.04,0.08)),
+        bulletDmg: cfg.dmg * (0.9 + rand(-0.05,0.10)),
+        strafeAmp,
+        strafeSpd,
+        strafePhase: rand(0, Math.PI*2),
+        hitFlash: 0,
+      });
+    }
+    toastMsg(`Boss 召喚小怪 x${count}`, 0.65);
+  }
+
+  // C) Boss 變硬、變兇、會變招：多階段（70%/40%）
   function spawnBoss(){
-    // Boss 進場後停在固定線位 + 左右移動射擊
     state.bossAlive = true;
     const holdY = enemyHoldY() - 10;
+
+    const hp = 680 + state.stage*190; // 更硬
+    const baseFire = 1.05 + state.stage*0.14;
+    const baseSpd  = 340 + state.stage*22;
+
     enemies.push({
       type: 'boss',
       x: W*0.5,
-      y: -80,
+      y: -90,
       targetY: holdY,
       r: 28,
-      hp: 520 + state.stage*140,
-      hpMax: 520 + state.stage*140,
+
+      hp,
+      hpMax: hp,
+
+      // base stats（phase 會套 multiplier）
+      baseFireRate: baseFire,
+      baseBulletSpeed: baseSpd,
+      baseBulletDmg: 13 + state.stage*2.2,
+
+      fireRate: baseFire,
+      bulletSpeed: baseSpd,
+      bulletDmg: 13 + state.stage*2.2,
+
       fireCd: 0.8,
-      fireRate: 1.0 + state.stage*0.12,
-      bulletSpeed: 320 + state.stage*20,
-      strafeAmp: 220,
-      strafeSpd: 1.05 + state.stage*0.08,
+      strafeAmp: 240,
+      strafeSpd: 1.10 + state.stage*0.09,
       strafePhase: 0,
+
       phase: 1,
+      patternCd: 1.9,   // 彈幕技能冷卻
+      summonCd: 5.2,    // 召喚冷卻（phase3 才會用）
+      rageSpin: 0,      // phase3 用：旋轉彈幕
       hitFlash: 0,
     });
+
+    toastMsg('Boss 入場', 0.75);
   }
 
   function nextWave(){
     state.wave += 1;
-    state.waveClearCooldown = 0.55; // 給玩家喘氣
+    state.waveClearCooldown = 0.55;
     state.waveInProgress = false;
-    // 每關到第 bossEveryWaves 波出 Boss
-    // Boss 死了才算過關（stage+1, wave回1）
   }
 
   function nextStage(){
     state.stage += 1;
     state.wave = 1;
-    state.waveClearCooldown = 0.8;
+    state.waveClearCooldown = 0.85;
     state.waveInProgress = false;
   }
 
@@ -534,7 +583,6 @@
       buffs.spread = Math.max(buffs.spread, 7.5);
       toastMsg('Spread!');
     } else if (type === 'bomb'){
-      // 清場：清怪 + 清敵彈
       let killed = 0;
       for (const e of enemies){
         if (e.type !== 'boss'){
@@ -580,7 +628,6 @@
     overlay.classList.add('show');
     opts.innerHTML = '';
 
-    // 抽3個不重複
     const pool = [...UPGRADES];
     const picks = [];
     while (picks.length < 3 && pool.length){
@@ -629,8 +676,10 @@
     while (state.xp >= state.nextXp){
       state.xp -= state.nextXp;
       state.level += 1;
-      // nextXp grows
-      state.nextXp = Math.floor(state.nextXp * 1.22 + 10);
+
+      // B) 升級變慢：成長倍率提高（更快變貴）
+      state.nextXp = Math.floor(state.nextXp * 1.30 + 14);
+
       openLevelUp();
     }
   }
@@ -649,39 +698,153 @@
     }
   }
 
+  // A) 散射不再等於免費 3 倍輸出：子彈變多，但每顆傷害稀釋
+  // 2條：每顆 ×0.72（總約 1.44 倍）
+  // 3條：每顆 ×0.58（總約 1.74 倍）
+  function spreadDmgMultiplier(shots){
+    if (shots === 2) return 0.72;
+    if (shots === 3) return 0.58;
+    return 1.0;
+  }
+
   function spawnPlayerShot(){
     const spreadBonus = (buffs.spread > 0 ? 1 : 0);
     const s = clamp(player.spread + spreadBonus, 0, 3);
 
-    const base = { x: player.x, y: player.y - player.r - 6, r: 4, vx:0, vy: -player.bulletSpeed, dmg: player.dmg, pierce: player.pierce, alive:true };
+    // shots count: 1 / 2 / 3
+    const shotsCount = (s <= 0) ? 1 : (s === 1 ? 2 : 3);
+    const dmgMul = spreadDmgMultiplier(shotsCount);
+    const perShotDmg = player.dmg * dmgMul;
+
+    const base = {
+      x: player.x,
+      y: player.y - player.r - 6,
+      r: 4,
+      vx: 0,
+      vy: -player.bulletSpeed,
+      dmg: perShotDmg,
+      pierce: player.pierce,
+      alive: true
+    };
+
     const shots = [];
 
-    if (s <= 0){
+    if (shotsCount === 1){
       shots.push(base);
-    } else if (s === 1){
-      shots.push({ ...base, vx: -120, vy: -player.bulletSpeed });
-      shots.push({ ...base, vx:  120, vy: -player.bulletSpeed });
+    } else if (shotsCount === 2){
+      shots.push({ ...base, vx: -120 });
+      shots.push({ ...base, vx:  120 });
     } else {
-      shots.push({ ...base, vx: -160, vy: -player.bulletSpeed });
-      shots.push({ ...base, vx:   0,  vy: -player.bulletSpeed });
-      shots.push({ ...base, vx:  160, vy: -player.bulletSpeed });
+      shots.push({ ...base, vx: -160 });
+      shots.push({ ...base, vx:    0 });
+      shots.push({ ...base, vx:  160 });
     }
 
     for (const b of shots) pBullets.push(b);
   }
 
-  function enemyShoot(e){
-    // 朝玩家方向射
+  function enemyShoot(e, angleOverride=null, speedMul=1, dmgMul=1){
     const dx = player.x - e.x;
     const dy = player.y - e.y;
-    const len = Math.hypot(dx,dy) || 1;
-    let spd = e.bulletSpeed;
+    const ang = angleOverride ?? Math.atan2(dy, dx);
+
+    let spd = e.bulletSpeed * speedMul;
     if (buffs.slow > 0) spd *= 0.75;
 
-    const vx = (dx/len) * spd;
-    const vy = (dy/len) * spd;
+    const vx = Math.cos(ang) * spd;
+    const vy = Math.sin(ang) * spd;
 
-    eBullets.push({ x:e.x, y:e.y+e.r+4, r:4, vx, vy, dmg: (e.type==='boss'? 12+state.stage*2 : 7+state.stage), alive:true });
+    const dmg = (e.bulletDmg ?? (e.type==='boss' ? 14 : 8)) * dmgMul;
+    eBullets.push({ x:e.x, y:e.y+e.r+4, r:4, vx, vy, dmg, alive:true });
+  }
+
+  // Boss 專用：彈幕/變招/召喚
+  function bossPhase(e){
+    const ratio = e.hp / e.hpMax;
+    if (ratio <= 0.40) return 3;
+    if (ratio <= 0.70) return 2;
+    return 1;
+  }
+
+  function bossApplyPhaseStats(e){
+    const ph = bossPhase(e);
+    if (ph !== e.phase){
+      e.phase = ph;
+      toastMsg(ph === 2 ? 'Boss：Phase 2（彈幕模式）' : 'Boss：Phase 3（狂暴）', 0.85);
+      // phase 切換時，稍微重置技能冷卻，避免剛進 phase 直接滿屏核爆
+      e.patternCd = Math.min(e.patternCd, ph===3 ? 1.2 : 1.5);
+      if (ph < 3) e.summonCd = 999; // phase3 才召喚
+    }
+
+    if (e.phase === 1){
+      e.fireRate = e.baseFireRate * 1.0;
+      e.bulletSpeed = e.baseBulletSpeed * 1.0;
+      e.bulletDmg = e.baseBulletDmg * 1.0;
+    } else if (e.phase === 2){
+      e.fireRate = e.baseFireRate * 1.18;
+      e.bulletSpeed = e.baseBulletSpeed * 1.06;
+      e.bulletDmg = e.baseBulletDmg * 1.06;
+    } else {
+      // phase3：狂暴射速 + 更快彈速 + 更痛
+      e.fireRate = e.baseFireRate * 1.65;
+      e.bulletSpeed = e.baseBulletSpeed * 1.12;
+      e.bulletDmg = e.baseBulletDmg * 1.14;
+    }
+  }
+
+  function bossShootPattern(e, dt){
+    const ang = Math.atan2(player.y - e.y, player.x - e.x);
+
+    if (e.phase === 1){
+      enemyShoot(e, ang);
+      return;
+    }
+
+    if (e.phase === 2){
+      // 3-way 扇形 + 偶爾 ring
+      enemyShoot(e, ang);
+      enemyShoot(e, ang - 0.18, 0.98, 0.95);
+      enemyShoot(e, ang + 0.18, 0.98, 0.95);
+
+      e.patternCd -= dt;
+      if (e.patternCd <= 0){
+        // ring burst（彈幕模式）
+        const n = 10;
+        const base = rand(0, Math.PI*2);
+        for (let i=0;i<n;i++){
+          const a = base + (i/n)*Math.PI*2;
+          enemyShoot(e, a, 0.92, 0.9);
+        }
+        e.patternCd = 2.0 + rand(-0.2, 0.35);
+      }
+      return;
+    }
+
+    // phase 3：5-way + 旋轉彈幕 + 召喚小怪
+    enemyShoot(e, ang, 1.02, 1.0);
+    for (const da of [-0.24, -0.12, 0.12, 0.24]){
+      enemyShoot(e, ang + da, 1.00, 0.92);
+    }
+
+    // spiral / rotating burst
+    e.patternCd -= dt;
+    e.rageSpin += dt * 1.6;
+    if (e.patternCd <= 0){
+      const n = 14;
+      const base = e.rageSpin;
+      for (let i=0;i<n;i++){
+        const a = base + (i/n)*Math.PI*2;
+        enemyShoot(e, a, 0.98, 0.88);
+      }
+      e.patternCd = 1.35 + rand(-0.15, 0.25);
+    }
+
+    // summon adds
+    e.summonCd -= dt;
+    if (e.summonCd <= 0){
+      spawnAdds(4 + (Math.random()<0.35?1:0), 0.78);
+      e.summonCd = 5.8 + rand(-0.6, 0.9);
+    }
   }
 
   function damagePlayer(dmg){
@@ -694,20 +857,21 @@
       player.hp = Math.max(0, player.hp - dmg);
     }
     if (player.hp <= 0){
-      // game over: reset (簡單粗暴)
       toastMsg('你倒了…重新開始', 1.2);
       resetRun();
     }
   }
 
   function resetRun(){
-    // 保留：你可以想要「跨局養成」時再改成不重置部分參數
     state.stage = 1;
     state.wave  = 1;
     state.score = 0;
     state.xp = 0;
     state.level = 1;
-    state.nextXp = 40;
+
+    // B) 起始 nextXp 拉高
+    state.nextXp = 70;
+
     state.waveClearCooldown = 0;
     state.waveInProgress = false;
     state.bossAlive = false;
@@ -759,60 +923,50 @@
   // Update / Draw
   // -----------------------
   function update(dt){
-    // buffs
     for (const k in buffs){
       if (buffs[k] > 0) buffs[k] = Math.max(0, buffs[k] - dt);
     }
 
-    // player position: pad controls; clamp to board
     player.y = H - 42;
     player.x = clamp(player.x, player.r+8, W - player.r - 8);
 
-    // auto shoot
     shoot(dt);
 
-    // enemies behavior
     const holdY = enemyHoldY();
-    let aliveBoss = false;
 
     for (const e of enemies){
-      // enter to targetY, then hold/strafe
       e.y = lerp(e.y, e.targetY, clamp(dt*2.6, 0, 1));
 
-      // strafe if any
       if (e.strafeAmp > 0){
         e.strafePhase += dt * e.strafeSpd;
         const ox = Math.sin(e.strafePhase) * e.strafeAmp;
-        // boss: center around mid
         if (e.type === 'boss'){
           e.x = W*0.5 + ox;
         }else{
-          // mobs: center around original lane x (store base?)
           if (e.baseX == null) e.baseX = e.x;
           e.x = e.baseX + ox;
         }
       }
       e.x = clamp(e.x, e.r+10, W-e.r-10);
 
+      // Boss phase update
+      if (e.type === 'boss'){
+        bossApplyPhaseStats(e);
+      }
+
       // fire
       e.fireCd -= dt;
       if (e.fireCd <= 0){
-        enemyShoot(e);
-        // boss 偶爾扇形彈
-        if (e.type === 'boss' && (e.hp/e.hpMax) < 0.65 && Math.random() < 0.45){
-          // extra 2 bullets
-          const spd = (buffs.slow>0? e.bulletSpeed*0.75 : e.bulletSpeed);
-          const ang = Math.atan2(player.y - e.y, player.x - e.x);
-          for (const da of [-0.22, 0.22]){
-            eBullets.push({ x:e.x, y:e.y+e.r+4, r:4, vx: Math.cos(ang+da)*spd, vy: Math.sin(ang+da)*spd, dmg: 11+state.stage*2, alive:true });
-          }
+        if (e.type === 'boss'){
+          bossShootPattern(e, dt);
+          e.fireCd = 1 / e.fireRate;
+        } else {
+          enemyShoot(e);
+          e.fireCd = 1 / e.fireRate;
         }
-        e.fireCd = 1 / e.fireRate;
       }
 
       if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt);
-
-      if (e.type === 'boss' && e.hp > 0) aliveBoss = true;
     }
 
     // bullets
@@ -831,7 +985,7 @@
     for (const d of drops){
       d.y += d.vy * dt;
       d.life -= dt;
-      // magnet
+
       if (buffs.magnet > 0){
         const dx = player.x - d.x;
         const dy = player.y - d.y;
@@ -839,9 +993,9 @@
         d.x += (dx/l) * 240 * dt;
         d.y += (dy/l) * 240 * dt;
       }
+
       if (d.y > H+40 || d.life <= 0) d.dead = true;
 
-      // collect
       if (dist2(d.x,d.y, player.x, player.y) < (d.r + player.r + 8)**2){
         d.dead = true;
         applyDrop(d.type);
@@ -858,16 +1012,14 @@
       if (p.life <= 0) p.dead = true;
     }
 
-    // collisions: player bullets vs enemies
+    // collisions: player bullets vs enemy bullets
     for (const b of pBullets){
       if (!b.alive) continue;
 
-      // also allow shooting enemy bullets
       for (const eb of eBullets){
         if (!eb.alive) continue;
         if (dist2(b.x,b.y, eb.x, eb.y) < (b.r + eb.r + 2)**2){
           eb.alive = false;
-          // bullet can continue unless no pierce, we treat as small hit
           if (b.pierce <= 0) b.alive = false;
           else b.pierce -= 1;
           addBurst(eb.x, eb.y, 4);
@@ -876,6 +1028,7 @@
       }
       if (!b.alive) continue;
 
+      // collisions: player bullets vs enemies
       for (const e of enemies){
         if (e.hp <= 0) continue;
         if (dist2(b.x,b.y, e.x, e.y) < (b.r + e.r)**2){
@@ -887,11 +1040,13 @@
           else b.pierce -= 1;
 
           if (e.hp <= 0){
-            // kill
-            state.score += (e.type==='boss'? 220 : 18);
-            addXp(e.type==='boss'? 90 : 8);
+            state.score += (e.type==='boss'? 280 : 18);
+
+            // B) 小怪 XP 下修、Boss XP 上修（鼓勵打到 Boss）
+            addXp(e.type==='boss' ? 165 : 5);
+
             maybeDrop(e.x, e.y, e.type==='boss');
-            addBurst(e.x, e.y, e.type==='boss'? 22 : 10);
+            addBurst(e.x, e.y, e.type==='boss'? 26 : 10);
           }
           break;
         }
@@ -919,7 +1074,6 @@
     if (!state.waveInProgress){
       state.waveClearCooldown -= dt;
       if (state.waveClearCooldown <= 0){
-        // decide spawn: wave or boss or next stage
         if (state.wave === state.bossEveryWaves){
           spawnBoss();
           state.waveInProgress = true;
@@ -928,9 +1082,7 @@
         }
       }
     }else{
-      // if wave in progress, check cleared
       if (enemies.length === 0){
-        // if boss was wave boss => stage up
         if (state.wave === state.bossEveryWaves){
           nextStage();
         }else{
@@ -939,7 +1091,6 @@
       }
     }
 
-    // toast timer
     if (toastT > 0){
       toastT = Math.max(0, toastT - dt);
       if (toastT === 0 && !paused) $toast.classList.remove('show');
@@ -947,7 +1098,6 @@
   }
 
   function draw(){
-    // clear (no trail!)
     ctx.clearRect(0,0,W,H);
 
     // background grid
@@ -999,6 +1149,7 @@
       ctx.save();
       const isBoss = e.type==='boss';
       const flash = e.hitFlash > 0;
+
       ctx.fillStyle = flash ? 'rgba(255,255,255,.18)' : (isBoss ? 'rgba(255,120,120,.14)' : 'rgba(255,255,255,.10)');
       ctx.strokeStyle = isBoss ? 'rgba(255,120,120,.35)' : 'rgba(255,255,255,.20)';
       ctx.lineWidth = isBoss ? 2 : 1;
@@ -1009,7 +1160,7 @@
       ctx.stroke();
 
       // hp bar
-      const w = isBoss ? 90 : 52;
+      const w = isBoss ? 96 : 52;
       const h = 6;
       const x = e.x - w/2;
       const y = e.y - e.r - 14;
@@ -1018,6 +1169,18 @@
       ctx.fillRect(x,y,w,h);
       ctx.fillStyle = isBoss ? 'rgba(255,120,120,.9)' : 'rgba(120,255,200,.9)';
       ctx.fillRect(x,y, w * clamp(e.hp/e.hpMax,0,1), h);
+
+      // boss phase indicator (subtle)
+      if (isBoss){
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = 'rgba(255,255,255,.65)';
+        ctx.font = '11px system-ui, "Noto Sans TC"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const ph = e.phase ?? 1;
+        ctx.fillText(`P${ph}`, e.x, y-2);
+      }
+
       ctx.restore();
     }
 
@@ -1043,7 +1206,6 @@
 
     // player
     ctx.save();
-    // body (triangle-ish)
     ctx.translate(player.x, player.y);
     ctx.fillStyle = 'rgba(255,255,255,.10)';
     ctx.strokeStyle = 'rgba(255,255,255,.22)';
@@ -1055,7 +1217,6 @@
     ctx.closePath();
     ctx.fill(); ctx.stroke();
 
-    // shield ring
     if (player.shield > 0){
       ctx.globalAlpha = 0.85;
       ctx.strokeStyle = 'rgba(120,255,200,.45)';
@@ -1076,7 +1237,6 @@
     const hpPct = clamp(player.hp / player.hpMax, 0, 1);
     $hpFill.style.width = `${hpPct*100}%`;
 
-    // 顯示護盾加成在數字後（不佔太多空間）
     const shieldTxt = player.shield > 0 ? ` +${Math.floor(player.shield)}` : '';
     $hpNum.textContent = `${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
   }
