@@ -299,7 +299,7 @@ canvas{width:100%;height:100%;display:block}
     if(document.referrer){
       try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
     }
-    location.href='./games/';
+    location.href='/game/games/';
   });
 
   let paused=false;
