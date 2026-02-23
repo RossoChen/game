@@ -91,7 +91,7 @@ canvas{width:100%;height:100%;display:block}
         <div class="hpbar">
           <span class="label">HP</span>
           <div class="track"><div class="fill" id="hpFill"></div></div>
-          <span class="num" id="hpNum">100/100</span>
+          <span class="num" id="hpNum">300/300</span>
         </div>
         <button class="pill" id="btnPause">暫停</button>
       </div>
@@ -404,7 +404,7 @@ canvas{width:100%;height:100%;display:block}
   }
   function resetRun(){
     state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=70;state.waveClearCooldown=0;state.waveInProgress=false;
-    player.hpMax=100;player.hp=100;player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;player.spread=0;player.pierce=0;player.shield=0;player.shieldMax=0;
+    player.hpMax=300;player.hp=300;player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;player.spread=0;player.pierce=0;player.shield=0;player.shieldMax=0;
     for(const k in buffs)buffs[k]=0;
     pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
