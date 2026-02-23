@@ -5,20 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
   <title>RossoChen Games</title>
 
-  <!-- ✅ iOS standalone -->
+  <!-- iOS standalone -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Games" />
   <meta name="theme-color" content="#0b1220" />
 
-  <!-- ✅ 保險：主畫面模式下避免 /game 沒尾斜線造成相對路徑歪掉 -->
+  <!-- 保險：主畫面模式下避免 /game 沒尾斜線造成相對路徑歪掉 -->
   <base href="./" />
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
 
   <style>
     :root { color-scheme: dark; }
-
     html, body{
       height:100%;
       margin:0;
@@ -43,7 +42,7 @@
     }
 
     .wrap{
-      width:min(900px, 92vw);
+      width:min(980px, 92vw);
       overflow:auto;
       -webkit-overflow-scrolling: touch;
       display:flex;
@@ -51,13 +50,56 @@
       gap:12px;
     }
 
-    h1{ margin:0 0 4px; font-size:28px; }
-    p{ margin:0 0 10px; opacity:.8; }
+    .top{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    h1{ margin:0; font-size:28px; letter-spacing:.3px; }
+    .sub{ margin:0; opacity:.72; font-size:13px; }
+
+    .searchRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      width:min(520px, 100%);
+      margin-top:8px;
+    }
+    .search{
+      flex:1;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:#e7eefc;
+      padding:12px 12px;
+      outline:none;
+      font-size:14px;
+    }
+    .pill{
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:#e7eefc;
+      padding:10px 12px;
+      font-size:12px;
+      white-space:nowrap;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pill[aria-pressed="true"]{
+      background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.22);
+    }
 
     .grid{
       display:grid;
       grid-template-columns: 1fr;
       gap:12px;
+    }
+    @media (min-width: 720px){
+      .grid{ grid-template-columns: 1fr 1fr; }
     }
 
     a.card{
@@ -69,11 +111,21 @@
       text-decoration:none;
       color:inherit;
       -webkit-tap-highlight-color: transparent;
+      transition: transform .08s ease;
     }
     a.card:hover{ background: rgba(255,255,255,.09); }
+    a.card:active{ transform: scale(.99); }
 
-    .t{ font-weight:900; margin-bottom:6px; font-size:18px; }
-    .d{ opacity:.78; font-size:13px; line-height:1.4; }
+    .t{ font-weight:900; margin-bottom:6px; font-size:18px; display:flex; gap:10px; align-items:center; }
+    .badge{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      opacity:.9;
+    }
+    .d{ opacity:.78; font-size:13px; line-height:1.45; }
 
     .tagRow{ margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
     .tag{
@@ -88,31 +140,126 @@
       opacity:.9;
       white-space:nowrap;
     }
+
+    .empty{
+      padding:14px;
+      border-radius:16px;
+      border:1px dashed rgba(255,255,255,.18);
+      opacity:.8;
+      font-size:13px;
+      line-height:1.6;
+    }
   </style>
 </head>
 
 <body>
   <div class="app">
     <div class="wrap">
-      <div>
-        <h1>Games Hub</h1>
+      <div class="top">
+        <div>
+          <h1>Games Hub</h1>
+          <p class="sub">新增遊戲不用再改入口頁：只要新增資料夾 + games.json 加一筆（維運 KPI 直接漂亮）。</p>
+
+          <div class="searchRow">
+            <input id="q" class="search" placeholder="搜尋遊戲 / 標籤，例如：單手、反應、休閒" autocomplete="off" inputmode="search">
+            <button id="onlyNew" class="pill" type="button" aria-pressed="false">只看 NEW</button>
+          </div>
+        </div>
       </div>
 
-      <div class="grid">
-        <a class="card" href="/game/games/snake/">
-          <div class="t">Snake</div>
-          <div class="d">經典貪食蛇：碰牆/碰身體結束。支援大按鍵與滑動操作。</div>
-        </a>
-        <a class="card" href="/game/games/Dodger/index.html">
-          <div class="t">Dodger</div>
-          <div class="d">單手躲避：左右拖曳閃子彈，撿道具拿護盾/減速/清場/吸附/縮小。</div>
-        </a>
-        <a class="card" href="/game/games/Fishing/">
-          <div class="t">Fishing</div>
-          <div class="d">派遣 → 結算 → 賣魚升級，離線也算進度。</div>
-        </a>
-      </div>
+      <div id="grid" class="grid"></div>
+      <div id="empty" class="empty" style="display:none;"></div>
     </div>
   </div>
+
+<script>
+(() => {
+  const $grid = document.getElementById('grid');
+  const $q = document.getElementById('q');
+  const $onlyNew = document.getElementById('onlyNew');
+  const $empty = document.getElementById('empty');
+
+  let games = [];
+  let onlyNew = false;
+
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+
+  const normalize = (s) => String(s ?? '').toLowerCase().trim();
+
+  function makeCard(g){
+    const tags = Array.isArray(g.tags) ? g.tags : [];
+    const badges = [];
+    if (g.new) badges.push('<span class="badge">NEW</span>');
+    if (g.badge) badges.push(`<span class="badge">${esc(g.badge)}</span>`);
+
+    // 用相對路徑：更不怕搬家/改 repo 名
+    const href = g.href || '#';
+
+    return `
+      <a class="card" href="${esc(href)}">
+        <div class="t">${esc(g.title)} ${badges.join(' ')}</div>
+        <div class="d">${esc(g.desc || '')}</div>
+        ${tags.length ? `<div class="tagRow">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>` : ``}
+      </a>
+    `;
+  }
+
+  function render(){
+    const query = normalize($q.value);
+    const filtered = games.filter(g => {
+      if (onlyNew && !g.new) return false;
+      const hay = [
+        g.title, g.desc,
+        ...(Array.isArray(g.tags) ? g.tags : [])
+      ].map(normalize).join(' ');
+      return !query || hay.includes(query);
+    });
+
+    $grid.innerHTML = filtered.map(makeCard).join('');
+    $empty.style.display = filtered.length ? 'none' : 'block';
+    if (!filtered.length){
+      $empty.innerHTML =
+        `找不到符合條件的遊戲。<br>` +
+        `你可以：<br>` +
+        `1) 清空搜尋字<br>` +
+        `2) 關掉「只看 NEW」<br>` +
+        `3) 或者…新增一款遊戲讓它出現（這是最硬的解法）。`;
+    }
+  }
+
+  async function load(){
+    try{
+      const res = await fetch('./games.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('fetch games.json failed');
+      const data = await res.json();
+      games = Array.isArray(data) ? data : (data.games || []);
+    }catch(e){
+      // fallback：避免你在飛機上測試時入口頁直接死給你看
+      games = [
+        { title:'Snake', href:'./games/snake/', desc:'經典貪食蛇：碰牆/碰身體結束。支援大按鍵與滑動操作。', tags:['經典','單手'] },
+        { title:'Dodger', href:'./games/Dodger/index.html', desc:'左右拖曳閃子彈，撿道具拿護盾/減速/清場/吸附/縮小。', tags:['反應','單手'] },
+        { title:'Fishing', href:'./games/Fishing/', desc:'派遣 → 結算 → 賣魚升級，離線也算進度。', tags:['放置','養成'] },
+      ];
+    }
+    render();
+  }
+
+  $q.addEventListener('input', render);
+  $onlyNew.addEventListener('click', () => {
+    onlyNew = !onlyNew;
+    $onlyNew.setAttribute('aria-pressed', String(onlyNew));
+    render();
+  });
+
+  // 可選：PWA SW（若你有放 sw.js）
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  load();
+})();
+</script>
 </body>
 </html>
