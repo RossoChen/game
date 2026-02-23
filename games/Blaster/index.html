@@ -437,7 +437,7 @@ canvas{width:100%;height:100%;display:block}
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanes=(e.phase===1?5:(e.phase===2?6:8));
-        const spread=(e.phase===1?0.24:(e.phase===2?0.30:0.36));
+        const spread=(e.phase===1?0.40:(e.phase===2?0.40:0.50));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul);
