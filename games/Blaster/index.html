@@ -38,7 +38,6 @@ body{position:fixed;inset:0}
 .hudRow::-webkit-scrollbar{display:none}
 .hudRow2{justify-content:space-between}
 
-/* Pills smaller */
 .pill,button.pill{
   border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
@@ -52,15 +51,14 @@ body{position:fixed;inset:0}
 }
 button.pill{cursor:pointer}
 button.pill:active{transform:scale(.99)}
+button.pill:disabled{opacity:.45;cursor:default}
 
-/* make the key pills narrower */
 #hudStage,#hudWave,#hudLv{min-width:66px;text-align:center}
 #hudScore{min-width:82px;text-align:center}
 
-/* HP bar: controlled width so Pause never gets pushed out */
+/* HP bar */
 .hpbar{
-  flex:1 1 auto;
-  min-width:0;
+  flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:8px;
   padding:8px 10px;border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
@@ -68,18 +66,13 @@ button.pill:active{transform:scale(.99)}
 }
 .hpbar .label{opacity:.85;font-weight:800;letter-spacing:.2px}
 .hpbar .track{
-  flex:1 1 auto;
-  min-width:90px;
-  max-width:260px; /* slightly narrower */
+  flex:1 1 auto; min-width:90px; max-width:240px;
   height:12px;border-radius:999px;
   background:rgba(255,255,255,.10);
   overflow:hidden;border:1px solid rgba(255,255,255,.10)
 }
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
-.hpbar .num{
-  opacity:.85;font-variant-numeric:tabular-nums;
-  min-width:78px;text-align:right
-}
+.hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
 
 /* ---------- Main ---------- */
 .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
@@ -92,7 +85,7 @@ button.pill:active{transform:scale(.99)}
 canvas{width:100%;height:100%;display:block}
 
 .touchpad{
-  flex:0 0 auto;height:max(86px,13svh);
+  flex:0 0 auto;height:max(82px,12.5svh);
   border-radius:18px;border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.04);
   position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent
@@ -100,6 +93,32 @@ canvas{width:100%;height:100%;display:block}
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
+
+/* ---------- Specials bar (below touchpad) ---------- */
+.specials{
+  flex:0 0 auto;
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+}
+.sbtn{
+  flex:1 1 0;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#e7eefc;
+  padding:10px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  -webkit-tap-highlight-color:transparent;
+}
+.sbtn:active{transform:scale(.99)}
+.sbtn .top{display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:.2px}
+.sbtn .meta{opacity:.78;font-size:12px;line-height:1.2}
+.sbtn .right{margin-left:auto;opacity:.9;font-variant-numeric:tabular-nums}
+.sbtn[disabled]{opacity:.45}
 
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
@@ -110,6 +129,10 @@ canvas{width:100%;height:100%;display:block}
 .opt{border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .opt:active{transform:scale(.99)}
 .opt .t{font-weight:900;margin-bottom:6px}.opt .d{opacity:.78;font-size:13px;line-height:1.4}
+
+.panel .sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px}
+.panel .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.panel .row .pill{padding:10px 12px}
 
 .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
 .toast.show{display:block}
@@ -141,18 +164,44 @@ canvas{width:100%;height:100%;display:block}
       <canvas id="c"></canvas>
       <div class="toast" id="toast">Paused</div>
     </div>
+
     <div class="touchpad" id="touchpad" aria-label="touchpad">
       <div class="bar"></div>
       <div class="thumb" id="thumb" style="left:50%"></div>
       <div class="hint">左右拖曳＝移動（自動射擊）</div>
+    </div>
+
+    <div class="specials" id="specials">
+      <button class="sbtn" id="btnBomb">
+        <div class="top">💣 Bomb <span class="right" id="cntBomb">x3</span></div>
+        <div class="meta" id="metaBomb">清子彈＋清小兵，Boss -20%</div>
+      </button>
+      <button class="sbtn" id="btnInvuln">
+        <div class="top">🛡 無敵 <span class="right" id="cntInvuln">x3</span></div>
+        <div class="meta" id="metaInvuln">10 秒免傷</div>
+      </button>
+      <button class="sbtn" id="btnEMP">
+        <div class="top">⚡ EMP <span class="right" id="cntEMP">x2</span></div>
+        <div class="meta" id="metaEMP">3 秒停火＋敵彈變慢</div>
+      </button>
+      <button class="sbtn" id="btnArmor">
+        <div class="top">🎯 穿甲 <span class="right" id="cntArmor">x2</span></div>
+        <div class="meta" id="metaArmor">5 秒子彈不撞敵彈</div>
+      </button>
+      <button class="sbtn" id="btnHeal">
+        <div class="top">✚ 治療 <span class="right" id="cntHeal">x2</span></div>
+        <div class="meta" id="metaHeal">回 40% 最大 HP</div>
+      </button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="overlay">
   <div class="panel">
-    <h2>升級：選一個</h2>
+    <h2 id="panelTitle">升級：選一個</h2>
+    <div class="sub" id="panelSub" style="display:none"></div>
     <div class="opts" id="opts"></div>
+    <div class="row" id="panelRow" style="display:none"></div>
   </div>
 </div>
 
@@ -224,16 +273,39 @@ canvas{width:100%;height:100%;display:block}
         $score=document.getElementById('hudScore'),$hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $btnPause=document.getElementById('btnPause'),$toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack');
 
+  // overlay refs
+  const overlay=document.getElementById('overlay');
+  const opts=document.getElementById('opts');
+  const $panelTitle=document.getElementById('panelTitle');
+  const $panelSub=document.getElementById('panelSub');
+  const $panelRow=document.getElementById('panelRow');
+
+  // specials refs
+  const $btnBomb=document.getElementById('btnBomb');
+  const $btnInvuln=document.getElementById('btnInvuln');
+  const $btnEMP=document.getElementById('btnEMP');
+  const $btnArmor=document.getElementById('btnArmor');
+  const $btnHeal=document.getElementById('btnHeal');
+  const $cntBomb=document.getElementById('cntBomb');
+  const $cntInvuln=document.getElementById('cntInvuln');
+  const $cntEMP=document.getElementById('cntEMP');
+  const $cntArmor=document.getElementById('cntArmor');
+  const $cntHeal=document.getElementById('cntHeal');
+  const $metaInvuln=document.getElementById('metaInvuln');
+  const $metaEMP=document.getElementById('metaEMP');
+  const $metaArmor=document.getElementById('metaArmor');
+
   $btnBack.addEventListener('click',()=>{
     if(document.referrer){
       try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
     }
-    // keep within scope (PWA-friendly)
     location.href='./games/';
   });
 
   let paused=false;
+  let mode='play'; // play | levelup | gameover
   $btnPause.addEventListener('click',()=>{
+    if(mode!=='play') return;
     paused=!paused;
     $btnPause.textContent=paused?'繼續':'暫停';
     $toast.textContent=paused?'Paused':'';
@@ -251,17 +323,40 @@ canvas{width:100%;height:100%;display:block}
   const pad=document.getElementById('touchpad'),thumb=document.getElementById('thumb');
   let padActive=false,padX=.5;
 
-  // ---------- Game constants ----------
+  // ---------- Constants ----------
   const BASE_HP=300;
+  const SPREAD_CAP=3; // perm
+  const PIERCE_CAP=3; // perm
+  const SPREAD_BONUS_MAX=1; // +1 (perm 3 -> total 4)
+  const PIERCE_BONUS_MAX=1; // +1 (perm 3 -> total 4)
 
   // ---------- State ----------
-  const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:70,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
+  const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:60,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
     moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,
-    spread:0,pierce:0,shield:0,shieldMax:0
+    spread_perm:0, pierce_perm:0,
+    shield:0,shieldMax:0,
+    regen:0, xpGainMul:1.0, bulletR:4
   };
+
+  // buffs (timed)
+  const buffs={
+    rapid:0, magnet:0,
+    spreadBonusT:0, pierceBonusT:0,
+    invulnT:0, empT:0, armorT:0
+  };
+
+  // specials counts & cooldown guard
+  const special={
+    bomb:{count:3, cd:0},
+    invuln:{count:3, cd:0},
+    emp:{count:2, cd:0},
+    armor:{count:2, cd:0},
+    heal:{count:2, cd:0},
+  };
+
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
   function setPadX(nx){
@@ -298,7 +393,7 @@ canvas{width:100%;height:100%;display:block}
         strafeAmp:isStrafe?rand(45,120):0,strafeSpd:isStrafe?rand(.85,1.85):0,strafePhase:rand(0,Math.PI*2),hitFlash:0});
     }
   }
-  function spawnAdds(count=5,power=.92){
+  function spawnAdds(count=4,power=.90){
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
     for(let i=0;i<count;i++){
       const x=rand(40,W-40),isStrafe=Math.random()<.72,hp=Math.max(18,cfg.hp*power);
@@ -311,8 +406,8 @@ canvas{width:100%;height:100%;display:block}
   }
   function spawnBoss(){
     const holdY=enemyHoldY()-12,
-          hp=650+state.stage*170,          // nerf boss HP
-          baseSpd=240+state.stage*12;      // nerf bullet speed
+          hp=650+state.stage*170,
+          baseSpd=240+state.stage*12;
     enemies.push({
       type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,
       bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.0,
@@ -327,89 +422,284 @@ canvas{width:100%;height:100%;display:block}
   function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
   // ---------- Drops / Buffs ----------
-  const DROP_TYPES=[{key:'heal',w:26},{key:'shield',w:18},{key:'rapid',w:16},{key:'spread',w:14},{key:'bomb',w:8},{key:'magnet',w:10},{key:'slow',w:8}];
-  function pickDrop(){const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);let r=Math.random()*total;for(const it of DROP_TYPES){r-=it.w;if(r<=0)return it.key}return 'heal'}
-  function maybeDrop(x,y,isBoss=false){const p=isBoss?.95:.22;if(Math.random()>p)return;drops.push({x,y,r:10,vy:rand(40,90),type:pickDrop(),life:12})}
-  const buffs={rapid:0,spread:0,magnet:0,slow:0};
-  function applyDrop(type){
-    if(type==='heal'){player.hp=clamp(player.hp+35,0,player.hpMax);toastMsg('HP +35')}
-    else if(type==='shield'){player.shieldMax=Math.max(player.shieldMax,30);player.shield=clamp(player.shield+30,0,player.shieldMax);toastMsg('Shield +30')}
-    else if(type==='rapid'){buffs.rapid=Math.max(buffs.rapid,7.0);toastMsg('Rapid Fire!')}
-    else if(type==='spread'){buffs.spread=Math.max(buffs.spread,7.5);toastMsg('Spread!')}
-    else if(type==='bomb'){let killed=0;for(const e of enemies){if(e.type!=='boss'){e.hp=0;killed++;maybeDrop(e.x,e.y,false);addBurst(e.x,e.y,12)}}eBullets.length=0;toastMsg(`BOMB! (+${killed} mobs)`)}
-    else if(type==='magnet'){buffs.magnet=Math.max(buffs.magnet,9.0);toastMsg('Magnet')}
-    else if(type==='slow'){buffs.slow=Math.max(buffs.slow,7.5);toastMsg('Slow')}
+  const DROP_TYPES=[
+    {key:'heal',w:24},
+    {key:'shield',w:18},
+    {key:'rapid',w:16},
+    {key:'spread',w:14},   // timed +1 spread
+    {key:'pierce',w:12},   // timed +1 pierce
+    {key:'magnet',w:10},
+    // removed: slow(🐢)
+  ];
+  function pickDrop(){
+    const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);
+    let r=Math.random()*total;
+    for(const it of DROP_TYPES){r-=it.w;if(r<=0)return it.key}
+    return 'heal';
+  }
+  function maybeDrop(x,y,isBoss=false){
+    const p=isBoss?.92:.22;
+    if(Math.random()>p) return;
+    drops.push({
+      x,y,r:10,
+      vy:rand(70,140), // faster
+      type:pickDrop(),
+      life:12
+    });
   }
 
-  // ---------- Level-up ----------
-  const overlay=document.getElementById('overlay'),opts=document.getElementById('opts');
+  function applyDrop(type){
+    if(type==='heal'){player.hp=clamp(player.hp+35,0,player.hpMax);toastMsg('HP +35')}
+    else if(type==='shield'){
+      player.shieldMax=Math.max(player.shieldMax,30);
+      player.shield=clamp(player.shield+30,0,player.shieldMax);
+      toastMsg('Shield +30')
+    }
+    else if(type==='rapid'){buffs.rapid=Math.max(buffs.rapid,7.0);toastMsg('Rapid Fire!')}
+    else if(type==='spread'){
+      buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);
+      toastMsg('Spread +1（限時）')
+    }
+    else if(type==='pierce'){
+      buffs.pierceBonusT=Math.max(buffs.pierceBonusT,7.5);
+      toastMsg('Pierce +1（限時）')
+    }
+    else if(type==='magnet'){buffs.magnet=Math.max(buffs.magnet,9.0);toastMsg('Magnet')}
+  }
+
+  // ---------- Specials ----------
+  function canUseSpecial(x){return mode==='play' && !paused && special[x].count>0 && special[x].cd<=0}
+  function useBomb(){
+    if(!canUseSpecial('bomb')) return;
+    special.bomb.count--; special.bomb.cd=0.6;
+
+    // clear enemy bullets
+    const cleared=eBullets.length; eBullets.length=0;
+
+    // kill mobs & damage boss 20% max HP
+    let killed=0; let bossHit=false;
+    for(const e of enemies){
+      if(e.type==='boss'){
+        const dmg=e.hpMax*0.20;
+        e.hp=Math.max(0,e.hp-dmg);
+        bossHit=true;
+        addBurst(e.x,e.y,18);
+      }else{
+        e.hp=0; killed++;
+        maybeDrop(e.x,e.y,false);
+        addBurst(e.x,e.y,10);
+      }
+    }
+    toastMsg(`💣 Bomb! 清彈 ${cleared} / 小兵 ${killed}${bossHit?' / Boss -20%':''}`,1.0);
+  }
+  function useInvuln(){
+    if(!canUseSpecial('invuln')) return;
+    special.invuln.count--; special.invuln.cd=0.6;
+    buffs.invulnT=Math.max(buffs.invulnT,10.0);
+    toastMsg('🛡 無敵 10 秒',0.9);
+  }
+  function useEMP(){
+    if(!canUseSpecial('emp')) return;
+    special.emp.count--; special.emp.cd=0.6;
+    buffs.empT=Math.max(buffs.empT,3.0);
+    toastMsg('⚡ EMP：停火 + 敵彈變慢',0.9);
+  }
+  function useArmor(){
+    if(!canUseSpecial('armor')) return;
+    special.armor.count--; special.armor.cd=0.6;
+    buffs.armorT=Math.max(buffs.armorT,5.0);
+    toastMsg('🎯 穿甲：子彈不撞敵彈',0.9);
+  }
+  function useHeal(){
+    if(!canUseSpecial('heal')) return;
+    special.heal.count--; special.heal.cd=0.6;
+    const add=Math.floor(player.hpMax*0.40);
+    player.hp=clamp(player.hp+add,0,player.hpMax);
+    toastMsg(`✚ 治療 +${add}`,0.9);
+  }
+
+  $btnBomb.addEventListener('click',useBomb);
+  $btnInvuln.addEventListener('click',useInvuln);
+  $btnEMP.addEventListener('click',useEMP);
+  $btnArmor.addEventListener('click',useArmor);
+  $btnHeal.addEventListener('click',useHeal);
+
+  // ---------- Level-up: pick 3 with guardrails ----------
   const UPGRADES=[
     {key:'dmg',t:'火力提升',d:'傷害 +20%'},
     {key:'firerate',t:'射速提升',d:'射速 +18%'},
     {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，回滿'},
     {key:'speed',t:'機動提升',d:'移動速度 +16%'},
-    {key:'pierce',t:'穿透彈',d:'穿透 +1（最多 2）'},
-    {key:'spread_perm',t:'永久散射',d:'散射 +1（最多 2）'},
-    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'}
+    {key:'pierce_perm',t:'永久穿透',d:'穿透 +1（最多 3）'},
+    {key:'spread_perm',t:'永久散射',d:'散射 +1（最多 3）'},
+    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
+    // fillers (always useful)
+    {key:'regen',t:'自動修復',d:'每秒回復 +0.7'},
+    {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
+    {key:'bullet_size',t:'彈體增強',d:'子彈更大（更容易清彈）'},
   ];
+
+  function canPickUpgrade(key){
+    if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
+    if(key==='spread_perm') return player.spread_perm < SPREAD_CAP;
+    if(key==='bullet_size') return player.bulletR < 6;
+    return true;
+  }
+
   function openLevelUp(){
-    paused=true;$btnPause.textContent='繼續';$toast.textContent='Level Up';$toast.classList.add('show');
-    overlay.classList.add('show');opts.innerHTML='';
-    const pool=[...UPGRADES],picks=[];
-    while(picks.length<3&&pool.length){const i=Math.floor(Math.random()*pool.length);picks.push(pool.splice(i,1)[0])}
+    mode='levelup';
+    paused=true;
+    $btnPause.textContent='繼續';
+    $toast.textContent='Level Up';
+    $toast.classList.add('show');
+
+    overlay.classList.add('show');
+    $panelTitle.textContent='升級：選一個';
+    $panelSub.style.display='none';
+    $panelRow.style.display='none';
+    $panelRow.innerHTML='';
+    opts.innerHTML='';
+
+    // filter out maxed upgrades; always keep fillers
+    const filtered=UPGRADES.filter(u=>canPickUpgrade(u.key));
+
+    // ensure at least 3 choices: if somehow low, add safe fillers
+    const pool=[...filtered];
+    const picks=[];
+    const guardFillers=['regen','xp_gain','bullet_size','dmg','firerate','speed'];
+
+    while(picks.length<3 && pool.length){
+      const i=Math.floor(Math.random()*pool.length);
+      picks.push(pool.splice(i,1)[0]);
+    }
+    while(picks.length<3){
+      const k=guardFillers[picks.length % guardFillers.length];
+      const u=UPGRADES.find(x=>x.key===k);
+      if(u && !picks.some(p=>p.key===u.key)) picks.push(u);
+      else break;
+    }
+
     for(const u of picks){
-      const el=document.createElement('div');el.className='opt';
+      const el=document.createElement('div');
+      el.className='opt';
       el.innerHTML=`<div class="t">${u.t}</div><div class="d">${u.d}</div>`;
       el.addEventListener('click',()=>{
         applyUpgrade(u.key);
         overlay.classList.remove('show');
-        paused=false;$btnPause.textContent='暫停';$toast.classList.remove('show');lastT=performance.now()
+        mode='play';
+        paused=false;
+        $btnPause.textContent='暫停';
+        $toast.classList.remove('show');
+        lastT=performance.now();
       });
       opts.appendChild(el);
     }
   }
+
   function applyUpgrade(key){
-    if(key==='dmg')player.dmg*=1.20;
-    else if(key==='firerate')player.fireRate*=1.18;
+    if(key==='dmg') player.dmg*=1.20;
+    else if(key==='firerate') player.fireRate*=1.18;
     else if(key==='hp'){player.hpMax+=30;player.hp=player.hpMax}
-    else if(key==='speed')player.moveSpeed*=1.16;
-    else if(key==='pierce')player.pierce=Math.min(2,player.pierce+1);
-    else if(key==='spread_perm')player.spread=Math.min(2,player.spread+1);
+    else if(key==='speed') player.moveSpeed*=1.16;
+    else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
+    else if(key==='spread_perm') player.spread_perm=Math.min(SPREAD_CAP, player.spread_perm+1);
     else if(key==='shield_cap'){player.shieldMax+=30;player.shield=player.shieldMax}
+    else if(key==='regen') player.regen+=0.7;
+    else if(key==='xp_gain') player.xpGainMul*=1.15;
+    else if(key==='bullet_size') player.bulletR=Math.min(6, player.bulletR+1);
   }
+
   function addXp(xp){
+    xp*=player.xpGainMul;
     state.xp+=xp;
     while(state.xp>=state.nextXp){
-      state.xp-=state.nextXp;state.level+=1;
-      state.nextXp=Math.floor(state.nextXp*1.30+14);
+      state.xp-=state.nextXp;
+      state.level+=1;
+      // faster curve
+      state.nextXp=Math.floor(state.nextXp*1.22+12);
       openLevelUp();
     }
   }
 
   // ---------- Combat ----------
-  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?240:120} // nerf bullet cap in boss fights
+  function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?240:120}
 
   let fireAcc=0;
+
+  function spreadTotal(){
+    const bonus = buffs.spreadBonusT>0 ? 1 : 0;
+    return player.spread_perm + bonus; // can reach 4
+  }
+  function pierceTotal(){
+    const bonus = buffs.pierceBonusT>0 ? 1 : 0;
+    return player.pierce_perm + bonus; // can reach 4
+  }
+
+  function shotsFromSpread(s){
+    // s: 0..4 => shots 1..5
+    return 1 + clamp(s,0,4);
+  }
+  function spreadDmgMul(n){
+    // keep DPS reasonable when many shots
+    if(n<=1) return 1;
+    if(n===2) return .80;
+    if(n===3) return .68;
+    if(n===4) return .58;
+    return .50; // 5 shots
+  }
+  function shotVXPattern(n){
+    // symmetric offsets
+    if(n===1) return [0];
+    if(n===2) return [-120,120];
+    if(n===3) return [-160,0,160];
+    if(n===4) return [-210,-70,70,210];
+    return [-240,-120,0,120,240]; // 5
+  }
+
   function shoot(dt){
     const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);
     fireAcc+=dt*rate;
     while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
   }
-  function spreadMul(shots){return shots===2?.80:shots===3?.70:1}
+
   function spawnPlayerShot(){
-    const s=clamp(player.spread+(buffs.spread>0?1:0),0,3);
-    const shots=(s<=0)?1:(s===1?2:3),dmg=player.dmg*spreadMul(shots);
-    const base={x:player.x,y:player.y-player.r-6,r:4,vx:0,vy:-player.bulletSpeed,dmg,pierce:player.pierce,alive:true};
-    if(shots===1)pBullets.push(base);
-    else if(shots===2){pBullets.push({...base,vx:-120});pBullets.push({...base,vx:120})}
-    else {pBullets.push({...base,vx:-160});pBullets.push({...base,vx:0});pBullets.push({...base,vx:160})}
+    const s=spreadTotal();
+    const n=shotsFromSpread(s);
+    const dmg=player.dmg*spreadDmgMul(n);
+    const vxArr=shotVXPattern(n);
+    const pr=pierceTotal();
+    const baseY=player.y-player.r-6;
+
+    for(const vx of vxArr){
+      pBullets.push({
+        x:player.x, y:baseY,
+        r:player.bulletR,
+        vx, vy:-player.bulletSpeed,
+        dmg,
+        pierce:pr,
+        alive:true
+      });
+    }
   }
+
   function enemyShoot(e,ang,sMul=1,dMul=1){
     if(eBullets.length>=enemyBulletCap())return;
-    let spd=(e.bulletSpeed??300)*sMul; if(buffs.slow>0) spd*=.75;
-    eBullets.push({x:e.x,y:e.y+e.r+4,r:4,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true});
+
+    // EMP: existing bullets slowed in movement; new bullets are also slowed a bit
+    const empSpdMul = (buffs.empT>0)?0.55:1.0;
+
+    let spd=(e.bulletSpeed??300)*sMul*empSpdMul;
+    eBullets.push({
+      x:e.x,y:e.y+e.r+4,r:4,
+      vx:Math.cos(ang)*spd,
+      vy:Math.sin(ang)*spd,
+      dmg:(e.bulletDmg??8)*dMul,
+      alive:true
+    });
   }
+
   function mobShoot(e){
+    if(buffs.empT>0) return; // EMP stops shooting
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
     const en2=(state.stage>=3||state.wave>=4),en3=(state.stage>=5||state.wave>=6);
     if(en3&&Math.random()<.22){for(const da of [-.22,0,.22])enemyShoot(e,ang+da,1.0,.92)}
@@ -417,8 +707,13 @@ canvas{width:100%;height:100%;display:block}
     else enemyShoot(e,ang);
   }
 
-  // Boss per-frame tick (nerfed)
+  // Boss per-frame tick (nerfed + EMP aware)
   function bossTick(e,dt){
+    if(buffs.empT>0){
+      // still moves/strafe but no shooting during EMP
+      return;
+    }
+
     const r=e.hp/e.hpMax;
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
@@ -426,10 +721,10 @@ canvas{width:100%;height:100%;display:block}
       if(e.phase===2){toastMsg('Boss：Phase 2（彈幕展開）',.9);e.ringCd=.90;e.spiralCd=.40}
       else if(e.phase===3){toastMsg('Boss：Phase 3（狂暴 + 召喚）',.9);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
     }
-    const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05)); // slower bullets overall
+    const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
     const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
 
-    // burst cadence (slower)
+    // burst
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
@@ -440,18 +735,18 @@ canvas{width:100%;height:100%;display:block}
       e.burstGapCd-=dt;
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes=(e.phase===1?5:(e.phase===2?5:6));              // fewer bullets per volley
-        const spread=(e.phase===1?0.30:(e.phase===2?0.32:0.36));    // less dense
+        const lanes=(e.phase===1?5:(e.phase===2?5:6));
+        const spread=(e.phase===1?0.30:(e.phase===2?0.32:0.36));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul);
         }
         e.burstLeft-=1;
-        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10));    // slower within burst
+        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10));
       }
     }
 
-    // ring (fewer bullets + slower)
+    // ring
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
       const n=(e.phase===1?12:(e.phase===2?18:28));
@@ -463,7 +758,7 @@ canvas{width:100%;height:100%;display:block}
       e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60));
     }
 
-    // spiral (slower)
+    // spiral
     e.spiralCd-=dt;
     e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6));
     if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
@@ -476,7 +771,7 @@ canvas{width:100%;height:100%;display:block}
       e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24));
     }
 
-    // summon (still there, but not nonstop)
+    // summon
     if(e.phase===3){
       e.summonCd-=dt;
       if(e.summonCd<=0){
@@ -487,36 +782,113 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function damagePlayer(dmg){
-    if(player.shield>0){const use=Math.min(player.shield,dmg);player.shield-=use;dmg-=use}
-    if(dmg>0)player.hp=Math.max(0,player.hp-dmg);
-    if(player.hp<=0){toastMsg('你倒了…重新開始',1.2);resetRun()}
+    if(buffs.invulnT>0) return; // invincible
+    if(player.shield>0){
+      const use=Math.min(player.shield,dmg);
+      player.shield-=use; dmg-=use;
+    }
+    if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
+
+    if(player.hp<=0){
+      gameOver();
+    }
+  }
+
+  function gameOver(){
+    mode='gameover';
+    paused=true;
+    $btnPause.textContent='繼續';
+    $toast.textContent='';
+    $toast.classList.remove('show');
+
+    // best score
+    const bestKey='blaster_best_score_v1';
+    const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
+    localStorage.setItem(bestKey,String(best));
+
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    $panelTitle.textContent='Game Over';
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=
+      `本局分數：<b>${state.score}</b><br>`+
+      `最高分：<b>${best}</b><br>`+
+      `關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
+
+    $panelRow.style.display='flex';
+
+    const btn=document.createElement('button');
+    btn.className='pill';
+    btn.textContent='重新開始';
+    btn.addEventListener('click',()=>{
+      overlay.classList.remove('show');
+      resetRun();
+      mode='play';
+      paused=false;
+      $btnPause.textContent='暫停';
+      lastT=performance.now();
+    });
+    $panelRow.appendChild(btn);
+
+    const btnClose=document.createElement('button');
+    btnClose.className='pill';
+    btnClose.textContent='留在這裡';
+    btnClose.addEventListener('click',()=>{ /* just keep paused */ });
+    $panelRow.appendChild(btnClose);
   }
 
   function resetRun(){
-    state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=70;state.waveClearCooldown=0;state.waveInProgress=false;
+    state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
-    player.hpMax=BASE_HP;
-    player.hp=BASE_HP;
+    player.hpMax=BASE_HP; player.hp=BASE_HP;
     player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;
-    player.spread=0;player.pierce=0;player.shield=0;player.shieldMax=0;
+    player.spread_perm=0;player.pierce_perm=0;
+    player.shield=0;player.shieldMax=0;
+    player.regen=0; player.xpGainMul=1.0; player.bulletR=4;
 
-    for(const k in buffs)buffs[k]=0;
+    for(const k in buffs) buffs[k]=0;
+
+    special.bomb.count=3; special.bomb.cd=0;
+    special.invuln.count=3; special.invuln.cd=0;
+    special.emp.count=2; special.emp.cd=0;
+    special.armor.count=2; special.armor.cd=0;
+    special.heal.count=2; special.heal.cd=0;
+
     pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
   }
 
   // ---------- Particles / Toast ----------
-  function addBurst(x,y,n=10){for(let i=0;i<n;i++)particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)})}
-  let toastT=0;function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
+  function addBurst(x,y,n=10){
+    for(let i=0;i<n;i++){
+      particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
+    }
+  }
+  let toastT=0;
+  function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
 
   // ---------- Update / Draw ----------
   function update(dt){
-    for(const k in buffs) if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
+    // timers
+    for(const k of ['rapid','magnet','spreadBonusT','pierceBonusT','invulnT','empT','armorT']){
+      if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
+    }
+    for(const k in special){
+      if(special[k].cd>0) special[k].cd=Math.max(0,special[k].cd-dt);
+    }
+
+    // passive regen
+    if(player.regen>0 && player.hp>0){
+      player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
+    }
 
     player.y=H-42;
     player.x=clamp(player.x,player.r+8,W-player.r-8);
     shoot(dt);
 
+    // enemies movement & fire
     for(const e of enemies){
       e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
       if(e.strafeAmp>0){
@@ -529,50 +901,73 @@ canvas{width:100%;height:100%;display:block}
 
       if(e.type==='boss') bossTick(e,dt);
       else {e.fireCd-=dt; if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}}
+
       if(e.hitFlash>0) e.hitFlash=Math.max(0,e.hitFlash-dt);
     }
 
-    for(const b of pBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.y<-20||b.x<-30||b.x>W+30)b.alive=false}
-    for(const b of eBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.y>H+30||b.x<-30||b.x>W+30)b.alive=false}
+    // bullet movement (EMP slows existing bullets)
+    const empMoveMul = (buffs.empT>0)?0.55:1.0;
 
+    for(const b of pBullets){
+      b.x+=b.vx*dt;
+      b.y+=b.vy*dt;
+      if(b.y<-30||b.x<-40||b.x>W+40) b.alive=false;
+    }
+    for(const b of eBullets){
+      b.x+=b.vx*dt*empMoveMul;
+      b.y+=b.vy*dt*empMoveMul;
+      if(b.y>H+40||b.x<-40||b.x>W+40) b.alive=false;
+    }
+
+    // drops
     for(const d of drops){
-      d.y+=d.vy*dt;d.life-=dt;
+      d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
         const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
-        d.x+=(dx/l)*240*dt; d.y+=(dy/l)*240*dt;
+        d.x+=(dx/l)*260*dt; d.y+=(dy/l)*260*dt;
       }
-      if(d.y>H+40||d.life<=0)d.dead=true;
-      if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){d.dead=true;applyDrop(d.type)}
+      if(d.y>H+60||d.life<=0) d.dead=true;
+      if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){
+        d.dead=true; applyDrop(d.type);
+      }
     }
 
+    // particles
     for(const p of particles){
-      p.x+=p.vx*dt;p.y+=p.vy*dt;
-      p.vx*=(1-dt*2.8);p.vy*=(1-dt*2.8);
-      p.life-=dt;if(p.life<=0)p.dead=true
+      p.x+=p.vx*dt; p.y+=p.vy*dt;
+      p.vx*=(1-dt*2.8); p.vy*=(1-dt*2.8);
+      p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // collisions: player bullets vs enemy bullets (do NOT consume player's pierce / bullets)
-    for(const b of pBullets){
-      if(!b.alive)continue;
-
-      for(const eb of eBullets){
-        if(!eb.alive)continue;
-        if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
-          eb.alive=false;
-          addBurst(eb.x,eb.y,4);
-          state.score+=1;
+    // collisions: player bullets vs enemy bullets (skipped in armor mode)
+    if(buffs.armorT<=0){
+      for(const b of pBullets){
+        if(!b.alive) continue;
+        for(const eb of eBullets){
+          if(!eb.alive) continue;
+          if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
+            eb.alive=false;
+            addBurst(eb.x,eb.y,4);
+            state.score+=1;
+          }
         }
       }
+    }
 
-      if(!b.alive)continue;
+    // player bullets vs enemies
+    for(const b of pBullets){
+      if(!b.alive) continue;
       for(const e of enemies){
-        if(e.hp<=0)continue;
+        if(e.hp<=0) continue;
         if(dist2(b.x,b.y,e.x,e.y)<(b.r+e.r)**2){
-          e.hp-=b.dmg;e.hitFlash=.12;addBurst(b.x,b.y,4);
-          if(b.pierce<=0)b.alive=false; else b.pierce-=1;
+          e.hp-=b.dmg; e.hitFlash=.12;
+          addBurst(b.x,b.y,4);
+          if(b.pierce<=0) b.alive=false;
+          else b.pierce-=1;
+
           if(e.hp<=0){
             state.score+=(e.type==='boss'?320:18);
-            addXp(e.type==='boss'?200:5);
+            addXp(e.type==='boss'?260:7);
             maybeDrop(e.x,e.y,e.type==='boss');
             addBurst(e.x,e.y,e.type==='boss'?26:10);
           }
@@ -581,19 +976,24 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
+    // enemy bullets vs player
     for(const eb of eBullets){
-      if(!eb.alive)continue;
+      if(!eb.alive) continue;
       if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
-        eb.alive=false;damagePlayer(eb.dmg);addBurst(player.x,player.y,10);
+        eb.alive=false;
+        damagePlayer(eb.dmg);
+        addBurst(player.x,player.y,10);
       }
     }
 
+    // cleanup
     pBullets=pBullets.filter(b=>b.alive);
     eBullets=eBullets.filter(b=>b.alive);
     enemies=enemies.filter(e=>e.hp>0);
     drops=drops.filter(d=>!d.dead);
     particles=particles.filter(p=>!p.dead);
 
+    // wave progression
     if(!state.waveInProgress){
       state.waveClearCooldown-=dt;
       if(state.waveClearCooldown<=0){
@@ -607,32 +1007,40 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    if(toastT>0){toastT=Math.max(0,toastT-dt);if(toastT===0&&!paused)$toast.classList.remove('show')}
+    // toast timeout
+    if(toastT>0){
+      toastT=Math.max(0,toastT-dt);
+      if(toastT===0 && !paused) $toast.classList.remove('show');
+    }
   }
 
   function draw(){
     ctx.clearRect(0,0,W,H);
 
+    // grid
     ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
     const step=48;
     for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
     for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
     ctx.restore();
 
+    // particles
     ctx.save();ctx.fillStyle='rgba(120,255,200,.7)';
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
       ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(120,255,200,.95)';ctx.font='12px system-ui,"Noto Sans TC"';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      const icon=d.type==='heal'?'✚':d.type==='shield'?'⛨':d.type==='rapid'?'⚡':d.type==='spread'?'✦':d.type==='bomb'?'💣':d.type==='magnet'?'🧲':'🐢';
+      const icon=d.type==='heal'?'✚':d.type==='shield'?'⛨':d.type==='rapid'?'⚡':d.type==='spread'?'✦':d.type==='pierce'?'➹':'🧲';
       ctx.fillText(icon,d.x,d.y+.5);ctx.restore();
     }
 
+    // enemies
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss',flash=e.hitFlash>0;
@@ -654,19 +1062,29 @@ canvas{width:100%;height:100%;display:block}
       ctx.restore();
     }
 
+    // player bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // enemy bullets
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // player ship + shield + invuln hint
     ctx.save();
     ctx.translate(player.x,player.y);
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);ctx.closePath();ctx.fill();ctx.stroke();
-    if(player.shield>0){ctx.globalAlpha=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke()}
+    if(player.shield>0){
+      ctx.globalAlpha=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke();
+    }
+    if(buffs.invulnT>0){
+      ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,player.r+15,0,Math.PI*2);ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -675,21 +1093,43 @@ canvas{width:100%;height:100%;display:block}
     $wave.textContent=`波次 ${state.wave}`;
     $lv.textContent=`等級 ${state.level}`;
     $score.textContent=`分數 ${state.score}`;
+
     const hpPct=clamp(player.hp/player.hpMax,0,1);
     $hpFill.style.width=`${hpPct*100}%`;
     const shieldTxt=player.shield>0?` +${Math.floor(player.shield)}`:'';
+    const sTot=spreadTotal(), pTot=pierceTotal();
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
+
+    // specials counts
+    $cntBomb.textContent=`x${special.bomb.count}`;
+    $cntInvuln.textContent=`x${special.invuln.count}`;
+    $cntEMP.textContent=`x${special.emp.count}`;
+    $cntArmor.textContent=`x${special.armor.count}`;
+    $cntHeal.textContent=`x${special.heal.count}`;
+
+    // specials disabled state
+    $btnBomb.disabled = !canUseSpecial('bomb');
+    $btnInvuln.disabled = !canUseSpecial('invuln');
+    $btnEMP.disabled = !canUseSpecial('emp');
+    $btnArmor.disabled = !canUseSpecial('armor');
+    $btnHeal.disabled = !canUseSpecial('heal');
+
+    // timer meta for active effects
+    $metaInvuln.textContent = buffs.invulnT>0 ? `剩 ${buffs.invulnT.toFixed(1)} 秒免傷` : '10 秒免傷';
+    $metaEMP.textContent    = buffs.empT>0    ? `剩 ${buffs.empT.toFixed(1)} 秒停火`   : '3 秒停火＋敵彈變慢';
+    $metaArmor.textContent  = buffs.armorT>0  ? `剩 ${buffs.armorT.toFixed(1)} 秒穿甲` : '5 秒子彈不撞敵彈';
   }
 
   // ---------- Loop ----------
   let lastT=performance.now();
   function frame(t){
     const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
-    if(!paused)update(dt);
-    draw();syncHud();
+    if(mode==='play' && !paused) update(dt);
+    draw(); syncHud();
     requestAnimationFrame(frame);
   }
 
+  // start
   setPadX(.5);
   spawnWave();
   requestAnimationFrame(frame);
