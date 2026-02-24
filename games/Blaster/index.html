@@ -348,8 +348,8 @@ canvas{width:100%;height:100%;display:block}
 
   // healer
   const HEALER_CHANCE_BY_STAGE = (stage)=> stage>=8 ? 0.22 : (stage>=5?0.12:0.0);
-  const HEALER_HEAL_PCT = 0.05; // 固定 5%
-  const HEALER_PERIOD = 4.0;    // 每 4 秒一次（固定）
+  const HEALER_HEAL_PCT = 0.05;
+  const HEALER_PERIOD = 10.0;
 
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
@@ -972,15 +972,18 @@ canvas{width:100%;height:100%;display:block}
     if(h.healCd>0) return;
     h.healCd = h.healPeriod;
 
-    // 找一名非 healer 且還活著的敵人
     const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
     if(!targets.length) return;
-    const t = targets[Math.floor(Math.random()*targets.length)];
-
-    const add = t.hpMax * h.healPct; // 固定 5%
-    t.hp = Math.min(t.hpMax, t.hp + add);
-    addBurst(t.x,t.y,10);
-    toastMsg(`💙 治療 +${Math.floor(add)}`,0.55);
+    
+    let totalAdd = 0;
+    for(const t of targets){
+      const add = t.hpMax * h.healPct;
+      const before = t.hp;
+      t.hp = Math.min(t.hpMax, t.hp + add);
+      totalAdd += Math.max(0, t.hp - before);
+      addBurst(t.x, t.y, 6);
+    }
+    toastMsg(`💙 全體治療 +${Math.floor(totalAdd)}`, 0.55);
   }
 
   // ---------- Update / Draw ----------
