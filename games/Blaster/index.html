@@ -317,12 +317,32 @@ canvas{width:100%;height:100%;display:block}
 
   const BULLET_R_MIN=3;
   const BULLET_R_BASE=4;
-  const BULLET_R_CAP=8;       // ✅ 硬上限：避免後期變成「巨大彈體鎮壓」
-  const BULLET_R_UPG_CAP=7;   // ✅ 升級上限（比硬上限略低，避免一直抽到）
+  const BULLET_R_CAP=8;       // 硬上限
+  const BULLET_R_UPG_CAP=7;   // 升級上限
   function bulletSizeDmgMul(r){
-    // ✅ 彈體越大，傷害越被稀釋，避免變成「範圍核彈」
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
+  }
+
+  // ✅ 清彈用：子彈越大，清彈效率略升（但打怪傷害仍被稀釋）
+  function bulletClearMul(r){
+    const dr = Math.max(0, r - BULLET_R_BASE);
+    return clamp(1 + dr*0.06, 1.00, 1.30);
+  }
+
+  // ✅ 檔位 + 封頂：敵彈抵銷 HP（讓火力升級有感，又不會 5~6 發地獄）
+  function enemyBulletHpByStage(stage){
+    if(stage < 14) return 16;
+    if(stage < 20) return 22;
+    if(stage < 26) return 28;
+    return 34;
+  }
+
+  // ✅ Beam（長條彈）機率：後期才出現，且有上限
+  function beamChanceByStage(stage, isElite){
+    if(stage < 16) return 0;
+    const base = stage < 20 ? 0.08 : (stage < 26 ? 0.12 : 0.16);
+    return Math.min(0.22, base + (isElite ? 0.06 : 0));
   }
 
   // ---------- State ----------
@@ -368,7 +388,6 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Balance ----------
   function stageDifficultyMul(stage){
-    // 1~15 斜率較緩，15+ 開始加速，20+ 再加一段（你要的「更不講武德」）
     const a = 1 + Math.max(0, stage-1)*0.06;
     const b = (stage>=15)? (1 + (stage-15)*0.05) : 1;
     const c = (stage>=20)? (1 + (stage-20)*0.06) : 1;
@@ -385,11 +404,8 @@ canvas{width:100%;height:100%;display:block}
     const bullet=(260+stage*18+wave*16)*clamp(1 + (stage>=14?0.06:0), 1, 1.35);
     const dmg=(6+stage*0.8+wave*0.6)*clamp(1 + (stage>=10?0.10:0), 1, 1.60);
 
-    // 小兵後期能力：散射 / 穿透
     const mobSpreadChance = clamp((stage-8)*0.03 + (wave-3)*0.04, 0, 0.45);
     const mobPierceChance = clamp((stage-10)*0.025 + (wave-4)*0.03, 0, 0.40);
-
-    // 菁英怪：每波有機率刷 1 隻（20+ 更常）
     const eliteChance = clamp((stage-10)*0.04 + (stage>=20?0.18:0), 0, 0.55);
 
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
@@ -409,10 +425,8 @@ canvas{width:100%;height:100%;display:block}
       fireRate: cfg.fire * (elite?1.12:1.00),
       bulletSpeed: cfg.bullet * (elite?1.08:1.00),
       bulletDmg: cfg.dmg * (elite?1.20:1.00),
-      // 進化能力
       evoSpread: meta.evoSpread||false,
       evoPierce: meta.evoPierce||false,
-      // 橫移
       strafeAmp:isStrafe?rand(45, elite?150:120):0,
       strafeSpd:isStrafe?rand(.85, elite?2.35:1.85):0,
       strafePhase:rand(0,Math.PI*2),
@@ -424,7 +438,6 @@ canvas{width:100%;height:100%;display:block}
     enemies.length=0;eBullets.length=0;state.waveInProgress=true;
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY(),lanes=cfg.count;
 
-    // 菁英插隊（企業級 surprise）
     const hasElite = Math.random() < cfg.eliteChance;
     const eliteLane = hasElite ? Math.floor(Math.random()*lanes) : -1;
 
@@ -458,7 +471,6 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function spawnRepairDrone(boss){
-    // ✅ Boss 20+ 會叫「修復無人機」：不打掉就補血
     const hp = 120 + state.stage*14;
     enemies.push({
       type:'drone',
@@ -468,9 +480,8 @@ canvas{width:100%;height:100%;display:block}
       r: 14,
       hp, hpMax: hp,
       fireCd: 999,
-      // drone 行為：倒數後治療
-      healT: 3.6, // 你有窗口期可以 KPI 它
-      healPct: 0.075, // 7.5% hpMax
+      healT: 3.6,
+      healPct: 0.075,
       bossRef: boss,
       hitFlash:0,
       strafeAmp: rand(40,90),
@@ -492,7 +503,6 @@ canvas{width:100%;height:100%;display:block}
       phase:1,ringCd:1.0,spiralCd:0.35,summonCd:999,
       burstCd:0.55,burstLeft:0,burstGap:0.10,burstGapCd:0,
       spin:0,hitFlash:0,
-      // 20+ heal kit
       medCd: (state.stage>=20)? (6.8+Math.random()*3.5) : 999
     };
     enemies.push(boss);
@@ -600,7 +610,7 @@ canvas{width:100%;height:100%;display:block}
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
     {key:'regen',t:'自動修復',d:'每秒回復 +0.7'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
-    {key:'bullet_size',t:'彈體增強',d:'子彈更大（但傷害略稀釋）'},
+    {key:'bullet_size',t:'彈體增強',d:'子彈更大（打怪略稀釋，但清彈更強）'},
   ];
   function canPickUpgrade(key){
     if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
@@ -665,7 +675,7 @@ canvas{width:100%;height:100%;display:block}
     else if(key==='regen') player.regen+=0.7;
     else if(key==='xp_gain') player.xpGainMul*=1.15;
     else if(key==='bullet_size'){
-      player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP); // ✅ double clamp
+      player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
     }
   }
   function addXp(xp){
@@ -683,8 +693,8 @@ canvas{width:100%;height:100%;display:block}
   function enemyBulletCap(){return enemies.some(e=>e.type==='boss')?260:140}
 
   let fireAcc=0;
-  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); } // max 4
-  function pierceTotal(){ return player.pierce_perm + (buffs.pierceBonusT>0?1:0); } // max 4
+  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
+  function pierceTotal(){ return player.pierce_perm + (buffs.pierceBonusT>0?1:0); }
 
   function shotsFromSpread(s){ return 1 + clamp(s,0,4); }
   function spreadDmgMul(n){
@@ -710,7 +720,7 @@ canvas{width:100%;height:100%;display:block}
     const s=spreadTotal();
     const n=shotsFromSpread(s);
 
-    const r = clamp(player.bulletR, BULLET_R_MIN, BULLET_R_CAP); // ✅ 生成再 clamp 一次
+    const r = clamp(player.bulletR, BULLET_R_MIN, BULLET_R_CAP);
     const dmg = player.dmg * spreadDmgMul(n) * bulletSizeDmgMul(r);
 
     const vxArr=shotVXPattern(n);
@@ -722,14 +732,32 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
+  // ✅ enemyShoot：支援 beam + 抵銷 hp
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
+
     const empSpdMul=(buffs.empT>0)?0.55:1.0;
     let spd=(e.bulletSpeed??300)*sMul*empSpdMul;
 
-    const r = clamp(meta.r ?? 4, 3, 8);
-    const pierce = meta.pierce ?? 0; // ✅ 小兵/菁英可有穿透：玩家子彈抵消碰到它時會更難清
-    eBullets.push({x:e.x,y:e.y+e.r+4,r,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true,pierce});
+    const isBeam = !!meta.beam;
+    const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
+    const pierce = meta.pierce ?? 0;
+
+    // 一般彈：抵銷 hp（stage 檔位），beam：不可抵銷
+    const hp = isBeam ? 1 : (meta.hp ?? enemyBulletHpByStage(state.stage));
+
+    const len = isBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
+
+    eBullets.push({
+      x:e.x,y:e.y+e.r+4,r,
+      vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
+      dmg:(e.bulletDmg??8)*dMul,
+      alive:true,
+      pierce,
+      hp,
+      beam:isBeam,
+      len
+    });
   }
 
   function mobShoot(e){
@@ -737,25 +765,31 @@ canvas{width:100%;height:100%;display:block}
 
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
 
-    // 後期進化：散射
     const evoS = e.evoSpread;
     const evoP = e.evoPierce;
 
-    // 基本難度因子
     const en2=(state.stage>=3||state.wave>=4);
     const en3=(state.stage>=5||state.wave>=6);
     const enLate=(state.stage>=12);
     const enBrutal=(state.stage>=20);
 
-    // 發射樣式（優先級：菁英 > 進化散射 > 原本）
-    if(e.type==='elite'){
-      // 菁英：穩定三連發 + 偶爾五連發
+    // ✅ 後期：部分射擊改成 Beam（不可抵銷）
+    const isElite = (e.type==='elite');
+    const useBeam = Math.random() < beamChanceByStage(state.stage, isElite);
+
+    if(isElite){
       const wide = (enLate && Math.random()<0.22) ? 5 : 3;
       const spread = (wide===5)?0.26:0.18;
       const lanes = wide;
+
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,1.0,0.98,{r: enBrutal?5:4, pierce: evoP?1:0});
+        enemyShoot(e,ang+t*spread,1.0,0.98,{
+          r: (enBrutal?5:4),
+          pierce: evoP?1:0,
+          beam: useBeam,
+          len: useBeam ? (enBrutal?34:28) : 0
+        });
       }
       return;
     }
@@ -765,17 +799,22 @@ canvas{width:100%;height:100%;display:block}
       const spread = enBrutal?0.22:0.18;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0});
+        enemyShoot(e,ang+t*spread,1.0,0.95,{
+          r: enBrutal?5:4,
+          pierce: evoP?1:0,
+          beam: useBeam,
+          len: useBeam ? (enBrutal?32:26) : 0
+        });
       }
       return;
     }
 
     if(en3&&Math.random()<.22){
-      for(const da of [-.22,0,.22]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0});
+      for(const da of [-.22,0,.22]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }else if(en2&&Math.random()<.35){
-      for(const da of [-.16,.16]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0});
+      for(const da of [-.16,.16]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }else{
-      enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0});
+      enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }
   }
 
@@ -794,14 +833,12 @@ canvas{width:100%;height:100%;display:block}
 
     const brutal = state.stage>=20;
 
-    // 20+：治療/修復機制（不是直接回血，先叫 Drone，給你反制窗口）
     if(brutal){
       e.medCd -= dt;
       if(e.medCd<=0){
         if(Math.random()<0.65){
           spawnRepairDrone(e);
         }else{
-          // 偶爾自己小補一下（更不講武德，但比例小）
           const add = e.hpMax*0.035;
           e.hp = Math.min(e.hpMax, e.hp + add);
           toastMsg(`🩹 Boss 自我修復 +${Math.floor(add)}`,0.85);
@@ -881,7 +918,7 @@ canvas{width:100%;height:100%;display:block}
     $btnPause.textContent='繼續';
     $toast.classList.remove('show');
 
-    const bestKey='blaster_best_score_v2';
+    const bestKey='blaster_best_score_v3';
     const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
     localStorage.setItem(bestKey,String(best));
 
@@ -948,7 +985,6 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Update / Draw ----------
   function update(dt){
-    // timers
     for(const k of ['rapid','magnet','spreadBonusT','pierceBonusT','invulnT','empT','armorT']){
       if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
     }
@@ -956,14 +992,12 @@ canvas{width:100%;height:100%;display:block}
       if(special[k].cd>0) special[k].cd=Math.max(0,special[k].cd-dt);
     }
 
-    // passive regen
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
     player.x=clamp(player.x,player.r+8,W-player.r-8);
     shoot(dt);
 
-    // enemies movement & fire
     for(const e of enemies){
       e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
       if(e.strafeAmp>0){
@@ -982,7 +1016,7 @@ canvas{width:100%;height:100%;display:block}
           e.bossRef.hp = Math.min(e.bossRef.hpMax, e.bossRef.hp + add);
           toastMsg(`🧰 Drone 修復 +${Math.floor(add)}`,0.85);
           addBurst(e.bossRef.x,e.bossRef.y,18);
-          e.hp = 0; // 用完即丟
+          e.hp = 0;
         }
       }
       else {e.fireCd-=dt; if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}}
@@ -990,7 +1024,6 @@ canvas{width:100%;height:100%;display:block}
       if(e.hitFlash>0) e.hitFlash=Math.max(0,e.hitFlash-dt);
     }
 
-    // bullet movement (EMP slows existing bullets)
     const empMoveMul=(buffs.empT>0)?0.55:1.0;
 
     for(const b of pBullets){
@@ -999,10 +1032,9 @@ canvas{width:100%;height:100%;display:block}
     }
     for(const b of eBullets){
       b.x+=b.vx*dt*empMoveMul; b.y+=b.vy*dt*empMoveMul;
-      if(b.y>H+40||b.x<-40||b.x>W+40) b.alive=false;
+      if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
     }
 
-    // drops
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
@@ -1013,29 +1045,42 @@ canvas{width:100%;height:100%;display:block}
       if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){d.dead=true;applyDrop(d.type)}
     }
 
-    // particles
     for(const p of particles){
       p.x+=p.vx*dt; p.y+=p.vy*dt;
       p.vx*=(1-dt*2.8); p.vy*=(1-dt*2.8);
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // collisions: player bullets vs enemy bullets (skipped in armor mode)
+    // ✅ player bullets vs enemy bullets (抵銷：一般彈有 hp；beam 不能抵銷)
     if(buffs.armorT<=0){
       for(const b of pBullets){
         if(!b.alive) continue;
         for(const eb of eBullets){
           if(!eb.alive) continue;
+
+          if(eb.beam) continue; // 只能閃
+
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
-            // 若敵彈有穿透，會更難被「球球」清掉：先消耗穿透
+            // 敵彈有穿透：先硬吃一次（更難清）
             if((eb.pierce||0)>0){
               eb.pierce -= 1;
-              b.alive = false; // 你的子彈被硬吃掉
-            }else{
-              eb.alive=false;
+              b.alive = false;
+              addBurst(eb.x,eb.y,3);
+              state.score+=1;
+              continue;
             }
+
+            // ✅ 用玩家子彈 dmg 扣敵彈 hp，火力升級＝清彈更快
+            const clearDmg = b.dmg * bulletClearMul(b.r);
+            eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
+
             addBurst(eb.x,eb.y,4);
             state.score+=1;
+
+            // 你的子彈也會被消耗（避免掃地機）
+            b.alive=false;
+
+            if(eb.hp<=0) eb.alive=false;
           }
         }
       }
@@ -1072,9 +1117,37 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player
+    // enemy bullets vs player (beam 用圓心碰撞 + 半徑，簡潔版)
     for(const eb of eBullets){
       if(!eb.alive) continue;
+
+      // beam：用「點到線段」近似碰撞（capsule）
+      if(eb.beam){
+        const ang=Math.atan2(eb.vy,eb.vx);
+        const L=eb.len||28, R=eb.r||5;
+
+        // beam 中心線段端點
+        const dx=Math.cos(ang)*(L/2), dy=Math.sin(ang)*(L/2);
+        const ax=eb.x-dx, ay=eb.y-dy;
+        const bx=eb.x+dx, by=eb.y+dy;
+
+        // 點到線段距離平方
+        const px=player.x, py=player.y;
+        const vx=bx-ax, vy=by-ay;
+        const wx=px-ax, wy=py-ay;
+        const c1=wx*vx+wy*vy;
+        const c2=vx*vx+vy*vy || 1;
+        let t=c1/c2; t=clamp(t,0,1);
+        const cx=ax+t*vx, cy=ay+t*vy;
+
+        if(dist2(px,py,cx,cy) < (player.r + R + 1)**2){
+          eb.alive=false;
+          damagePlayer(eb.dmg);
+          addBurst(player.x,player.y,10);
+        }
+        continue;
+      }
+
       if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
         eb.alive=false;
         damagePlayer(eb.dmg);
@@ -1103,7 +1176,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // toast timeout
     if(toastT>0){
       toastT=Math.max(0,toastT-dt);
       if(toastT===0 && !paused) $toast.classList.remove('show');
@@ -1183,9 +1255,33 @@ canvas{width:100%;height:100%;display:block}
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // enemy bullets
+    // enemy bullets (beam: capsule)
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
-    for(const b of eBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
+    for(const b of eBullets){
+      if(!b.beam){
+        ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+      }else{
+        const ang=Math.atan2(b.vy,b.vx);
+        const L=b.len||28, R=b.r||5;
+
+        ctx.save();
+        ctx.translate(b.x,b.y);
+        ctx.rotate(ang);
+        if(ctx.roundRect){
+          ctx.beginPath();
+          ctx.roundRect(-L/2, -R, L, R*2, R);
+          ctx.fill();
+        }else{
+          // fallback capsule
+          ctx.beginPath();
+          ctx.rect(-L/2, -R, L, R*2);
+          ctx.fill();
+          ctx.beginPath();ctx.arc(-L/2,0,R,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.arc(L/2,0,R,0,Math.PI*2);ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
     ctx.restore();
 
     // player ship + shield + invuln hint
