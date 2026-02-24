@@ -296,8 +296,8 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Constants ----------
   const BASE_HP=300;
-  const SPREAD_CAP=3;
-  const PIERCE_CAP=3;
+  const SPREAD_CAP=30;
+  const PIERCE_CAP=30;
 
   const BULLET_R_MIN=3;
   const BULLET_R_BASE=4;
@@ -334,8 +334,8 @@ canvas{width:100%;height:100%;display:block}
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
-    moveSpeed:520,fireRate:6.2,dmg:12,bulletSpeed:820,
-    spread_perm:0, pierce_perm:2,
+    moveSpeed:520,fireRate:6.2,dmg:20,bulletSpeed:820,
+    spread_perm:10, pierce_perm:2,
     shield:0,shieldMax:0,
     regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
   };
@@ -915,8 +915,8 @@ canvas{width:100%;height:100%;display:block}
     state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
     player.hpMax=BASE_HP; player.hp=BASE_HP;
-    player.moveSpeed=520;player.fireRate=6.2;player.dmg=12;player.bulletSpeed=820;
-    player.spread_perm=0;player.pierce_perm=2;
+    player.moveSpeed=520;player.fireRate=6.2;player.dmg=20;player.bulletSpeed=820;
+    player.spread_perm=10;player.pierce_perm=2;
     player.shield=0;player.shieldMax=0;
     player.regen=0; player.xpGainMul=1.0;
     player.bulletR=BULLET_R_BASE;
