@@ -367,12 +367,9 @@ canvas{width:100%;height:100%;display:block}
     return 22;
   }
 
-  // 只有菁英會 beam：這裡保留機率表
-  function beamChanceByStage(stage){
-    if(stage < 16) return 0;
-    const base = stage < 20 ? 0.06 : (stage < 26 ? 0.10 : 0.14);
-    return Math.min(0.20, base);
-  }
+function beamChanceByStage(stage){
+  return 0.50;
+}
 
   // ---------- State ----------
   const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:60,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
@@ -436,7 +433,14 @@ canvas{width:100%;height:100%;display:block}
 
     const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
     const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
-    const eliteChance = clamp((stage-12)*0.035 + (stage>=22?0.12:0), 0, 0.45);
+    
+    let eliteChance;
+    if(stage < 8) eliteChance = 0.05;
+    else if(stage < 12) eliteChance = 0.18;
+    else if(stage < 16) eliteChance = 0.35;
+    else if(stage < 20) eliteChance = 0.55;
+    else if(stage < 24) eliteChance = 0.70;
+    else eliteChance = 0.80;
 
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
   }
@@ -482,29 +486,45 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function spawnWave(){
-    enemies.length=0;eBullets.length=0;state.waveInProgress=true;
-    const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY(),lanes=cfg.count;
-
-    const hasElite = Math.random() < cfg.eliteChance;
-    const eliteLane = hasElite ? Math.floor(Math.random()*lanes) : -1;
-
+    enemies.length=0;
+    eBullets.length=0;
+    state.waveInProgress=true;
+  
+    const cfg = waveConfig(state.stage, state.wave);
+    const holdY = enemyHoldY();
+    const lanes = cfg.count;
+  
+    // 先決定這波要不要有 healer，若有則占一個 lane
     const hasHealer = Math.random() < HEALER_CHANCE_BY_STAGE(state.stage);
     const healerLane = hasHealer ? Math.floor(Math.random()*lanes) : -1;
-
+  
     for(let i=0;i<lanes;i++){
-      const x=(i+1)*(W/(lanes+1));
+      const x = (i+1)*(W/(lanes+1));
+  
+      // healer 不攻擊，只補血
       if(i===healerLane){
-        enemies.push(spawnHealer(x,-44-i*18,holdY+rand(-18,18)));
+        enemies.push(spawnHealer(x, -44 - i*18, holdY + rand(-18,18)));
         continue;
       }
-
+  
       const evoSpread = Math.random() < cfg.mobSpreadChance;
       const evoPierce = Math.random() < cfg.mobPierceChance;
-
-      if(i===eliteLane){
-        enemies.push(spawnMob(x,-40-i*18,holdY+rand(-18,18),cfg,{elite:true,evoSpread:true,evoPierce:true}));
+  
+      // ✅ 每一隻怪獨立抽菁英 → 才能做到後期 8/10
+      const isElite = Math.random() < cfg.eliteChance;
+  
+      if(isElite){
+        enemies.push(spawnMob(
+          x, -40 - i*18, holdY + rand(-18,18),
+          cfg,
+          {elite:true, evoSpread:true, evoPierce:true}
+        ));
       }else{
-        enemies.push(spawnMob(x,-40-i*18,holdY+rand(-18,18),cfg,{elite:false,evoSpread,evoPierce}));
+        enemies.push(spawnMob(
+          x, -40 - i*18, holdY + rand(-18,18),
+          cfg,
+          {elite:false, evoSpread, evoPierce}
+        ));
       }
     }
   }
@@ -675,13 +695,20 @@ canvas{width:100%;height:100%;display:block}
     else if(key==='xp_gain') player.xpGainMul*=1.15;
     else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
   }
+  
+  function xpStageMul(stage){
+    if(stage <= 10) return 1 + (stage-1)*0.05;
+    if(stage <= 20) return 1.45 + (stage-10)*0.06;
+    return Math.min(2.40, 2.05 + (stage-20)*0.04);
+  }
+    
   function addXp(xp){
     xp*=player.xpGainMul;
     state.xp+=xp;
     while(state.xp>=state.nextXp){
       state.xp-=state.nextXp;
       state.level+=1;
-      state.nextXp=Math.floor(state.nextXp*1.22+12);
+      state.nextXp=Math.floor(state.nextXp*1.17+14);
       openLevelUp();
     }
   }
@@ -768,8 +795,6 @@ canvas{width:100%;height:100%;display:block}
     const enBrutal=(state.stage>=20);
 
     const isElite = (e.type==='elite');
-
-    // ✅ 只有菁英會 beam
     const useBeam = isElite && (Math.random() < beamChanceByStage(state.stage));
 
     if(isElite){
@@ -1097,17 +1122,17 @@ canvas{width:100%;height:100%;display:block}
 
           if(e.hp<=0){
             if(e.type==='boss'){
-              state.score+=320; addXp(260); maybeDrop(e.x,e.y,true);
+              state.score+=320; addXp(260* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
               addBurst(e.x,e.y,26);
             }else if(e.type==='elite'){
-              state.score+=38; addXp(12); maybeDrop(e.x,e.y,false);
+              state.score+=38; addXp(12* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,12);
             }else if(e.type==='healer'){
-              state.score+=30; addXp(11); maybeDrop(e.x,e.y,false);
+              state.score+=30; addXp(11* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               toastMsg('💙 Healer 擊破',0.7);
               addBurst(e.x,e.y,14);
             }else{
-              state.score+=18; addXp(7); maybeDrop(e.x,e.y,false);
+              state.score+=18; addXp(7* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,10);
             }
           }
