@@ -10,7 +10,6 @@
   --appExtraTop:10px; --appExtraBottom:10px;
   --gap:8px;
 }
-
 html,body{
   height:100%;margin:0;background:#0b1220;color:#e7eefc;
   font-family:system-ui,"Noto Sans TC",sans-serif;
@@ -18,7 +17,6 @@ html,body{
   touch-action:manipulation;overflow:hidden
 }
 body{position:fixed;inset:0}
-
 .app{
   height:100svh;
   padding:
@@ -28,8 +26,6 @@ body{position:fixed;inset:0}
     calc(var(--appSafeL) + 10px);
   display:flex;flex-direction:column;gap:var(--gap);box-sizing:border-box;
 }
-
-/* ---------- HUD (compact, 2 rows) ---------- */
 .hud{display:flex;flex-direction:column;gap:var(--gap);min-height:0}
 .hudRow{
   display:flex;align-items:center;gap:var(--gap);
@@ -37,7 +33,6 @@ body{position:fixed;inset:0}
 }
 .hudRow::-webkit-scrollbar{display:none}
 .hudRow2{justify-content:space-between}
-
 .pill,button.pill{
   border-radius:999px;
   border:1px solid rgba(255,255,255,.14);
@@ -52,11 +47,8 @@ body{position:fixed;inset:0}
 button.pill{cursor:pointer}
 button.pill:active{transform:scale(.99)}
 button.pill:disabled{opacity:.45;cursor:default}
-
 #hudStage,#hudWave,#hudLv{min-width:66px;text-align:center}
 #hudScore{min-width:82px;text-align:center}
-
-/* HP bar */
 .hpbar{
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:8px;
@@ -73,8 +65,6 @@ button.pill:disabled{opacity:.45;cursor:default}
 }
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
 .hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
-
-/* ---------- Main ---------- */
 .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
 .boardWrap{
   flex:1;min-height:0;
@@ -83,7 +73,6 @@ button.pill:disabled{opacity:.45;cursor:default}
   overflow:hidden;position:relative
 }
 canvas{width:100%;height:100%;display:block}
-
 .touchpad{
   flex:0 0 auto;height:max(82px,12.5svh);
   border-radius:18px;border:1px solid rgba(255,255,255,.12);
@@ -93,8 +82,6 @@ canvas{width:100%;height:100%;display:block}
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
-
-/* ---------- Specials bar (compact, horizontal) ---------- */
 .specials{
   flex:0 0 auto;
   display:flex;
@@ -124,8 +111,6 @@ canvas{width:100%;height:100%;display:block}
 .sbtn .ico{font-size:16px;line-height:1}
 .sbtn .name{font-weight:900;letter-spacing:.2px}
 .sbtn .cnt{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
-
-/* overlays */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
 .panel{width:min(720px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.14);background:rgba(15,22,40,.92);padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55)}
@@ -138,7 +123,6 @@ canvas{width:100%;height:100%;display:block}
 .panel .sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px}
 .panel .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .panel .row .pill{padding:10px 12px}
-
 .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
 .toast.show{display:block}
 </style></head>
@@ -312,37 +296,37 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Constants ----------
   const BASE_HP=300;
-  const SPREAD_CAP=3; // perm
-  const PIERCE_CAP=3; // perm
+  const SPREAD_CAP=3;
+  const PIERCE_CAP=3;
 
   const BULLET_R_MIN=3;
   const BULLET_R_BASE=4;
-  const BULLET_R_CAP=8;       // 硬上限
-  const BULLET_R_UPG_CAP=7;   // 升級上限
+  const BULLET_R_CAP=8;
+  const BULLET_R_UPG_CAP=7;
+
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
   }
-
-  // ✅ 清彈用：子彈越大，清彈效率略升（但打怪傷害仍被稀釋）
+  // 大彈體：清彈略強（但不誇張）
   function bulletClearMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
-    return clamp(1 + dr*0.06, 1.00, 1.30);
+    return clamp(1 + dr*0.05, 1.00, 1.25);
   }
 
-  // ✅ 檔位 + 封頂：敵彈抵銷 HP（讓火力升級有感，又不會 5~6 發地獄）
+  // ✅ 這裡是關鍵：早期要「好清」，後期才「硬」；封頂避免失控
   function enemyBulletHpByStage(stage){
-    if(stage < 14) return 16;
-    if(stage < 20) return 22;
-    if(stage < 26) return 28;
-    return 34;
+    if(stage < 6)  return 8;   // 前期一發就能清（dmg≈12）
+    if(stage < 14) return 10;
+    if(stage < 20) return 14;
+    if(stage < 26) return 18;
+    return 22;
   }
 
-  // ✅ Beam（長條彈）機率：後期才出現，且有上限
   function beamChanceByStage(stage, isElite){
     if(stage < 16) return 0;
-    const base = stage < 20 ? 0.08 : (stage < 26 ? 0.12 : 0.16);
-    return Math.min(0.22, base + (isElite ? 0.06 : 0));
+    const base = stage < 20 ? 0.06 : (stage < 26 ? 0.10 : 0.14);
+    return Math.min(0.20, base + (isElite ? 0.06 : 0));
   }
 
   // ---------- State ----------
@@ -356,14 +340,8 @@ canvas{width:100%;height:100%;display:block}
     regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
   };
 
-  // buffs (timed)
-  const buffs={
-    rapid:0, magnet:0,
-    spreadBonusT:0, pierceBonusT:0,
-    invulnT:0, empT:0, armorT:0
-  };
+  const buffs={rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0, invulnT:0, empT:0, armorT:0};
 
-  // specials counts & cooldown guard
   const special={
     bomb:{count:3, cd:0},
     invuln:{count:3, cd:0},
@@ -599,7 +577,7 @@ canvas{width:100%;height:100%;display:block}
   $btnArmor.addEventListener('click',useArmor);
   $btnHeal.addEventListener('click',useHeal);
 
-  // ---------- Level-up: pick 3 with guardrails ----------
+  // ---------- Level-up ----------
   const UPGRADES=[
     {key:'dmg',t:'火力提升',d:'傷害 +20%'},
     {key:'firerate',t:'射速提升',d:'射速 +18%'},
@@ -610,7 +588,7 @@ canvas{width:100%;height:100%;display:block}
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
     {key:'regen',t:'自動修復',d:'每秒回復 +0.7'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
-    {key:'bullet_size',t:'彈體增強',d:'子彈更大（打怪略稀釋，但清彈更強）'},
+    {key:'bullet_size',t:'彈體增強',d:'子彈更大（打怪略稀釋、清彈略加成）'},
   ];
   function canPickUpgrade(key){
     if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
@@ -674,9 +652,7 @@ canvas{width:100%;height:100%;display:block}
     else if(key==='shield_cap'){player.shieldMax+=30;player.shield=player.shieldMax}
     else if(key==='regen') player.regen+=0.7;
     else if(key==='xp_gain') player.xpGainMul*=1.15;
-    else if(key==='bullet_size'){
-      player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
-    }
+    else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
   }
   function addXp(xp){
     xp*=player.xpGainMul;
@@ -716,6 +692,7 @@ canvas{width:100%;height:100%;display:block}
     fireAcc+=dt*rate;
     while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
   }
+
   function spawnPlayerShot(){
     const s=spreadTotal();
     const n=shotsFromSpread(s);
@@ -727,15 +704,16 @@ canvas{width:100%;height:100%;display:block}
     const pr=pierceTotal();
     const baseY=player.y-player.r-6;
 
+    // ✅ 攔截次數：避免 Boss 彈幕把你火力全吃掉
+    const clashLeftBase = (r>=6)?2:1;
+
     for(const vx of vxArr){
-      pBullets.push({x:player.x,y:baseY,r,vx,vy:-player.bulletSpeed,dmg,pierce:pr,alive:true});
+      pBullets.push({x:player.x,y:baseY,r,vx,vy:-player.bulletSpeed,dmg,pierce:pr,alive:true, clashLeft:clashLeftBase});
     }
   }
 
-  // ✅ enemyShoot：支援 beam + 抵銷 hp
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-
     const empSpdMul=(buffs.empT>0)?0.55:1.0;
     let spd=(e.bulletSpeed??300)*sMul*empSpdMul;
 
@@ -743,21 +721,13 @@ canvas{width:100%;height:100%;display:block}
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
     const pierce = meta.pierce ?? 0;
 
-    // 一般彈：抵銷 hp（stage 檔位），beam：不可抵銷
-    const hp = isBeam ? 1 : (meta.hp ?? enemyBulletHpByStage(state.stage));
+    // ✅ Boss/菁英彈：抵銷 HP 可稍微不同（避免早期 Boss 彈幕鐵板）
+    const baseHp = enemyBulletHpByStage(state.stage);
+    const hp = isBeam ? 1 : (meta.hp ?? baseHp);
 
     const len = isBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
 
-    eBullets.push({
-      x:e.x,y:e.y+e.r+4,r,
-      vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
-      dmg:(e.bulletDmg??8)*dMul,
-      alive:true,
-      pierce,
-      hp,
-      beam:isBeam,
-      len
-    });
+    eBullets.push({x:e.x,y:e.y+e.r+4,r,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true,pierce,hp,beam:isBeam,len});
   }
 
   function mobShoot(e){
@@ -773,7 +743,6 @@ canvas{width:100%;height:100%;display:block}
     const enLate=(state.stage>=12);
     const enBrutal=(state.stage>=20);
 
-    // ✅ 後期：部分射擊改成 Beam（不可抵銷）
     const isElite = (e.type==='elite');
     const useBeam = Math.random() < beamChanceByStage(state.stage, isElite);
 
@@ -781,15 +750,9 @@ canvas{width:100%;height:100%;display:block}
       const wide = (enLate && Math.random()<0.22) ? 5 : 3;
       const spread = (wide===5)?0.26:0.18;
       const lanes = wide;
-
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,1.0,0.98,{
-          r: (enBrutal?5:4),
-          pierce: evoP?1:0,
-          beam: useBeam,
-          len: useBeam ? (enBrutal?34:28) : 0
-        });
+        enemyShoot(e,ang+t*spread,1.0,0.98,{r: (enBrutal?5:4), pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?34:28) : 0});
       }
       return;
     }
@@ -799,12 +762,7 @@ canvas{width:100%;height:100%;display:block}
       const spread = enBrutal?0.22:0.18;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,1.0,0.95,{
-          r: enBrutal?5:4,
-          pierce: evoP?1:0,
-          beam: useBeam,
-          len: useBeam ? (enBrutal?32:26) : 0
-        });
+        enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?32:26) : 0});
       }
       return;
     }
@@ -848,7 +806,9 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // burst
+    // ✅ Boss 彈的抵銷 HP：刻意比一般彈低一點（避免「彈幕鐵板」）
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.85;
+
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
@@ -863,26 +823,24 @@ canvas{width:100%;height:100%;display:block}
         const spread=(e.phase===1?0.30:(e.phase===2?0.32:0.36));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-          enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0});
+          enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
         }
         e.burstLeft-=1;
         e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10));
       }
     }
 
-    // ring
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
       const n=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
       const base=Math.random()*Math.PI*2;
       for(let i=0;i<n;i++){
         const a=base+(i/n)*Math.PI*2;
-        enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4});
+        enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
       }
       e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0);
     }
 
-    // spiral
     e.spiralCd-=dt;
     e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
     if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
@@ -890,12 +848,11 @@ canvas{width:100%;height:100%;display:block}
       const base=e.spin;
       for(let i=0;i<n;i++){
         const a=base+(i/n)*Math.PI*2;
-        enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4});
+        enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
       }
       e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0);
     }
 
-    // summon
     if(e.phase===3){
       e.summonCd-=dt;
       if(e.summonCd<=0){
@@ -918,7 +875,7 @@ canvas{width:100%;height:100%;display:block}
     $btnPause.textContent='繼續';
     $toast.classList.remove('show');
 
-    const bestKey='blaster_best_score_v3';
+    const bestKey='blaster_best_score_v3_fix';
     const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
     localStorage.setItem(bestKey,String(best));
 
@@ -976,7 +933,6 @@ canvas{width:100%;height:100%;display:block}
     spawnWave();
   }
 
-  // ---------- Particles / Toast ----------
   function addBurst(x,y,n=10){
     for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
   }
@@ -1051,36 +1007,39 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // ✅ player bullets vs enemy bullets (抵銷：一般彈有 hp；beam 不能抵銷)
+    // ✅ 玩家子彈 vs 敵彈：不再一碰就死，改用 clashLeft
     if(buffs.armorT<=0){
       for(const b of pBullets){
         if(!b.alive) continue;
+        if((b.clashLeft??0)<=0) continue;
+
         for(const eb of eBullets){
           if(!eb.alive) continue;
-
-          if(eb.beam) continue; // 只能閃
+          if(eb.beam) continue;
 
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
             // 敵彈有穿透：先硬吃一次（更難清）
             if((eb.pierce||0)>0){
               eb.pierce -= 1;
-              b.alive = false;
+              b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
+              if(b.clashLeft<=0) b.alive=false;
               addBurst(eb.x,eb.y,3);
               state.score+=1;
-              continue;
+              break;
             }
 
-            // ✅ 用玩家子彈 dmg 扣敵彈 hp，火力升級＝清彈更快
             const clearDmg = b.dmg * bulletClearMul(b.r);
             eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
 
             addBurst(eb.x,eb.y,4);
             state.score+=1;
 
-            // 你的子彈也會被消耗（避免掃地機）
-            b.alive=false;
-
+            b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
             if(eb.hp<=0) eb.alive=false;
+            if(b.clashLeft<=0) b.alive=false;
+
+            // 同一顆玩家子彈同一幀只處理一次碰撞，避免刷爆
+            break;
           }
         }
       }
@@ -1117,21 +1076,17 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player (beam 用圓心碰撞 + 半徑，簡潔版)
+    // enemy bullets vs player (beam capsule 碰撞)
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
-      // beam：用「點到線段」近似碰撞（capsule）
       if(eb.beam){
         const ang=Math.atan2(eb.vy,eb.vx);
         const L=eb.len||28, R=eb.r||5;
-
-        // beam 中心線段端點
         const dx=Math.cos(ang)*(L/2), dy=Math.sin(ang)*(L/2);
         const ax=eb.x-dx, ay=eb.y-dy;
         const bx=eb.x+dx, by=eb.y+dy;
 
-        // 點到線段距離平方
         const px=player.x, py=player.y;
         const vx=bx-ax, vy=by-ay;
         const wx=px-ax, wy=py-ay;
@@ -1185,19 +1140,16 @@ canvas{width:100%;height:100%;display:block}
   function draw(){
     ctx.clearRect(0,0,W,H);
 
-    // grid
     ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
     const step=48;
     for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
     for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
     ctx.restore();
 
-    // particles
     ctx.save();ctx.fillStyle='rgba(120,255,200,.7)';
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
@@ -1208,7 +1160,6 @@ canvas{width:100%;height:100%;display:block}
       ctx.fillText(icon,d.x,d.y+.5);ctx.restore();
     }
 
-    // enemies
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
@@ -1246,16 +1197,14 @@ canvas{width:100%;height:100%;display:block}
         ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
         ctx.fillText(`🧰 ${Math.ceil(e.healT)}s`,e.x,e.y+e.r+6);
       }
-
       ctx.restore();
     }
 
-    // player bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // enemy bullets (beam: capsule)
+    // enemy bullets (beam capsule)
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){
       if(!b.beam){
@@ -1263,7 +1212,6 @@ canvas{width:100%;height:100%;display:block}
       }else{
         const ang=Math.atan2(b.vy,b.vx);
         const L=b.len||28, R=b.r||5;
-
         ctx.save();
         ctx.translate(b.x,b.y);
         ctx.rotate(ang);
@@ -1272,10 +1220,7 @@ canvas{width:100%;height:100%;display:block}
           ctx.roundRect(-L/2, -R, L, R*2, R);
           ctx.fill();
         }else{
-          // fallback capsule
-          ctx.beginPath();
-          ctx.rect(-L/2, -R, L, R*2);
-          ctx.fill();
+          ctx.beginPath();ctx.rect(-L/2, -R, L, R*2);ctx.fill();
           ctx.beginPath();ctx.arc(-L/2,0,R,0,Math.PI*2);ctx.fill();
           ctx.beginPath();ctx.arc(L/2,0,R,0,Math.PI*2);ctx.fill();
         }
@@ -1284,7 +1229,6 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
-    // player ship + shield + invuln hint
     ctx.save();
     ctx.translate(player.x,player.y);
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
@@ -1324,7 +1268,6 @@ canvas{width:100%;height:100%;display:block}
     $btnHeal.disabled  = !canUseSpecial('heal');
   }
 
-  // ---------- Loop ----------
   let lastT=performance.now();
   function frame(t){
     const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
@@ -1333,7 +1276,6 @@ canvas{width:100%;height:100%;display:block}
     requestAnimationFrame(frame);
   }
 
-  // start
   setPadX(.5);
   spawnWave();
   requestAnimationFrame(frame);
