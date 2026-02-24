@@ -49,8 +49,26 @@ body{position:fixed;inset:0}
 button.pill{cursor:pointer}
 button.pill:active{transform:scale(.99)}
 button.pill:disabled{opacity:.45;cursor:default}
-#hudStage,#hudWave,#hudLv{min-width:66px;text-align:center}
-#hudScore{min-width:82px;text-align:center}
+#hudStage{min-width:72px;text-align:center}
+
+/* LV + XP bar */
+.lvx{
+  flex:1 1 auto; min-width:0;
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.05);
+}
+.lvx .label{opacity:.85;font-weight:900;letter-spacing:.2px;min-width:44px}
+.lvx .track{
+  flex:1 1 auto; min-width:120px; max-width:360px;
+  height:12px;border-radius:999px;
+  background:rgba(255,255,255,.10);
+  overflow:hidden;border:1px solid rgba(255,255,255,.10)
+}
+.lvx .fill{height:100%;width:0%;background:rgba(120,180,255,.95)}
+.lvx .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:110px;text-align:right}
+
 .hpbar{
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:8px;
@@ -67,6 +85,7 @@ button.pill:disabled{opacity:.45;cursor:default}
 }
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
 .hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
+
 .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
 .boardWrap{
   flex:1;min-height:0;
@@ -84,7 +103,8 @@ canvas{width:100%;height:100%;display:block}
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
-.specials{
+
+.skills{
   flex:0 0 auto;
   display:flex;
   gap:8px;
@@ -94,7 +114,7 @@ canvas{width:100%;height:100%;display:block}
   scrollbar-width:none;
   padding-bottom:max(env(safe-area-inset-bottom), 6px);
 }
-.specials::-webkit-scrollbar{display:none}
+.skills::-webkit-scrollbar{display:none}
 .sbtn{
   flex:0 0 auto;
   display:flex;
@@ -112,7 +132,8 @@ canvas{width:100%;height:100%;display:block}
 .sbtn[disabled]{opacity:.45;cursor:default}
 .sbtn .ico{font-size:16px;line-height:1}
 .sbtn .name{font-weight:900;letter-spacing:.2px}
-.sbtn .cnt{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
+.sbtn .cd{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
+
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
 .panel{width:min(720px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.14);background:rgba(15,22,40,.92);padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55)}
@@ -136,9 +157,7 @@ canvas{width:100%;height:100%;display:block}
     <div class="hudRow">
       <button class="pill" id="btnBack">← Back</button>
       <span class="pill" id="hudStage">關卡 1</span>
-      <span class="pill" id="hudWave">波次 1</span>
-      <span class="pill" id="hudLv">等級 1</span>
-      <span class="pill" id="hudScore">分數 0</span>
+      <!-- 波次/分數移除 -->
     </div>
 
     <div class="hudRow hudRow2">
@@ -146,6 +165,11 @@ canvas{width:100%;height:100%;display:block}
         <span class="label">HP</span>
         <div class="track"><div class="fill" id="hpFill"></div></div>
         <span class="num" id="hpNum">300/300</span>
+      </div>
+      <div class="lvx">
+        <span class="label" id="hudLv">LV 1</span>
+        <div class="track"><div class="fill" id="xpFill"></div></div>
+        <span class="num" id="xpNum">0/60</span>
       </div>
       <button class="pill" id="btnPause">暫停</button>
     </div>
@@ -163,12 +187,10 @@ canvas{width:100%;height:100%;display:block}
       <div class="hint">左右拖曳＝移動（自動射擊）</div>
     </div>
 
-    <div class="specials" id="specials">
-      <button class="sbtn" id="btnBomb"><span class="ico">💣</span><span class="name">Bomb</span><span class="cnt" id="cntBomb">x3</span></button>
-      <button class="sbtn" id="btnInvuln"><span class="ico">🛡</span><span class="name">無敵</span><span class="cnt" id="cntInvuln">x3</span></button>
-      <button class="sbtn" id="btnEMP"><span class="ico">⚡</span><span class="name">EMP</span><span class="cnt" id="cntEMP">x2</span></button>
-      <button class="sbtn" id="btnArmor"><span class="ico">🎯</span><span class="name">穿甲</span><span class="cnt" id="cntArmor">x2</span></button>
-      <button class="sbtn" id="btnHeal"><span class="ico">✚</span><span class="name">治療</span><span class="cnt" id="cntHeal">x2</span></button>
+    <!-- 技能列：Burst + Invuln -->
+    <div class="skills" id="skills">
+      <button class="sbtn" id="btnBurst"><span class="ico">🔥</span><span class="name">爆發</span><span class="cd" id="cdBurst">Ready</span></button>
+      <button class="sbtn" id="btnInvuln"><span class="ico">🛡</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
     </div>
   </div>
 </div>
@@ -246,8 +268,12 @@ canvas{width:100%;height:100%;display:block}
   window.addEventListener('resize',resize);resize();
 
   // ---------- HUD refs ----------
-  const $stage=document.getElementById('hudStage'),$wave=document.getElementById('hudWave'),$lv=document.getElementById('hudLv'),
-        $score=document.getElementById('hudScore'),$hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
+  const $stage=document.getElementById('hudStage');
+  const $lv=document.getElementById('hudLv');
+  const $xpFill=document.getElementById('xpFill');
+  const $xpNum=document.getElementById('xpNum');
+
+  const $hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $btnPause=document.getElementById('btnPause'),$toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack');
 
   // overlay refs
@@ -257,17 +283,11 @@ canvas{width:100%;height:100%;display:block}
   const $panelSub=document.getElementById('panelSub');
   const $panelRow=document.getElementById('panelRow');
 
-  // specials refs
-  const $btnBomb=document.getElementById('btnBomb');
+  // skills refs
+  const $btnBurst=document.getElementById('btnBurst');
   const $btnInvuln=document.getElementById('btnInvuln');
-  const $btnEMP=document.getElementById('btnEMP');
-  const $btnArmor=document.getElementById('btnArmor');
-  const $btnHeal=document.getElementById('btnHeal');
-  const $cntBomb=document.getElementById('cntBomb');
-  const $cntInvuln=document.getElementById('cntInvuln');
-  const $cntEMP=document.getElementById('cntEMP');
-  const $cntArmor=document.getElementById('cntArmor');
-  const $cntHeal=document.getElementById('cntHeal');
+  const $cdBurst=document.getElementById('cdBurst');
+  const $cdInvuln=document.getElementById('cdInvuln');
 
   $btnBack.addEventListener('click',()=>{
     if(document.referrer){
@@ -306,36 +326,40 @@ canvas{width:100%;height:100%;display:block}
   const BULLET_R_BASE=4;
   const BULLET_R_CAP=8;
   const BULLET_R_UPG_CAP=7;
-  const ENEMY_BULLET_SPEED_MUL = 0.3;
+
+  const ENEMY_BULLET_SPEED_MUL = 0.30;
+
   // ---------- Spread Angle Tuning ----------
-  // 小怪一般散射
-  const SPREAD_2 = 0.12;          // 原 0.16
-  const SPREAD_3 = 0.16;          // 原 0.22
+  const SPREAD_2 = 0.12;
+  const SPREAD_3 = 0.16;
+  const SPREAD_EVOL_3 = 0.15;
+  const SPREAD_EVOL_4 = 0.18;
+  const SPREAD_ELITE_3 = 0.15;
+  const SPREAD_ELITE_5 = 0.20;
+  const BOSS_SPREAD_P1 = 0.24;
+  const BOSS_SPREAD_P2 = 0.26;
+  const BOSS_SPREAD_P3 = 0.30;
 
-  // evoSpread（變異小怪）
-  const SPREAD_EVOL_3 = 0.15;     // 原 0.18
-  const SPREAD_EVOL_4 = 0.18;     // 原 0.22
+  // skills
+  const BURST_DURATION = 20;
+  const BURST_CD = 60;
+  const INVULN_DURATION = 10;
+  const INVULN_CD = 150;
 
-  // Elite（菁英）
-  const SPREAD_ELITE_3 = 0.15;    // 原 0.18
-  const SPREAD_ELITE_5 = 0.20;    // 原 0.26
-
-  // Boss burst 扇形
-  const BOSS_SPREAD_P1 = 0.24;    // 原 0.30
-  const BOSS_SPREAD_P2 = 0.26;    // 原 0.32
-  const BOSS_SPREAD_P3 = 0.30;    // 原 0.36
+  // healer
+  const HEALER_CHANCE_BY_STAGE = (stage)=> stage>=8 ? 0.22 : (stage>=5?0.12:0.0);
+  const HEALER_HEAL_PCT = 0.05; // 固定 5%
+  const HEALER_PERIOD = 4.0;    // 每 4 秒一次（固定）
 
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
   }
-  // 大彈體：清彈略強（但不誇張）
   function bulletClearMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 + dr*0.05, 1.00, 1.25);
   }
 
-  // ✅ 這裡是關鍵：早期要「好清」，後期才「硬」；封頂避免失控
   function enemyBulletHpByStage(stage){
     if(stage < 6)  return 8;
     if(stage < 14) return 10;
@@ -344,14 +368,16 @@ canvas{width:100%;height:100%;display:block}
     return 22;
   }
 
-  function beamChanceByStage(stage, isElite){
+  // 只有菁英會 beam：這裡保留機率表
+  function beamChanceByStage(stage){
     if(stage < 16) return 0;
     const base = stage < 20 ? 0.06 : (stage < 26 ? 0.10 : 0.14);
-    return Math.min(0.20, base + (isElite ? 0.06 : 0));
+    return Math.min(0.20, base);
   }
 
   // ---------- State ----------
   const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:60,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
+
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
@@ -361,14 +387,17 @@ canvas{width:100%;height:100%;display:block}
     regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
   };
 
-  const buffs={rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0, invulnT:0, empT:0, armorT:0};
-  let hitIFrameT = 0; // 受擊後無敵幀（秒）
-  const special={
-    bomb:{count:3, cd:0},
-    invuln:{count:3, cd:0},
-    emp:{count:2, cd:0},
-    armor:{count:2, cd:0},
-    heal:{count:2, cd:0},
+  const buffs={
+    rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0,
+    invulnT:0, burstT:0
+  };
+
+  let hitIFrameT = 0;
+
+  // skills (infinite uses, cooldown based)
+  const skills={
+    burst:{cd:0},
+    invuln:{cd:0},
   };
 
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
@@ -400,9 +429,7 @@ canvas{width:100%;height:100%;display:block}
     const count = clamp(baseCount, 5, 14);
 
     const hp = (24 + stage*7 + wave*5) * mul;
-
     const fire = (0.52 + stage*0.055 + wave*0.055) * clamp(1 + (stage>=14?0.06:0), 1, 1.18);
-
     const bullet = (245 + stage*15 + wave*14) * clamp(1 + (stage>=16?0.05:0), 1, 1.25);
 
     const dmgBase = (5.5 + stage*0.62 + wave*0.50);
@@ -410,7 +437,6 @@ canvas{width:100%;height:100%;display:block}
 
     const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
     const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
-
     const eliteChance = clamp((stage-12)*0.035 + (stage>=22?0.12:0), 0, 0.45);
 
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
@@ -439,6 +465,23 @@ canvas{width:100%;height:100%;display:block}
     };
   }
 
+  function spawnHealer(x,y,targetY){
+    // hp 可稍微跟關卡走，但治療量固定 5%
+    const hp = 140 + state.stage*10;
+    return {
+      type:'healer',
+      x,y,targetY,r:15,
+      hp,hpMax:hp,
+      healCd: rand(1.0, 2.2),
+      healPeriod: HEALER_PERIOD,
+      healPct: HEALER_HEAL_PCT,
+      strafeAmp: rand(40,90),
+      strafeSpd: rand(1.0,2.0),
+      strafePhase: rand(0,Math.PI*2),
+      hitFlash:0
+    };
+  }
+
   function spawnWave(){
     enemies.length=0;eBullets.length=0;state.waveInProgress=true;
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY(),lanes=cfg.count;
@@ -446,8 +489,16 @@ canvas{width:100%;height:100%;display:block}
     const hasElite = Math.random() < cfg.eliteChance;
     const eliteLane = hasElite ? Math.floor(Math.random()*lanes) : -1;
 
+    const hasHealer = Math.random() < HEALER_CHANCE_BY_STAGE(state.stage);
+    const healerLane = hasHealer ? Math.floor(Math.random()*lanes) : -1;
+
     for(let i=0;i<lanes;i++){
       const x=(i+1)*(W/(lanes+1));
+      if(i===healerLane){
+        enemies.push(spawnHealer(x,-44-i*18,holdY+rand(-18,18)));
+        continue;
+      }
+
       const evoSpread = Math.random() < cfg.mobSpreadChance;
       const evoPierce = Math.random() < cfg.mobPierceChance;
 
@@ -461,7 +512,13 @@ canvas{width:100%;height:100%;display:block}
 
   function spawnAdds(count=4,power=.90){
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
+    const addHealer = (state.stage>=10) && Math.random()<0.18; // 少量機率跟著 boss adds 出現
     for(let i=0;i<count;i++){
+      if(addHealer && i===0){
+        const x=rand(40,W-40);
+        enemies.push(spawnHealer(x,-60-i*24,holdY+rand(-14,14)));
+        continue;
+      }
       const x=rand(40,W-40);
       const evoSpread = Math.random() < cfg.mobSpreadChance*0.85;
       const evoPierce = Math.random() < cfg.mobPierceChance*0.85;
@@ -473,27 +530,6 @@ canvas{width:100%;height:100%;display:block}
       m.r=14;
       enemies.push(m);
     }
-  }
-
-  function spawnRepairDrone(boss){
-    const hp = 120 + state.stage*14;
-    enemies.push({
-      type:'drone',
-      x: boss.x + rand(-120,120),
-      y: boss.y + boss.r + 18,
-      targetY: boss.y + boss.r + 46,
-      r: 14,
-      hp, hpMax: hp,
-      fireCd: 999,
-      healT: 3.6,
-      healPct: 0.075,
-      bossRef: boss,
-      hitFlash:0,
-      strafeAmp: rand(40,90),
-      strafeSpd: rand(1.4,2.4),
-      strafePhase: rand(0,Math.PI*2),
-    });
-    toastMsg('🧰 Boss 召喚修復 Drone',0.85);
   }
 
   function spawnBoss(){
@@ -546,63 +582,22 @@ canvas{width:100%;height:100%;display:block}
     else if(type==='magnet'){buffs.magnet=Math.max(buffs.magnet,9.0);toastMsg('Magnet')}
   }
 
-  // ---------- Specials ----------
-  function canUseSpecial(x){return mode==='play' && !paused && special[x].count>0 && special[x].cd<=0}
-  function useBomb(){
-    if(!canUseSpecial('bomb')) return;
-    special.bomb.count--; special.bomb.cd=0.6;
-
-    const cleared=eBullets.length; eBullets.length=0;
-
-    let killed=0; let bossHit=false;
-    for(const e of enemies){
-      if(e.type==='boss'){
-        const dmg=e.hpMax*0.20;
-        e.hp=Math.max(0,e.hp-dmg);
-        bossHit=true;
-        addBurst(e.x,e.y,18);
-      }else if(e.type==='drone'){
-        e.hp=0; killed++;
-        addBurst(e.x,e.y,10);
-      }else{
-        e.hp=0; killed++;
-        maybeDrop(e.x,e.y,false);
-        addBurst(e.x,e.y,10);
-      }
-    }
-    toastMsg(`💣 Bomb! 清彈${cleared} 擊破${killed}${bossHit?' Boss-20%':''}`,1.0);
+  // ---------- Skills ----------
+  function canUseSkill(k){return mode==='play' && !paused && skills[k].cd<=0}
+  function useBurst(){
+    if(!canUseSkill('burst')) return;
+    skills.burst.cd = BURST_CD;
+    buffs.burstT = Math.max(buffs.burstT, BURST_DURATION);
+    toastMsg('🔥 爆發：傷害×2（20s）',0.95);
   }
   function useInvuln(){
-    if(!canUseSpecial('invuln')) return;
-    special.invuln.count--; special.invuln.cd=0.6;
-    buffs.invulnT=Math.max(buffs.invulnT,10.0);
-    toastMsg('🛡 無敵 10 秒',0.9);
+    if(!canUseSkill('invuln')) return;
+    skills.invuln.cd = INVULN_CD;
+    buffs.invulnT = Math.max(buffs.invulnT, INVULN_DURATION);
+    toastMsg('🛡 無敵（10s）',0.9);
   }
-  function useEMP(){
-    if(!canUseSpecial('emp')) return;
-    special.emp.count--; special.emp.cd=0.6;
-    buffs.empT=Math.max(buffs.empT,3.0);
-    toastMsg('⚡ EMP',0.8);
-  }
-  function useArmor(){
-    if(!canUseSpecial('armor')) return;
-    special.armor.count--; special.armor.cd=0.6;
-    buffs.armorT=Math.max(buffs.armorT,5.0);
-    toastMsg('🎯 穿甲 5 秒',0.9);
-  }
-  function useHeal(){
-    if(!canUseSpecial('heal')) return;
-    special.heal.count--; special.heal.cd=0.6;
-    const add=Math.floor(player.hpMax*0.40);
-    player.hp=clamp(player.hp+add,0,player.hpMax);
-    toastMsg(`✚ 治療 +${add}`,0.9);
-  }
-
-  $btnBomb.addEventListener('click',useBomb);
+  $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
-  $btnEMP.addEventListener('click',useEMP);
-  $btnArmor.addEventListener('click',useArmor);
-  $btnHeal.addEventListener('click',useHeal);
 
   // ---------- Level-up ----------
   const UPGRADES=[
@@ -725,12 +720,16 @@ canvas{width:100%;height:100%;display:block}
     const n=shotsFromSpread(s);
 
     const r = clamp(player.bulletR, BULLET_R_MIN, BULLET_R_CAP);
-    const dmg = player.dmg * spreadDmgMul(n) * bulletSizeDmgMul(r);
+
+    // 最終傷害倍率：爆發×2
+    const burstMul = (buffs.burstT>0)?2.0:1.0;
+    const dmg = player.dmg * spreadDmgMul(n) * bulletSizeDmgMul(r) * burstMul;
 
     const vxArr=shotVXPattern(n);
     const pr=pierceTotal();
     const baseY=player.y-player.r-6;
 
+    // 清彈次數：穿透越高越能拆彈牆（封頂避免失控）
     const clashLeftBase = ((r>=6)?2:1) + Math.min(5, pr);
 
     for(const vx of vxArr){
@@ -740,7 +739,7 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-    const empSpdMul=(buffs.empT>0)?0.55:1.0;
+    const empSpdMul=1.0; // EMP 道具移除
     let spd=(e.bulletSpeed??300)*sMul*empSpdMul*ENEMY_BULLET_SPEED_MUL;
 
     const isBeam = !!meta.beam;
@@ -756,7 +755,8 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function mobShoot(e){
-    if(buffs.empT>0) return;
+    // healer 不攻擊
+    if(e.type==='healer') return;
 
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
 
@@ -769,7 +769,9 @@ canvas{width:100%;height:100%;display:block}
     const enBrutal=(state.stage>=20);
 
     const isElite = (e.type==='elite');
-    const useBeam = Math.random() < beamChanceByStage(state.stage, isElite);
+
+    // ✅ 只有菁英會 beam
+    const useBeam = isElite && (Math.random() < beamChanceByStage(state.stage));
 
     if(isElite){
       const wide = (enLate && Math.random()<0.22) ? 5 : 3;
@@ -782,28 +784,27 @@ canvas{width:100%;height:100%;display:block}
       return;
     }
 
+    // 小兵永遠不 beam
     if(evoS && (enLate || Math.random()<0.55)){
       const lanes = enBrutal?4:3;
       const spread = enBrutal?SPREAD_EVOL_4:SPREAD_EVOL_3;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?32:26) : 0});
+        enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam:false});
       }
       return;
     }
 
     if(en3&&Math.random()<.22){
-      for(const da of [-SPREAD_3,0,SPREAD_3]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
+      for(const da of [-SPREAD_3,0,SPREAD_3]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:false});
     }else if(en2&&Math.random()<.35){
-      for(const da of [-SPREAD_2,SPREAD_2]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
+      for(const da of [-SPREAD_2,SPREAD_2]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:false});
     }else{
-      enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
+      enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:false});
     }
   }
 
   function bossTick(e,dt){
-    if(buffs.empT>0) return;
-
     const r=e.hp/e.hpMax;
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
@@ -819,22 +820,7 @@ canvas{width:100%;height:100%;display:block}
     const densMul = bossEasy ? 0.72 : 1.0;
     const cdMul   = bossEasy ? 1.18 : 1.0;
 
-    if(brutal){
-      e.medCd -= dt;
-      if(e.medCd<=0){
-        if(Math.random()<0.65){
-          spawnRepairDrone(e);
-        }else{
-          const add = e.hpMax*0.035;
-          e.hp = Math.min(e.hpMax, e.hp + add);
-          toastMsg(`🩹 Boss 自我修復 +${Math.floor(add)}`,0.85);
-          addBurst(e.x,e.y,14);
-        }
-        e.medCd = 7.6 + Math.random()*4.6;
-      }
-    }
-
-    // Boss 彈：比一般彈好清，但不會像 0.01 那種直接變紙糊
+    // Boss 彈：好清但不紙糊
     const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
 
     e.burstCd-=dt;
@@ -903,6 +889,11 @@ canvas{width:100%;height:100%;display:block}
     }
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
 
+    // ✅ 受擊給少量經驗（不灌爆）
+    // 依傷害給 1~6 XP
+    const hitXp = clamp(Math.ceil(dmg*0.35), 1, 6);
+    addXp(hitXp);
+
     hitIFrameT = 0.35;
     if(player.hp<=0) gameOver();
   }
@@ -913,7 +904,7 @@ canvas{width:100%;height:100%;display:block}
     $btnPause.textContent='繼續';
     $toast.classList.remove('show');
 
-    const bestKey='blaster_best_score_v3_fix';
+    const bestKey='blaster_best_score_v4';
     const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
     localStorage.setItem(bestKey,String(best));
 
@@ -962,11 +953,8 @@ canvas{width:100%;height:100%;display:block}
     for(const k in buffs) buffs[k]=0;
     hitIFrameT = 0;
 
-    special.bomb.count=3; special.bomb.cd=0;
-    special.invuln.count=3; special.invuln.cd=0;
-    special.emp.count=2; special.emp.cd=0;
-    special.armor.count=2; special.armor.cd=0;
-    special.heal.count=2; special.heal.cd=0;
+    skills.burst.cd=0;
+    skills.invuln.cd=0;
 
     pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
@@ -978,23 +966,42 @@ canvas{width:100%;height:100%;display:block}
   let toastT=0;
   function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
 
+  // ---------- healer logic ----------
+  function healerTick(h,dt){
+    h.healCd -= dt;
+    if(h.healCd>0) return;
+    h.healCd = h.healPeriod;
+
+    // 找一名非 healer 且還活著的敵人
+    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
+    if(!targets.length) return;
+    const t = targets[Math.floor(Math.random()*targets.length)];
+
+    const add = t.hpMax * h.healPct; // 固定 5%
+    t.hp = Math.min(t.hpMax, t.hp + add);
+    addBurst(t.x,t.y,10);
+    toastMsg(`💙 治療 +${Math.floor(add)}`,0.55);
+  }
+
   // ---------- Update / Draw ----------
   function update(dt){
-    for(const k of ['rapid','magnet','spreadBonusT','pierceBonusT','invulnT','empT','armorT']){
+    // buffs decay
+    for(const k of ['rapid','magnet','spreadBonusT','pierceBonusT','invulnT','burstT']){
       if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
     }
-    for(const k in special){
-      if(special[k].cd>0) special[k].cd=Math.max(0,special[k].cd-dt);
+    // cooldown decay
+    for(const k in skills){
+      if(skills[k].cd>0) skills[k].cd=Math.max(0, skills[k].cd-dt);
     }
 
     if(hitIFrameT > 0) hitIFrameT = Math.max(0, hitIFrameT - dt);
-
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
     player.x=clamp(player.x,player.r+8,W-player.r-8);
     shoot(dt);
 
+    // enemies tick
     for(const e of enemies){
       e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
       if(e.strafeAmp>0){
@@ -1006,32 +1013,26 @@ canvas{width:100%;height:100%;display:block}
       e.x=clamp(e.x,e.r+10,W-e.r-10);
 
       if(e.type==='boss') bossTick(e,dt);
-      else if(e.type==='drone'){
-        e.healT -= dt;
-        if(e.healT<=0 && e.bossRef && e.bossRef.hp>0){
-          const add = e.bossRef.hpMax * e.healPct;
-          e.bossRef.hp = Math.min(e.bossRef.hpMax, e.bossRef.hp + add);
-          toastMsg(`🧰 Drone 修復 +${Math.floor(add)}`,0.85);
-          addBurst(e.bossRef.x,e.bossRef.y,18);
-          e.hp = 0;
-        }
+      else if(e.type==='healer') healerTick(e,dt);
+      else { // mob/elite
+        e.fireCd-=dt;
+        if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}
       }
-      else {e.fireCd-=dt; if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}}
 
       if(e.hitFlash>0) e.hitFlash=Math.max(0,e.hitFlash-dt);
     }
 
-    const empMoveMul=(buffs.empT>0)?0.55:1.0;
-
+    // bullets move
     for(const b of pBullets){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
       if(b.y<-30||b.x<-40||b.x>W+40) b.alive=false;
     }
     for(const b of eBullets){
-      b.x+=b.vx*dt*empMoveMul; b.y+=b.vy*dt*empMoveMul;
+      b.x+=b.vx*dt; b.y+=b.vy*dt;
       if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
     }
 
+    // drops
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
@@ -1042,44 +1043,42 @@ canvas{width:100%;height:100%;display:block}
       if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){d.dead=true;applyDrop(d.type)}
     }
 
+    // particles
     for(const p of particles){
       p.x+=p.vx*dt; p.y+=p.vy*dt;
       p.vx*=(1-dt*2.8); p.vy*=(1-dt*2.8);
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // 玩家子彈 vs 敵彈：clashLeft
-    if(buffs.armorT<=0){
-      for(const b of pBullets){
-        if(!b.alive) continue;
-        if((b.clashLeft??0)<=0) continue;
+    // player bullets vs enemy bullets (clashLeft) — beams cannot be cancelled
+    for(const b of pBullets){
+      if(!b.alive) continue;
+      if((b.clashLeft??0)<=0) continue;
 
-        for(const eb of eBullets){
-          if(!eb.alive) continue;
-          if(eb.beam) continue;
+      for(const eb of eBullets){
+        if(!eb.alive) continue;
+        if(eb.beam) continue;
 
-          if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
-            if((eb.pierce||0)>0){
-              eb.pierce -= 1;
-              b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
-              if(b.clashLeft<=0) b.alive=false;
-              addBurst(eb.x,eb.y,3);
-              state.score+=1;
-              break;
-            }
-
-            const clearDmg = b.dmg * bulletClearMul(b.r);
-            eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
-
-            addBurst(eb.x,eb.y,4);
-            state.score+=1;
-
+        if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
+          if((eb.pierce||0)>0){
+            eb.pierce -= 1;
             b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
-            if(eb.hp<=0) eb.alive=false;
             if(b.clashLeft<=0) b.alive=false;
-
+            addBurst(eb.x,eb.y,3);
+            state.score+=1;
             break;
           }
+
+          const clearDmg = b.dmg * bulletClearMul(b.r);
+          eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
+
+          addBurst(eb.x,eb.y,4);
+          state.score+=1;
+
+          b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
+          if(eb.hp<=0) eb.alive=false;
+          if(b.clashLeft<=0) b.alive=false;
+          break;
         }
       }
     }
@@ -1101,9 +1100,9 @@ canvas{width:100%;height:100%;display:block}
             }else if(e.type==='elite'){
               state.score+=38; addXp(12); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,12);
-            }else if(e.type==='drone'){
-              state.score+=28; addXp(10);
-              toastMsg('✅ Drone 已擊破',0.7);
+            }else if(e.type==='healer'){
+              state.score+=30; addXp(11); maybeDrop(e.x,e.y,false);
+              toastMsg('💙 Healer 擊破',0.7);
               addBurst(e.x,e.y,14);
             }else{
               state.score+=18; addXp(7); maybeDrop(e.x,e.y,false);
@@ -1115,7 +1114,7 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player (beam capsule)
+    // enemy bullets vs player (beam capsule + normal)
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -1206,28 +1205,31 @@ canvas{width:100%;height:100%;display:block}
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
-      const isElite=e.type==='elite', isDrone=e.type==='drone';
+      const isElite=e.type==='elite';
+      const isHealer=e.type==='healer';
 
       ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
         : isBoss ? 'rgba(255,120,120,.14)'
         : isElite ? 'rgba(220,180,255,.14)'
-        : isDrone ? 'rgba(200,255,220,.10)'
+        : isHealer ? 'rgba(140,190,255,.14)'
         : 'rgba(255,255,255,.10)';
 
       ctx.strokeStyle = isBoss ? 'rgba(255,120,120,.35)'
-        : isElite ? 'rgba(220,180,255,.40)'
-        : isDrone ? 'rgba(200,255,220,.30)'
+        : isElite ? 'rgba(220,180,255,.45)'
+        : isHealer ? 'rgba(140,190,255,.40)'
         : 'rgba(255,255,255,.20)';
 
       ctx.lineWidth = isBoss?2:(isElite?1.8:1);
 
       ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.stroke();
 
-      const w=isBoss?96:(isElite?70:52),h=6,x=e.x-w/2,y=e.y-e.r-14;
+      const w=isBoss?96:(isElite?70:(isHealer?62:52)),h=6,x=e.x-w/2,y=e.y-e.r-14;
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(255,255,255,.10)';ctx.fillRect(x,y,w,h);
 
       const hpPct=clamp(e.hp/e.hpMax,0,1);
-      ctx.fillStyle=isBoss?'rgba(255,120,120,.9)':(isElite?'rgba(220,180,255,.9)':'rgba(120,255,200,.9)');
+      ctx.fillStyle=isBoss?'rgba(255,120,120,.9)'
+        :(isElite?'rgba(220,180,255,.9)'
+        :(isHealer?'rgba(140,190,255,.92)':'rgba(120,255,200,.9)'));
       ctx.fillRect(x,y,w*hpPct,h);
 
       if(isBoss){
@@ -1235,10 +1237,10 @@ canvas{width:100%;height:100%;display:block}
         ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='bottom';
         ctx.fillText(`P${e.phase||1}`,e.x,y-2);
       }
-      if(isDrone){
-        ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.70)';
+      if(isHealer){
+        ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.75)';
         ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
-        ctx.fillText(`🧰 ${Math.ceil(e.healT)}s`,e.x,e.y+e.r+6);
+        ctx.fillText(`💙 ${Math.ceil(e.healCd)}s`,e.x,e.y+e.r+6);
       }
       ctx.restore();
     }
@@ -1277,21 +1279,38 @@ canvas{width:100%;height:100%;display:block}
     ctx.save();
     ctx.translate(player.x,player.y);
 
-    // ✅ 只讓玩家閃（不讓整張背景閃）
+    // 受擊閃
     if(hitIFrameT > 0){
       ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
     }
 
+    // 爆發特效：紅色脈動圈
+    if(buffs.burstT>0){
+      ctx.save();
+      const a = 0.25 + 0.15*Math.sin(performance.now()/90);
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = 'rgba(255,140,140,.85)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0,0,player.r+18,0,Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 機體
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);ctx.closePath();ctx.fill();ctx.stroke();
 
+    // 護盾圈
     if(player.shield>0){
       ctx.globalAlpha*=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=1;
     }
+
+    // 無敵圈
     if(buffs.invulnT>0){
-      ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;
+      ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+15,0,Math.PI*2);ctx.stroke();
     }
     ctx.restore();
@@ -1299,26 +1318,28 @@ canvas{width:100%;height:100%;display:block}
 
   function syncHud(){
     $stage.textContent=`關卡 ${state.stage}`;
-    $wave.textContent=`波次 ${state.wave}`;
-    $lv.textContent=`等級 ${state.level}`;
-    $score.textContent=`分數 ${state.score}`;
 
     const hpPct=clamp(player.hp/player.hpMax,0,1);
     $hpFill.style.width=`${hpPct*100}%`;
     const shieldTxt=player.shield>0?` +${Math.floor(player.shield)}`:'';
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
 
-    $cntBomb.textContent=`x${special.bomb.count}`;
-    $cntInvuln.textContent=`x${special.invuln.count}`;
-    $cntEMP.textContent=`x${special.emp.count}`;
-    $cntArmor.textContent=`x${special.armor.count}`;
-    $cntHeal.textContent=`x${special.heal.count}`;
+    $lv.textContent=`LV ${state.level}`;
+    const xpPct=clamp(state.xp/state.nextXp,0,1);
+    $xpFill.style.width=`${xpPct*100}%`;
+    $xpNum.textContent=`${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`;
 
-    $btnBomb.disabled  = !canUseSpecial('bomb');
-    $btnInvuln.disabled= !canUseSpecial('invuln');
-    $btnEMP.disabled   = !canUseSpecial('emp');
-    $btnArmor.disabled = !canUseSpecial('armor');
-    $btnHeal.disabled  = !canUseSpecial('heal');
+    // skill HUD: 顯示倒數或剩餘時間
+    if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
+    else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
+    else $cdBurst.textContent = 'Ready';
+
+    if(buffs.invulnT>0) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
+    else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(skills.invuln.cd)}s`;
+    else $cdInvuln.textContent = 'Ready';
+
+    $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
+    $btnInvuln.disabled = !(canUseSkill('invuln') && buffs.invulnT<=0);
   }
 
   let lastT=performance.now();
