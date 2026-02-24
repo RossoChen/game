@@ -439,7 +439,7 @@ function beamChanceByStage(stage){
     const mul = stageDifficultyMul(stage);
 
     const baseCount = 5 + Math.floor((stage-1)*0.95) + Math.floor((wave-1)*0.75);
-    const count = clamp(baseCount, 5, 14);
+    const count = clamp(baseCount, 6, 30);
 
     const hp = (24 + stage*7 + wave*5) * mul;
     const fire = (0.52 + stage*0.055 + wave*0.055) * clamp(1 + (stage>=14?0.06:0), 1, 1.18);
