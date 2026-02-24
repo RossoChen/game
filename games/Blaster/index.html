@@ -346,7 +346,24 @@ canvas{width:100%;height:100%;display:block}
   const INVULN_CD = 150;
 
   // healer
-  const HEALER_CHANCE_BY_STAGE = (stage)=> stage>=8 ? 0.22 : (stage>=5?0.12:0.0);
+  const HEALER_CHANCE_BY_STAGE = (stage)=>{
+  if(stage <= 4)  return 0.00;
+  if(stage <= 7)  return 0.10;
+  if(stage <= 12) return 0.20;
+  if(stage <= 19) return 0.30;
+  if(stage <= 30) return 0.50;
+  if(stage <= 40) return 0.70;
+  if(stage <= 50) return 0.85;
+  return 1.00;
+};
+  function healerCountByChain(){
+  let n = 1;
+  if(Math.random() < 0.50) n++;
+  if(n>=2 && Math.random() < 0.30) n++;
+  if(n>=3 && Math.random() < 0.10) n++;
+  if(n>=4 && Math.random() < 0.05) n++;
+  return n;
+}
   const HEALER_HEAL_PCT = 0.05;
   const HEALER_PERIOD = 10.0;
 
@@ -494,23 +511,27 @@ function beamChanceByStage(stage){
     const holdY = enemyHoldY();
     const lanes = cfg.count;
   
-    // 先決定這波要不要有 healer，若有則占一個 lane
     const hasHealer = Math.random() < HEALER_CHANCE_BY_STAGE(state.stage);
-    const healerLane = hasHealer ? Math.floor(Math.random()*lanes) : -1;
-  
+    
+    let healerLanes = new Set();
+    if(hasHealer){
+      const want = healerCountByChain();              // 1~5
+      const maxN = Math.min(want, Math.max(1, lanes-1)); // 至少留 1 格給非 healer
+      while(healerLanes.size < maxN){
+        healerLanes.add(Math.floor(Math.random()*lanes));
+        if(healerLanes.size >= lanes-1) break;
+      }
+    }
     for(let i=0;i<lanes;i++){
       const x = (i+1)*(W/(lanes+1));
   
-      // healer 不攻擊，只補血
-      if(i===healerLane){
+      if(healerLanes.has(i)){
         enemies.push(spawnHealer(x, -44 - i*18, holdY + rand(-18,18)));
         continue;
       }
   
       const evoSpread = Math.random() < cfg.mobSpreadChance;
       const evoPierce = Math.random() < cfg.mobPierceChance;
-  
-      // ✅ 每一隻怪獨立抽菁英 → 才能做到後期 8/10
       const isElite = Math.random() < cfg.eliteChance;
   
       if(isElite){
