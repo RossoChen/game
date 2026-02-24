@@ -306,7 +306,7 @@ canvas{width:100%;height:100%;display:block}
   const BULLET_R_BASE=4;
   const BULLET_R_CAP=8;
   const BULLET_R_UPG_CAP=7;
-
+  const ENEMY_BULLET_SPEED_MUL = 0.3;
   // ---------- Spread Angle Tuning ----------
   // 小怪一般散射
   const SPREAD_2 = 0.12;          // 原 0.16
@@ -741,7 +741,7 @@ canvas{width:100%;height:100%;display:block}
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
     const empSpdMul=(buffs.empT>0)?0.55:1.0;
-    let spd=(e.bulletSpeed??300)*sMul*empSpdMul;
+    let spd=(e.bulletSpeed??300)*sMul*empSpdMul*ENEMY_BULLET_SPEED_MUL;
 
     const isBeam = !!meta.beam;
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
