@@ -334,14 +334,14 @@ canvas{width:100%;height:100%;display:block}
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
-    moveSpeed:520,fireRate:6.2,dmg:30,bulletSpeed:820,
+    moveSpeed:520,fireRate:6.2,dmg:26,bulletSpeed:820,
     spread_perm:1, pierce_perm:2,
     shield:0,shieldMax:0,
     regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
   };
 
   const buffs={rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0, invulnT:0, empT:0, armorT:0};
-
+  let hitIFrameT = 0; // 受擊後無敵幀（秒
   const special={
     bomb:{count:3, cd:0},
     invuln:{count:3, cd:0},
@@ -366,26 +366,39 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Balance ----------
   function stageDifficultyMul(stage){
-    const a = 1 + Math.max(0, stage-1)*0.06;
-    const b = (stage>=15)? (1 + (stage-15)*0.05) : 1;
-    const c = (stage>=20)? (1 + (stage-20)*0.06) : 1;
-    return a*b*c;
+    const early = 1 + Math.max(0, stage-1) * 0.035;
+    const mid   = (stage>=12) ? (1 + (stage-12) * 0.025) : 1;
+    const late  = (stage>=20) ? (1 + (stage-20) * 0.030) : 1;
+    return Math.min(2.6, early * mid * late);
   }
 
   function waveConfig(stage,wave){
-    const mul=stageDifficultyMul(stage);
-    const baseCount=5+Math.floor((stage-1)*1.25)+Math.floor((wave-1)*0.95);
-    const count=clamp(baseCount,5,16);
-
-    const hp=(24+stage*7+wave*5)*mul;
-    const fire=(0.55+stage*0.08+wave*0.08)*clamp(1 + (stage>=12?0.10:0), 1, 1.25);
-    const bullet=(260+stage*18+wave*16)*clamp(1 + (stage>=14?0.06:0), 1, 1.35);
-    const dmg=(6+stage*0.8+wave*0.6)*clamp(1 + (stage>=10?0.10:0), 1, 1.60);
-
-    const mobSpreadChance = clamp((stage-8)*0.03 + (wave-3)*0.04, 0, 0.45);
-    const mobPierceChance = clamp((stage-10)*0.025 + (wave-4)*0.03, 0, 0.40);
-    const eliteChance = clamp((stage-10)*0.04 + (stage>=20?0.18:0), 0, 0.55);
-
+    const mul = stageDifficultyMul(stage);
+  
+    // 1) 數量成長放緩，並降低上限（前中期更可控）
+    const baseCount = 5 + Math.floor((stage-1)*0.95) + Math.floor((wave-1)*0.75);
+    const count = clamp(baseCount, 5, 14);
+  
+    // 2) HP：可以長，但不要同時讓射速+傷害也暴衝
+    const hp = (24 + stage*7 + wave*5) * mul;
+  
+    // 3) 射速：把 stage/wave 的係數降下來（彈幕密度主因）
+    const fire = (0.52 + stage*0.055 + wave*0.055) * clamp(1 + (stage>=14?0.06:0), 1, 1.18);
+  
+    // 4) 子彈速度：略降，給玩家反應空間
+    const bullet = (245 + stage*15 + wave*14) * clamp(1 + (stage>=16?0.05:0), 1, 1.25);
+  
+    // 5) 傷害：前 10 關更溫和，後面才拉上去
+    const dmgBase = (5.5 + stage*0.62 + wave*0.50);
+    const dmg = dmgBase * clamp(1 + (stage>=12?0.08:0), 1, 1.35);
+  
+    // 6) 散射/穿透的機率：晚一點出現、上限低一點
+    const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
+    const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
+  
+    // 7) 菁英：晚點提高（不然第 5 關像在打季報）
+    const eliteChance = clamp((stage-12)*0.035 + (stage>=22?0.12:0), 0, 0.45);
+  
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
   }
 
@@ -864,8 +877,15 @@ canvas{width:100%;height:100%;display:block}
 
   function damagePlayer(dmg){
     if(buffs.invulnT>0) return;
-    if(player.shield>0){const use=Math.min(player.shield,dmg);player.shield-=use;dmg-=use}
+    if(hitIFrameT > 0) return;        // ✅ 受擊後短暫免疫連打
+  
+    if(player.shield>0){
+      const use=Math.min(player.shield,dmg);
+      player.shield-=use; dmg-=use;
+    }
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
+  
+    hitIFrameT = 0.35;                // ✅ 0.35s 無敵幀（你想更保守可用 0.25）
     if(player.hp<=0) gameOver();
   }
 
@@ -915,7 +935,7 @@ canvas{width:100%;height:100%;display:block}
     state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
     player.hpMax=BASE_HP; player.hp=BASE_HP;
-    player.moveSpeed=520;player.fireRate=6.2;player.dmg=20;player.bulletSpeed=820;
+    player.moveSpeed=520;player.fireRate=6.2;player.dmg=26;player.bulletSpeed=820;
     player.spread_perm=1;player.pierce_perm=2;
     player.shield=0;player.shieldMax=0;
     player.regen=0; player.xpGainMul=1.0;
@@ -947,7 +967,7 @@ canvas{width:100%;height:100%;display:block}
     for(const k in special){
       if(special[k].cd>0) special[k].cd=Math.max(0,special[k].cd-dt);
     }
-
+    if(hitIFrameT > 0) hitIFrameT = Math.max(0, hitIFrameT - dt);
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
