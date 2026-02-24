@@ -583,12 +583,12 @@ canvas{width:100%;height:100%;display:block}
     {key:'firerate',t:'射速提升',d:'射速 +18%'},
     {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，回滿'},
     {key:'speed',t:'機動提升',d:'移動速度 +16%'},
-    {key:'pierce_perm',t:'永久穿透',d:'穿透 +1（最多 3）'},
-    {key:'spread_perm',t:'永久散射',d:'散射 +1（最多 3）'},
+    {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
+    {key:'spread_perm',t:'永久散射',d:'散射 +1'},
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
     {key:'regen',t:'自動修復',d:'每秒回復 +0.7'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
-    {key:'bullet_size',t:'彈體增強',d:'子彈更大（打怪略稀釋、清彈略加成）'},
+    {key:'bullet_size',t:'彈體增強',d:'子彈更大'},
   ];
   function canPickUpgrade(key){
     if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
@@ -807,7 +807,7 @@ canvas{width:100%;height:100%;display:block}
     }
 
     // ✅ Boss 彈的抵銷 HP：刻意比一般彈低一點（避免「彈幕鐵板」）
-    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.85;
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.5;
 
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
