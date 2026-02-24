@@ -807,7 +807,7 @@ canvas{width:100%;height:100%;display:block}
     }
 
     // ✅ Boss 彈的抵銷 HP：刻意比一般彈低一點（避免「彈幕鐵板」）
-    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.5;
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.01;
 
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
