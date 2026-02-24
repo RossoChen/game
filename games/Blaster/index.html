@@ -803,7 +803,10 @@ canvas{width:100%;height:100%;display:block}
     const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
 
     const brutal = state.stage>=20;
-
+    const bossEasy = state.stage < 10;
+    const densMul = bossEasy ? 0.72 : 1.0;
+    const cdMul   = bossEasy ? 1.18 : 1.0;
+    
     if(brutal){
       e.medCd -= dt;
       if(e.medCd<=0){
@@ -826,20 +829,21 @@ canvas{width:100%;height:100%;display:block}
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
       e.burstGapCd=0;
-      e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55));
+      e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55)) * cdMul;
     }
     if(e.burstLeft>0){
       e.burstGapCd-=dt;
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes=(e.phase===1?5:(e.phase===2?5:6));
+        const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
+        const lanes = Math.max(3, Math.round(lanesBase * densMul));
         const spread=(e.phase===1?0.30:(e.phase===2?0.32:0.36));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
         }
         e.burstLeft-=1;
-        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10));
+        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
       }
     }
 
