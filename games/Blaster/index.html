@@ -49,9 +49,8 @@ body{position:fixed;inset:0}
 button.pill{cursor:pointer}
 button.pill:active{transform:scale(.99)}
 button.pill:disabled{opacity:.45;cursor:default}
-#hudStage{min-width:72px;text-align:center}
-
-/* LV + XP bar */
+#hudStage{min-width:56px;padding:8px 8px;text-align:center}
+.lvxTop{flex:1 1 auto;min-width:160px;max-width:none;}
 .lvx{
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:10px;
@@ -157,19 +156,19 @@ canvas{width:100%;height:100%;display:block}
     <div class="hudRow">
       <button class="pill" id="btnBack">← Back</button>
       <span class="pill" id="hudStage">關卡 1</span>
-      <!-- 波次/分數移除 -->
+    
+      <div class="lvx lvxTop">
+        <span class="label" id="hudLv">LV 1</span>
+        <div class="track"><div class="fill" id="xpFill"></div></div>
+        <span class="num" id="xpNum">0/60</span>
+      </div>
     </div>
-
+    
     <div class="hudRow hudRow2">
       <div class="hpbar">
         <span class="label">HP</span>
         <div class="track"><div class="fill" id="hpFill"></div></div>
         <span class="num" id="hpNum">300/300</span>
-      </div>
-      <div class="lvx">
-        <span class="label" id="hudLv">LV 1</span>
-        <div class="track"><div class="fill" id="xpFill"></div></div>
-        <span class="num" id="xpNum">0/60</span>
       </div>
       <button class="pill" id="btnPause">暫停</button>
     </div>
