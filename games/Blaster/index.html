@@ -1,4 +1,6 @@
-<!doctype html><html lang="zh-Hant"><head>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <title>Blaster</title>
@@ -125,7 +127,8 @@ canvas{width:100%;height:100%;display:block}
 .panel .row .pill{padding:10px 12px}
 .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
 .toast.show{display:block}
-</style></head>
+</style>
+</head>
 
 <body>
 <div class="app">
@@ -304,6 +307,24 @@ canvas{width:100%;height:100%;display:block}
   const BULLET_R_CAP=8;
   const BULLET_R_UPG_CAP=7;
 
+  // ---------- Spread Angle Tuning ----------
+  // 小怪一般散射
+  const SPREAD_2 = 0.12;          // 原 0.16
+  const SPREAD_3 = 0.16;          // 原 0.22
+
+  // evoSpread（變異小怪）
+  const SPREAD_EVOL_3 = 0.15;     // 原 0.18
+  const SPREAD_EVOL_4 = 0.18;     // 原 0.22
+
+  // Elite（菁英）
+  const SPREAD_ELITE_3 = 0.15;    // 原 0.18
+  const SPREAD_ELITE_5 = 0.20;    // 原 0.26
+
+  // Boss burst 扇形
+  const BOSS_SPREAD_P1 = 0.24;    // 原 0.30
+  const BOSS_SPREAD_P2 = 0.26;    // 原 0.32
+  const BOSS_SPREAD_P3 = 0.30;    // 原 0.36
+
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
@@ -316,7 +337,7 @@ canvas{width:100%;height:100%;display:block}
 
   // ✅ 這裡是關鍵：早期要「好清」，後期才「硬」；封頂避免失控
   function enemyBulletHpByStage(stage){
-    if(stage < 6)  return 8;   // 前期一發就能清（dmg≈12）
+    if(stage < 6)  return 8;
     if(stage < 14) return 10;
     if(stage < 20) return 14;
     if(stage < 26) return 18;
@@ -341,7 +362,7 @@ canvas{width:100%;height:100%;display:block}
   };
 
   const buffs={rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0, invulnT:0, empT:0, armorT:0};
-  let hitIFrameT = 0;
+  let hitIFrameT = 0; // 受擊後無敵幀（秒）
   const special={
     bomb:{count:3, cd:0},
     invuln:{count:3, cd:0},
@@ -374,31 +395,24 @@ canvas{width:100%;height:100%;display:block}
 
   function waveConfig(stage,wave){
     const mul = stageDifficultyMul(stage);
-  
-    // 1) 數量成長放緩，並降低上限（前中期更可控）
+
     const baseCount = 5 + Math.floor((stage-1)*0.95) + Math.floor((wave-1)*0.75);
     const count = clamp(baseCount, 5, 14);
-  
-    // 2) HP：可以長，但不要同時讓射速+傷害也暴衝
+
     const hp = (24 + stage*7 + wave*5) * mul;
-  
-    // 3) 射速：把 stage/wave 的係數降下來（彈幕密度主因）
+
     const fire = (0.52 + stage*0.055 + wave*0.055) * clamp(1 + (stage>=14?0.06:0), 1, 1.18);
-  
-    // 4) 子彈速度：略降，給玩家反應空間
+
     const bullet = (245 + stage*15 + wave*14) * clamp(1 + (stage>=16?0.05:0), 1, 1.25);
-  
-    // 5) 傷害：前 10 關更溫和，後面才拉上去
+
     const dmgBase = (5.5 + stage*0.62 + wave*0.50);
     const dmg = dmgBase * clamp(1 + (stage>=12?0.08:0), 1, 1.35);
-  
-    // 6) 散射/穿透的機率：晚一點出現、上限低一點
+
     const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
     const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
-  
-    // 7) 菁英：晚點提高（不然第 5 關像在打季報）
+
     const eliteChance = clamp((stage-12)*0.035 + (stage>=22?0.12:0), 0, 0.45);
-  
+
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
   }
 
@@ -717,7 +731,6 @@ canvas{width:100%;height:100%;display:block}
     const pr=pierceTotal();
     const baseY=player.y-player.r-6;
 
-    // ✅ 攔截次數：避免 Boss 彈幕把你火力全吃掉
     const clashLeftBase = ((r>=6)?2:1) + Math.min(2, pr>0 ? 1 : 0);
 
     for(const vx of vxArr){
@@ -734,7 +747,6 @@ canvas{width:100%;height:100%;display:block}
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
     const pierce = meta.pierce ?? 0;
 
-    // ✅ Boss/菁英彈：抵銷 HP 可稍微不同（避免早期 Boss 彈幕鐵板）
     const baseHp = enemyBulletHpByStage(state.stage);
     const hp = isBeam ? 1 : (meta.hp ?? baseHp);
 
@@ -761,7 +773,7 @@ canvas{width:100%;height:100%;display:block}
 
     if(isElite){
       const wide = (enLate && Math.random()<0.22) ? 5 : 3;
-      const spread = (wide===5)?0.26:0.18;
+      const spread = (wide===5)?SPREAD_ELITE_5:SPREAD_ELITE_3;
       const lanes = wide;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
@@ -772,7 +784,7 @@ canvas{width:100%;height:100%;display:block}
 
     if(evoS && (enLate || Math.random()<0.55)){
       const lanes = enBrutal?4:3;
-      const spread = enBrutal?0.22:0.18;
+      const spread = enBrutal?SPREAD_EVOL_4:SPREAD_EVOL_3;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
         enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?32:26) : 0});
@@ -781,9 +793,9 @@ canvas{width:100%;height:100%;display:block}
     }
 
     if(en3&&Math.random()<.22){
-      for(const da of [-.22,0,.22]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
+      for(const da of [-SPREAD_3,0,SPREAD_3]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }else if(en2&&Math.random()<.35){
-      for(const da of [-.16,.16]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
+      for(const da of [-SPREAD_2,SPREAD_2]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }else{
       enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:useBeam, len: useBeam?26:0});
     }
@@ -806,7 +818,7 @@ canvas{width:100%;height:100%;display:block}
     const bossEasy = state.stage < 10;
     const densMul = bossEasy ? 0.72 : 1.0;
     const cdMul   = bossEasy ? 1.18 : 1.0;
-    
+
     if(brutal){
       e.medCd -= dt;
       if(e.medCd<=0){
@@ -822,7 +834,7 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // ✅ Boss 彈的抵銷 HP：刻意比一般彈低一點（避免「彈幕鐵板」）
+    // Boss 彈：比一般彈好清，但不會像 0.01 那種直接變紙糊
     const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
 
     e.burstCd-=dt;
@@ -837,7 +849,7 @@ canvas{width:100%;height:100%;display:block}
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
         const lanes = Math.max(3, Math.round(lanesBase * densMul));
-        const spread=(e.phase===1?0.30:(e.phase===2?0.32:0.36));
+        const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
@@ -883,15 +895,15 @@ canvas{width:100%;height:100%;display:block}
 
   function damagePlayer(dmg){
     if(buffs.invulnT>0) return;
-    if(hitIFrameT > 0) return;        // ✅ 受擊後短暫免疫連打
-  
+    if(hitIFrameT > 0) return;
+
     if(player.shield>0){
       const use=Math.min(player.shield,dmg);
       player.shield-=use; dmg-=use;
     }
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
-  
-    hitIFrameT = 0.35;                // ✅ 0.35s 無敵幀（你想更保守可用 0.25）
+
+    hitIFrameT = 0.35;
     if(player.hp<=0) gameOver();
   }
 
@@ -948,6 +960,7 @@ canvas{width:100%;height:100%;display:block}
     player.bulletR=BULLET_R_BASE;
 
     for(const k in buffs) buffs[k]=0;
+    hitIFrameT = 0;
 
     special.bomb.count=3; special.bomb.cd=0;
     special.invuln.count=3; special.invuln.cd=0;
@@ -973,7 +986,9 @@ canvas{width:100%;height:100%;display:block}
     for(const k in special){
       if(special[k].cd>0) special[k].cd=Math.max(0,special[k].cd-dt);
     }
+
     if(hitIFrameT > 0) hitIFrameT = Math.max(0, hitIFrameT - dt);
+
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
@@ -1033,7 +1048,7 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // ✅ 玩家子彈 vs 敵彈：不再一碰就死，改用 clashLeft
+    // 玩家子彈 vs 敵彈：clashLeft
     if(buffs.armorT<=0){
       for(const b of pBullets){
         if(!b.alive) continue;
@@ -1044,7 +1059,6 @@ canvas{width:100%;height:100%;display:block}
           if(eb.beam) continue;
 
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
-            // 敵彈有穿透：先硬吃一次（更難清）
             if((eb.pierce||0)>0){
               eb.pierce -= 1;
               b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
@@ -1064,7 +1078,6 @@ canvas{width:100%;height:100%;display:block}
             if(eb.hp<=0) eb.alive=false;
             if(b.clashLeft<=0) b.alive=false;
 
-            // 同一顆玩家子彈同一幀只處理一次碰撞，避免刷爆
             break;
           }
         }
@@ -1102,7 +1115,7 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player (beam capsule 碰撞)
+    // enemy bullets vs player (beam capsule)
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -1166,17 +1179,19 @@ canvas{width:100%;height:100%;display:block}
   function draw(){
     ctx.clearRect(0,0,W,H);
 
+    // background grid
     ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
-    if(hitIFrameT > 0) ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
     const step=48;
     for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
     for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
     ctx.restore();
 
+    // particles
     ctx.save();ctx.fillStyle='rgba(120,255,200,.7)';
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
@@ -1187,6 +1202,7 @@ canvas{width:100%;height:100%;display:block}
       ctx.fillText(icon,d.x,d.y+.5);ctx.restore();
     }
 
+    // enemies
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
@@ -1227,11 +1243,12 @@ canvas{width:100%;height:100%;display:block}
       ctx.restore();
     }
 
+    // player bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // enemy bullets (beam capsule)
+    // enemy bullets
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){
       if(!b.beam){
@@ -1256,13 +1273,22 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
+    // player
     ctx.save();
     ctx.translate(player.x,player.y);
+
+    // ✅ 只讓玩家閃（不讓整張背景閃）
+    if(hitIFrameT > 0){
+      ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
+    }
+
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);ctx.closePath();ctx.fill();ctx.stroke();
+
     if(player.shield>0){
-      ctx.globalAlpha=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
+      ctx.globalAlpha*=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;
     }
     if(buffs.invulnT>0){
       ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=2;
@@ -1307,4 +1333,6 @@ canvas{width:100%;height:100%;display:block}
   spawnWave();
   requestAnimationFrame(frame);
 })();
-</script></body></html>
+</script>
+</body>
+</html>
