@@ -862,13 +862,14 @@ canvas{width:100%;height:100%;display:block}
     e.spiralCd-=dt;
     e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
     if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
-      const n=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
+      const nBase=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
+      const n=Math.max(4, Math.round(nBase * densMul));
       const base=e.spin;
       for(let i=0;i<n;i++){
         const a=base+(i/n)*Math.PI*2;
         enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
       }
-      e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0);
+      e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
     }
 
     if(e.phase===3){
