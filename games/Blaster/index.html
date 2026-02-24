@@ -341,7 +341,7 @@ canvas{width:100%;height:100%;display:block}
   };
 
   const buffs={rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0, invulnT:0, empT:0, armorT:0};
-  let hitIFrameT = 0; // 受擊後無敵幀（秒
+  let hitIFrameT = 0;
   const special={
     bomb:{count:3, cd:0},
     invuln:{count:3, cd:0},
@@ -820,7 +820,7 @@ canvas{width:100%;height:100%;display:block}
     }
 
     // ✅ Boss 彈的抵銷 HP：刻意比一般彈低一點（避免「彈幕鐵板」）
-    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.01;
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
 
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
@@ -1161,6 +1161,7 @@ canvas{width:100%;height:100%;display:block}
     ctx.clearRect(0,0,W,H);
 
     ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
+    if(hitIFrameT > 0) ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
     const step=48;
     for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
     for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
