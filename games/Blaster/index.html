@@ -636,7 +636,7 @@ function beamChanceByStage(stage){
     if(!canUseSkill('invuln')) return;
     skills.invuln.cd = INVULN_CD;
     buffs.invulnT = Math.max(buffs.invulnT, INVULN_DURATION);
-    toastMsg('🛡 無敵（10s）',0.9);
+    toastMsg('🛡 無敵（20s）',0.9);
   }
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
