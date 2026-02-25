@@ -1736,11 +1736,11 @@ canvas{width:100%;height:100%;display:block}
     $xpPct.textContent=`${Math.floor(xpP*100)}%`;
 
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
-    else if(skills.burst.cd>0) $cdBurst.textContent = `空窗 ${Math.ceil(skills.burst.cd)}s`;
+    else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
     else $cdBurst.textContent = 'Ready';
 
     if(buffs.invulnT>0) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
-    else if(skills.invuln.cd>0) $cdInvuln.textContent = `空窗 ${Math.ceil(skills.invuln.cd)}s`;
+    else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(skills.invuln.cd)}s`;
     else $cdInvuln.textContent = 'Ready';
 
     $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
