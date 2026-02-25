@@ -843,7 +843,7 @@ canvas{width:100%;height:100%;display:block}
     $panelRow.style.display='flex';
     const btnClose=document.createElement('button');
     btnClose.className='pill';
-    btnClose.textContent='關閉商店';
+    btnClose.textContent='回到遊戲';
     btnClose.addEventListener('click',closeShop);
     $panelRow.appendChild(btnClose);
   }
@@ -967,7 +967,7 @@ canvas{width:100%;height:100%;display:block}
   function xpStageMul(stage){
     if(stage <= 10) return 1 + (stage-1)*0.05;
     if(stage <= 20) return 1.45 + (stage-10)*0.06;
-    return 2.05 + (stage-20)*0.04; // 解除 cap
+    return 2.05 + (stage-20)*0.04;
   }
   function addXp(xp){
     xp*=player.xpGainMul;
@@ -975,7 +975,7 @@ canvas{width:100%;height:100%;display:block}
     while(state.xp>=state.nextXp){
       state.xp-=state.nextXp;
       state.level+=1;
-      state.nextXp=Math.floor(state.nextXp*1.15+14); // 下調成長係數
+      state.nextXp=Math.floor(state.nextXp*1.15+14);
       openLevelUp();
     }
   }
