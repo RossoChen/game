@@ -418,9 +418,9 @@ canvas{width:100%;height:100%;display:block}
 
   // skills (shop adjustable)
   let BURST_DURATION = 20;
-  let BURST_CD = 50;      // 這裡是「總CD（從按下開始算）」=> 空窗 = BURST_CD - BURST_DURATION
+  let BURST_CD = 50;
   let INVULN_DURATION = 20;
-  let INVULN_CD = 80;     // 同上：空窗 = INVULN_CD - INVULN_DURATION
+  let INVULN_CD = 80;
 
   function downtime(totalCd, dur){ return Math.max(0, Math.round((totalCd - dur)*10)/10); }
 
@@ -741,25 +741,25 @@ canvas{width:100%;height:100%;display:block}
       },
       {
         id:'burstCdDown',
-        name:'爆發 空窗 -1s',
-        desc:`降低爆發「空窗」：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
+        name:'爆發 -1s',
+        desc:`降低爆發：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
           shopState.burstCdDown++;
-          BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1); // 至少保留 5s 空窗
+          BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1);
           if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
         }
       },
       {
         id:'invulnCdDown',
-        name:'無敵 空窗 -1s',
-        desc:`降低無敵「空窗」：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
+        name:'無敵 -1s',
+        desc:`降低無敵：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
           shopState.invulnCdDown++;
-          INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1); // 至少保留 8s 空窗
+          INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1);
           if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
         }
       },
@@ -804,7 +804,6 @@ canvas{width:100%;height:100%;display:block}
   function renderShop(){
     $panel.classList.remove('isStats');
     overlay.classList.add('show');
-    $panel.classList.add('isStats');
     opts.innerHTML='';
     $panelRow.innerHTML='';
 
@@ -1303,6 +1302,7 @@ canvas{width:100%;height:100%;display:block}
     $toast.classList.remove('show');
 
     overlay.classList.add('show');
+    $panel.classList.add('isStats');
     opts.innerHTML='';
     $panelRow.innerHTML='';
 
@@ -1331,9 +1331,9 @@ canvas{width:100%;height:100%;display:block}
       `回復：<b>${player.regen}</b>/s`,
       `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
       `磁鐵：<b>${shopState.magnetRun ? '永久（本局）' : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')}</b>`,
-      `技能（空窗）：🔥 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）`,
-      `技能（空窗）：✨ <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
-      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發空窗↓ <b>${shopState.burstCdDown}</b>｜無敵空窗↓ <b>${shopState.invulnCdDown}</b>`,
+      `技能：🔥 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）`,
+      `技能：✨ <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
+      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發CD↓ <b>${shopState.burstCdDown}</b>｜無敵CD↓ <b>${shopState.invulnCdDown}</b>`,
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
     $panelSub.innerHTML = lines.join('<br>');
@@ -1363,6 +1363,7 @@ canvas{width:100%;height:100%;display:block}
   }
   function closeStats(){
     overlay.classList.remove('show');
+    $panel.classList.remove('isStats');
     mode='play';
     paused=false;
     lastT=performance.now();
@@ -1734,7 +1735,6 @@ canvas{width:100%;height:100%;display:block}
     const xpP=clamp(state.xp/state.nextXp,0,1);
     $xpPct.textContent=`${Math.floor(xpP*100)}%`;
 
-    // 技能顯示：優先顯示「剩餘持續」，否則顯示「空窗剩餘」
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
     else if(skills.burst.cd>0) $cdBurst.textContent = `空窗 ${Math.ceil(skills.burst.cd)}s`;
     else $cdBurst.textContent = 'Ready';
