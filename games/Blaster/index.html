@@ -881,14 +881,14 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Level-up ----------
   const UPGRADES=[
-    {key:'dmg',t:'火力提升',d:'傷害 +20%'},
+    {key:'dmg',t:'火力提升',d:'傷害 +10%'},
     {key:'firerate',t:'射速提升',d:'射速 +18%'},
     {key:'hp',t:'擴充裝甲',d:'HP 上限 +20，並回滿'},
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1'},
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +20，並回滿'},
     {key:'regen',t:'自動修復',d:'每秒回復 +1'},
-    {key:'xp_gain',t:'學習加速',d:'獲得 XP +15%'},
+    {key:'xp_gain',t:'學習加速',d:'獲得 XP +10%'},
     {key:'bullet_size',t:'彈體增強',d:'子彈更大'},
   ];
   function canPickUpgrade(key){
@@ -942,14 +942,14 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function applyUpgrade(key){
-    if(key==='dmg') player.dmg*=1.20;
+    if(key==='dmg') player.dmg*=1.10;
     else if(key==='firerate') player.fireRate*=1.18;
     else if(key==='hp'){player.hpMax+=20;player.hp=player.hpMax}
     else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
     else if(key==='spread_perm') player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
     else if(key==='shield_cap'){player.shieldMax+=20;player.shield=player.shieldMax}
     else if(key==='regen') player.regen+=1;
-    else if(key==='xp_gain') player.xpGainMul*=1.15;
+    else if(key==='xp_gain') player.xpGainMul*=1.10;
     else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
   }
 
