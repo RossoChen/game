@@ -564,8 +564,8 @@ canvas{width:100%;height:100%;display:block}
       x,y,targetY,r:15,
       hp,hpMax:hp,
       healCd: rand(1.0, 2.2),
-      healPeriod: HEALER_PERIOD,
-      healPct: HEALER_HEAL_PCT,
+      healPeriod: 10.0,
+      healPct: 0.05,
       strafeAmp: rand(40,90),
       strafeSpd: rand(1.0,2.0),
       strafePhase: rand(0,Math.PI*2),
@@ -586,7 +586,14 @@ canvas{width:100%;height:100%;display:block}
 
     let healerLanes = new Set();
     if(hasHealer){
-      const want = healerCountByChain();
+      const want = (()=>{
+        let n = 1;
+        if(Math.random() < 0.50) n++;
+        if(n>=2 && Math.random() < 0.30) n++;
+        if(n>=3 && Math.random() < 0.10) n++;
+        if(n>=4 && Math.random() < 0.05) n++;
+        return n;
+      })();
       const maxN = Math.min(want, Math.max(1, lanes-1));
       while(healerLanes.size < maxN){
         healerLanes.add(Math.floor(Math.random()*lanes));
@@ -689,6 +696,8 @@ canvas{width:100%;height:100%;display:block}
     drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt});
   }
 
+  const shopState={spreadCapUp:0,burstCdDown:0,invulnCdDown:0,burstDurUp:0,invulnDurUp:0,magnetRun:0};
+
   function maybeDrop(x,y,isBoss=false){
     const p = isBoss ? .92 : .22;
     if(Math.random() > p) return;
@@ -717,8 +726,6 @@ canvas{width:100%;height:100%;display:block}
   }
 
   // ---------- Shop ----------
-  const shopState={spreadCapUp:0,burstCdDown:0,invulnCdDown:0,burstDurUp:0,invulnDurUp:0,magnetRun:0};
-
   function price(base, lvl, growth=1.5){
     return Math.floor(base * Math.pow(growth, lvl));
   }
@@ -742,7 +749,7 @@ canvas{width:100%;height:100%;display:block}
       {
         id:'burstCdDown',
         name:'爆發 CD -1s',
-        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>,
+        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
         cost:price(320, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
@@ -754,7 +761,7 @@ canvas{width:100%;height:100%;display:block}
       {
         id:'invulnCdDown',
         name:'無敵 CD -1s',
-        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>,
+        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
         cost:price(320, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
@@ -911,7 +918,7 @@ canvas{width:100%;height:100%;display:block}
   function openLevelUp(){
     mode='levelup';
     paused=true;
-    
+
     $panel.classList.remove('isStats');
     overlay.classList.add('show');
     $panelTitle.textContent='升級：選一個';
@@ -1078,7 +1085,7 @@ canvas{width:100%;height:100%;display:block}
 
     if(evoS && (enLate || Math.random()<0.55)){
       const lanes = enBrutal?4:3;
-      const spread = enBrutal?SPREAD_EVOL_4:SPREAD_EVOL_3;
+      const spread = enBrutal?0.18:0.15;
       for(let i=0;i<lanes;i++){
         const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
         enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam:false});
@@ -1087,9 +1094,9 @@ canvas{width:100%;height:100%;display:block}
     }
 
     if(en3&&Math.random()<.22){
-      for(const da of [-SPREAD_3,0,SPREAD_3]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:false});
+      for(const da of [-0.16,0,0.16]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:false});
     }else if(en2&&Math.random()<.35){
-      for(const da of [-SPREAD_2,SPREAD_2]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:false});
+      for(const da of [-0.12,0.12]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:false});
     }else{
       enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:false});
     }
@@ -1125,7 +1132,7 @@ canvas{width:100%;height:100%;display:block}
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
         const lanes = Math.max(3, Math.round(lanesBase * densMul));
-        const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
+        const spread=(e.phase===1?0.24:(e.phase===2?0.26:0.30));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
@@ -1194,7 +1201,7 @@ canvas{width:100%;height:100%;display:block}
     const bestKey='blaster_best_score_v4';
     const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
     localStorage.setItem(bestKey,String(best));
-    
+
     $panel.classList.remove('isStats');
     overlay.classList.add('show');
     opts.innerHTML='';
@@ -1276,7 +1283,7 @@ canvas{width:100%;height:100%;display:block}
 
     let totalAdd = 0;
     for(const t of targets){
-      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1);
+      const add = t.hpMax * h.healPct * (t.type==='boss' ? 4.0 : 1);
       const before = t.hp;
       t.hp = Math.min(t.hpMax, t.hp + add);
       totalAdd += Math.max(0, t.hp - before);
@@ -1310,7 +1317,7 @@ canvas{width:100%;height:100%;display:block}
     $panelSub.style.display='block';
 
     const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
-    const spreadShotsLive = Math.max(1, 1 + Math.floor(spreadTotal()));
+    const spreadShotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT>0?1:0)));
 
     const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
     const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
@@ -1331,8 +1338,8 @@ canvas{width:100%;height:100%;display:block}
       `回復：<b>${player.regen}</b>/s`,
       `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
       `磁鐵：<b>${shopState.magnetRun ? '永久（本局）' : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')}</b>`,
-      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>,
-      `無敵 CD：<b>${invDown.toFixed(0)}s</b>,
+      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>`,
+      `無敵 CD：<b>${invDown.toFixed(0)}s</b>`,
       `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發CD↓ <b>${shopState.burstCdDown}</b>｜無敵CD↓ <b>${shopState.invulnCdDown}</b>`,
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
@@ -1743,8 +1750,8 @@ canvas{width:100%;height:100%;display:block}
     else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(Math.max(0, skills.invuln.cd - INVULN_DURATION))}s`;
     else $cdInvuln.textContent = 'Ready';
 
-    $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
-    $btnInvuln.disabled = !(canUseSkill('invuln') && buffs.invulnT<=0);
+    $btnBurst.disabled  = !(mode==='play' && !paused && skills.burst.cd<=0 && buffs.burstT<=0);
+    $btnInvuln.disabled = !(mode==='play' && !paused && skills.invuln.cd<=0 && buffs.invulnT<=0);
 
     $btnShop.disabled = lockedLandscape || !(mode==='play' || mode==='shop');
   }
