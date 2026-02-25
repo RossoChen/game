@@ -1885,6 +1885,25 @@ canvas{width:100%;height:100%;display:block}
 
   // init
   setPadX(.5);
+  
+  // === DEBUG: 跳到第31關（只跳一次） ===
+if(!localStorage.getItem('blaster_debug_jump31')){
+  localStorage.setItem('blaster_debug_jump31','1');
+  state.stage = 31;
+  state.wave = 1;
+  state.waveClearCooldown = 0;
+  state.waveInProgress = false;
+  enemies.length = 0;
+  eBullets.length = 0;
+  drops.length = 0;
+  particles.length = 0;
+  pBullets.length = 0;
+}
+
+
+  
+  
+  
   spawnWave();
   syncOrientationLock();
   requestAnimationFrame(frame);
