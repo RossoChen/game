@@ -772,6 +772,18 @@ canvas{width:100%;height:100%;display:block}
           INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
         }
       },
+      {
+        id:'magnetRun',
+        name:'本局磁鐵（永久吸附）',
+        desc:'本局獲得磁鐵效果：敵方掉落物會自動飛到你身上（直到 Game Over）',
+        cost:2000,
+        canBuy:()=>shopState.magnetRun===0,
+        buy:()=>{
+          shopState.magnetRun = 1;
+          // 讓磁鐵效果「幾乎等同永久」：不需要額外改 timer 邏輯
+          buffs.magnet = Math.max(buffs.magnet, 1e9);
+        }
+      },
     ];
   }
 
@@ -1307,7 +1319,8 @@ canvas{width:100%;height:100%;display:block}
       d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
         const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
-        d.x+=(dx/l)*260*dt; d.y+=(dy/l)*260*dt;
+        const spd = shopState.magnetRun ? 820 : 260; // 永久磁鐵：吸更快
+        d.x+=(dx/l)*spd*dt; d.y+=(dy/l)*spd*dt;
       }
       if(d.y>H+60||d.life<=0) d.dead=true;
       if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){
