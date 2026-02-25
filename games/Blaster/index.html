@@ -158,21 +158,22 @@ canvas{width:100%;height:100%;display:block}
     <div class="hudRow">
       <button class="pill" id="btnBack">← Back</button>
       <span class="pill" id="hudStage">關卡 1</span>
-    
+
       <div class="lvx lvxTop">
         <span class="label" id="hudLv">LV 1</span>
         <div class="track"><div class="fill" id="xpFill"></div></div>
         <span class="num" id="xpNum">0/60</span>
       </div>
     </div>
-    
+
     <div class="hudRow hudRow2">
       <div class="hpbar">
         <span class="label">HP</span>
         <div class="track"><div class="fill" id="hpFill"></div></div>
         <span class="num" id="hpNum">300/300</span>
       </div>
-      <button class="pill" id="btnPause">暫停</button>
+      <span class="pill" id="hudCoins">🪙 0</span>
+      <button class="pill" id="btnPause">商店</button>
     </div>
   </div>
 
@@ -284,6 +285,8 @@ canvas{width:100%;height:100%;display:block}
   const $hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $btnPause=document.getElementById('btnPause'),$toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack');
 
+  const $hudCoins=document.getElementById('hudCoins');
+
   // overlay refs
   const overlay=document.getElementById('overlay');
   const opts=document.getElementById('opts');
@@ -305,15 +308,7 @@ canvas{width:100%;height:100%;display:block}
   });
 
   let paused=false;
-  let mode='play'; // play | levelup | gameover
-  $btnPause.addEventListener('click',()=>{
-    if(mode!=='play') return;
-    paused=!paused;
-    $btnPause.textContent=paused?'繼續':'暫停';
-    $toast.textContent=paused?'Paused':'';
-    $toast.classList.toggle('show',paused);
-    if(!paused) lastT=performance.now();
-  });
+  let mode='play'; // play | levelup | shop | gameover
 
   // ---------- Utils ----------
   const rand=(a,b)=>a+Math.random()*(b-a);
@@ -327,7 +322,8 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Constants ----------
   const BASE_HP=300;
-  const SPREAD_CAP=5;
+
+  const SPREAD_CAP_BASE=5;      // 初始上限 5
   const PIERCE_CAP=5;
 
   const BULLET_R_MIN=3;
@@ -342,41 +338,39 @@ canvas{width:100%;height:100%;display:block}
   const SPREAD_3 = 0.16;
   const SPREAD_EVOL_3 = 0.15;
   const SPREAD_EVOL_4 = 0.18;
-  const SPREAD_ELITE_3 = 0.15;
-  const SPREAD_ELITE_5 = 0.20;
   const BOSS_SPREAD_P1 = 0.24;
   const BOSS_SPREAD_P2 = 0.26;
   const BOSS_SPREAD_P3 = 0.30;
 
-  // skills
-  const BURST_DURATION = 20;
-  const BURST_CD = 50;
-  const INVULN_DURATION = 20;
-  const INVULN_CD = 80;
+  // skills (改成可被商店調整的變數)
+  let BURST_DURATION = 20;
+  let BURST_CD = 50;
+  let INVULN_DURATION = 20;
+  let INVULN_CD = 80;
 
   // healer
   const HEALER_CHANCE_BY_STAGE = (stage)=>{
-  if(stage <= 4)  return 0.00;
-  if(stage <= 7)  return 0.10;
-  if(stage <= 12) return 0.20;
-  if(stage <= 19) return 0.30;
-  if(stage <= 30) return 0.50;
-  if(stage <= 40) return 0.70;
-  if(stage <= 50) return 0.85;
-  return 1.00;
-};
+    if(stage <= 4)  return 0.00;
+    if(stage <= 7)  return 0.10;
+    if(stage <= 12) return 0.20;
+    if(stage <= 19) return 0.30;
+    if(stage <= 30) return 0.50;
+    if(stage <= 40) return 0.70;
+    if(stage <= 50) return 0.85;
+    return 1.00;
+  };
   function healerCountByChain(){
-  let n = 1;
-  if(Math.random() < 0.50) n++;
-  if(n>=2 && Math.random() < 0.30) n++;
-  if(n>=3 && Math.random() < 0.10) n++;
-  if(n>=4 && Math.random() < 0.05) n++;
-  return n;
-}
+    let n = 1;
+    if(Math.random() < 0.50) n++;
+    if(n>=2 && Math.random() < 0.30) n++;
+    if(n>=3 && Math.random() < 0.10) n++;
+    if(n>=4 && Math.random() < 0.05) n++;
+    return n;
+  }
   const HEALER_HEAL_PCT = 0.05;
   const HEALER_PERIOD = 10.0;
   const HEALER_BOSS_MUL = 4.0;
-  
+
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
@@ -394,24 +388,26 @@ canvas{width:100%;height:100%;display:block}
     return 22;
   }
 
-function beamChanceByStage(stage){
-  return 0.50;
-}
+  function beamChanceByStage(stage){ return 0.50; }
 
   // ---------- State ----------
-  const state={stage:1,wave:1,score:0,xp:0,level:1,nextXp:60,waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5};
+  const state={
+    stage:1,wave:1,score:0,coins:0,xp:0,level:1,nextXp:60,
+    waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5
+  };
 
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
     moveSpeed:520,fireRate:6.2,dmg:26,bulletSpeed:820,
-    spread_perm:1, pierce_perm:2,
+    spread_perm:1, spreadCap:SPREAD_CAP_BASE,
+    pierce_perm:2,
     shield:0,shieldMax:0,
     regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
   };
 
   const buffs={
-    rapid:0, magnet:0, spreadBonusT:0, pierceBonusT:0,
+    magnet:0, spreadBonusT:0,
     invulnT:0, burstT:0
   };
 
@@ -460,7 +456,7 @@ function beamChanceByStage(stage){
 
     const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
     const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
-    
+
     let eliteChance;
     if(stage < 8) eliteChance = 0.05;
     else if(stage < 12) eliteChance = 0.18;
@@ -496,7 +492,6 @@ function beamChanceByStage(stage){
   }
 
   function spawnHealer(x,y,targetY){
-    // hp 可稍微跟關卡走，但治療量固定 5%
     const hp = 140 + state.stage*10;
     return {
       type:'healer',
@@ -516,16 +511,16 @@ function beamChanceByStage(stage){
     enemies.length=0;
     eBullets.length=0;
     state.waveInProgress=true;
-  
+
     const cfg = waveConfig(state.stage, state.wave);
     const holdY = enemyHoldY();
     const lanes = cfg.count;
-  
+
     const hasHealer = Math.random() < HEALER_CHANCE_BY_STAGE(state.stage);
-    
+
     let healerLanes = new Set();
     if(hasHealer){
-      const want = healerCountByChain();              // 1~5
+      const want = healerCountByChain();                 // 1~5
       const maxN = Math.min(want, Math.max(1, lanes-1)); // 至少留 1 格給非 healer
       while(healerLanes.size < maxN){
         healerLanes.add(Math.floor(Math.random()*lanes));
@@ -534,16 +529,16 @@ function beamChanceByStage(stage){
     }
     for(let i=0;i<lanes;i++){
       const x = (i+1)*(W/(lanes+1));
-  
+
       if(healerLanes.has(i)){
         enemies.push(spawnHealer(x, -44 - i*18, holdY + rand(-18,18)));
         continue;
       }
-  
+
       const evoSpread = Math.random() < cfg.mobSpreadChance;
       const evoPierce = Math.random() < cfg.mobPierceChance;
       const isElite = Math.random() < cfg.eliteChance;
-  
+
       if(isElite){
         enemies.push(spawnMob(
           x, -40 - i*18, holdY + rand(-18,18),
@@ -604,33 +599,194 @@ function beamChanceByStage(stage){
   function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
   // ---------- Drops / Buffs ----------
+  // 移除 rapid / pierce 掉落，只留：heal / shield / spread(限時) / magnet
   const DROP_TYPES=[
     {key:'heal',w:22},
     {key:'shield',w:18},
-    {key:'rapid',w:16},
     {key:'spread',w:14},
-    {key:'pierce',w:12},
     {key:'magnet',w:10},
   ];
-  function pickDrop(){
-    const total=DROP_TYPES.reduce((s,a)=>s+a.w,0);
-    let r=Math.random()*total;
-    for(const it of DROP_TYPES){r-=it.w;if(r<=0)return it.key}
-    return 'heal';
+
+  function currentShotsCap(){
+    // “散射達上限後，不再掉限時散射” → 以「永久散射達到當前 cap」判斷
+    return player.spread_perm >= player.spreadCap;
   }
+
+  function pickDrop(){
+    // 動態排除：散射已達 cap → 不再掉 spread（限時）
+    const pool = currentShotsCap()
+      ? DROP_TYPES.filter(x=>x.key!=='spread')
+      : DROP_TYPES;
+
+    const total=pool.reduce((s,a)=>s+a.w,0) || 1;
+    let r=Math.random()*total;
+    for(const it of pool){r-=it.w;if(r<=0)return it.key}
+    return pool[0]?.key || 'heal';
+  }
+
   function maybeDrop(x,y,isBoss=false){
     const p=isBoss?.92:.22;
     if(Math.random()>p) return;
     drops.push({x,y,r:10,vy:rand(70,140),type:pickDrop(),life:12});
   }
+
   function applyDrop(type){
     if(type==='heal'){player.hp=clamp(player.hp+35,0,player.hpMax);toastMsg('HP +35')}
     else if(type==='shield'){player.shieldMax=Math.max(player.shieldMax,30);player.shield=clamp(player.shield+30,0,player.shieldMax);toastMsg('Shield +30')}
-    else if(type==='rapid'){buffs.rapid=Math.max(buffs.rapid,7.0);toastMsg('Rapid Fire!')}
     else if(type==='spread'){buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);toastMsg('Spread +1（限時）')}
-    else if(type==='pierce'){buffs.pierceBonusT=Math.max(buffs.pierceBonusT,7.5);toastMsg('Pierce +1（限時）')}
     else if(type==='magnet'){buffs.magnet=Math.max(buffs.magnet,9.0);toastMsg('Magnet')}
   }
+
+  // ---------- Shop ----------
+  // 規則：買完不關店；所有商品定價遞增；本局永久
+  const shopState={
+    spreadCapUp:0,
+    burstCdDown:0,
+    invulnCdDown:0,
+    burstDurUp:0,
+    invulnDurUp:0,
+  };
+
+  function price(base, lvl, growth=1.35){
+    return Math.floor(base * Math.pow(growth, lvl));
+  }
+
+  function shopItems(){
+    return [
+      {
+        id:'spreadCapUp',
+        name:'散射上限 +1',
+        desc:`提升散射上限（目前 ${player.spreadCap}）`,
+        cost:price(10, shopState.spreadCapUp, 1.35),
+        canBuy:()=>true,
+        buy:()=>{
+          shopState.spreadCapUp++;
+          player.spreadCap++;
+          toastMsg(`✅ 散射上限 → ${player.spreadCap}`,0.7);
+        }
+      },
+      {
+        id:'burstCdDown',
+        name:'爆發 CD -3s',
+        desc:`降低爆發冷卻（目前 ${BURST_CD.toFixed(0)}s）`,
+        cost:price(14, shopState.burstCdDown, 1.35),
+        canBuy:()=>BURST_CD > 18,
+        buy:()=>{
+          shopState.burstCdDown++;
+          BURST_CD = Math.max(18, BURST_CD - 3);
+          toastMsg(`✅ 爆發CD → ${BURST_CD.toFixed(0)}s`,0.7);
+          if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
+        }
+      },
+      {
+        id:'invulnCdDown',
+        name:'無敵 CD -4s',
+        desc:`降低無敵冷卻（目前 ${INVULN_CD.toFixed(0)}s）`,
+        cost:price(14, shopState.invulnCdDown, 1.35),
+        canBuy:()=>INVULN_CD > 28,
+        buy:()=>{
+          shopState.invulnCdDown++;
+          INVULN_CD = Math.max(28, INVULN_CD - 4);
+          toastMsg(`✅ 無敵CD → ${INVULN_CD.toFixed(0)}s`,0.7);
+          if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
+        }
+      },
+      {
+        id:'burstDurUp',
+        name:'爆發持續 +3s',
+        desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
+        cost:price(12, shopState.burstDurUp, 1.35),
+        canBuy:()=>BURST_DURATION < 45,
+        buy:()=>{
+          shopState.burstDurUp++;
+          BURST_DURATION = Math.min(45, BURST_DURATION + 3);
+          toastMsg(`✅ 爆發時間 → ${BURST_DURATION.toFixed(0)}s`,0.7);
+        }
+      },
+      {
+        id:'invulnDurUp',
+        name:'無敵持續 +2s',
+        desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
+        cost:price(12, shopState.invulnDurUp, 1.35),
+        canBuy:()=>INVULN_DURATION < 30,
+        buy:()=>{
+          shopState.invulnDurUp++;
+          INVULN_DURATION = Math.min(30, INVULN_DURATION + 2);
+          toastMsg(`✅ 無敵時間 → ${INVULN_DURATION.toFixed(0)}s`,0.7);
+        }
+      },
+    ];
+  }
+
+  function renderShop(){
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    $panelTitle.textContent='商店';
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=`目前金幣：<b>${state.coins}</b><br><span style="opacity:.8">買完不會自動關店；價格會越買越貴。</span>`;
+
+    const items=shopItems();
+    for(const it of items){
+      const affordable = state.coins >= it.cost;
+      const allowed = it.canBuy ? it.canBuy() : true;
+      const canBuy = affordable && allowed;
+
+      const el=document.createElement('div');
+      el.className='opt';
+      el.innerHTML=
+        `<div class="t">${it.name} <span style="opacity:.8">（🪙${it.cost}）</span></div>`+
+        `<div class="d">${it.desc}${allowed?'':'<br><span style="opacity:.7">（已達上限）</span>'}</div>`;
+
+      if(!canBuy){
+        el.style.opacity = '0.55';
+        el.style.cursor = 'default';
+      }else{
+        el.addEventListener('click',()=>{
+          if(mode!=='shop' || !paused) return;
+          if(state.coins < it.cost) return;
+          if(it.canBuy && !it.canBuy()) return;
+
+          state.coins -= it.cost;
+          try{ it.buy && it.buy(); }catch(_){}
+          // 不關店，直接刷新
+          renderShop();
+        });
+      }
+
+      opts.appendChild(el);
+    }
+
+    $panelRow.style.display='flex';
+    const btnClose=document.createElement('button');
+    btnClose.className='pill';
+    btnClose.textContent='關閉商店';
+    btnClose.addEventListener('click',closeShop);
+    $panelRow.appendChild(btnClose);
+  }
+
+  function openShop(){
+    if(mode!=='play') return;
+    mode='shop';
+    paused=true;
+    $toast.classList.remove('show');
+    renderShop();
+  }
+
+  function closeShop(){
+    overlay.classList.remove('show');
+    mode='play';
+    paused=false;
+    lastT=performance.now();
+  }
+
+  // 商店按鈕（取代暫停）
+  $btnPause.addEventListener('click',()=>{
+    if(mode==='play') openShop();
+    else if(mode==='shop') closeShop();
+    // levelup / gameover 忽略
+  });
 
   // ---------- Skills ----------
   function canUseSkill(k){return mode==='play' && !paused && skills[k].cd<=0}
@@ -638,13 +794,13 @@ function beamChanceByStage(stage){
     if(!canUseSkill('burst')) return;
     skills.burst.cd = BURST_CD;
     buffs.burstT = Math.max(buffs.burstT, BURST_DURATION);
-    toastMsg('🔥 爆發：傷害×2（20s）',0.95);
+    toastMsg(`🔥 爆發：傷害×2（${BURST_DURATION.toFixed(0)}s）`,0.95);
   }
   function useInvuln(){
     if(!canUseSkill('invuln')) return;
     skills.invuln.cd = INVULN_CD;
     buffs.invulnT = Math.max(buffs.invulnT, INVULN_DURATION);
-    toastMsg('🛡 無敵（20s）',0.9);
+    toastMsg(`🛡 無敵（${INVULN_DURATION.toFixed(0)}s）`,0.9);
   }
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
@@ -663,16 +819,13 @@ function beamChanceByStage(stage){
   ];
   function canPickUpgrade(key){
     if(key==='pierce_perm') return player.pierce_perm < PIERCE_CAP;
-    if(key==='spread_perm') return player.spread_perm < SPREAD_CAP;
+    if(key==='spread_perm') return player.spread_perm < player.spreadCap; // 依「當前 cap」控制
     if(key==='bullet_size') return player.bulletR < BULLET_R_UPG_CAP;
     return true;
   }
   function openLevelUp(){
     mode='levelup';
     paused=true;
-    $btnPause.textContent='繼續';
-    $toast.textContent='Level Up';
-    $toast.classList.add('show');
 
     overlay.classList.add('show');
     $panelTitle.textContent='升級：選一個';
@@ -706,7 +859,6 @@ function beamChanceByStage(stage){
         overlay.classList.remove('show');
         mode='play';
         paused=false;
-        $btnPause.textContent='暫停';
         $toast.classList.remove('show');
         lastT=performance.now();
       });
@@ -718,19 +870,19 @@ function beamChanceByStage(stage){
     else if(key==='firerate') player.fireRate*=1.18;
     else if(key==='hp'){player.hpMax+=20;player.hp=player.hpMax}
     else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
-    else if(key==='spread_perm') player.spread_perm=Math.min(SPREAD_CAP, player.spread_perm+1);
+    else if(key==='spread_perm') player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
     else if(key==='shield_cap'){player.shieldMax+=20;player.shield=player.shieldMax}
     else if(key==='regen') player.regen+=1;
     else if(key==='xp_gain') player.xpGainMul*=1.15;
     else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
   }
-  
+
   function xpStageMul(stage){
     if(stage <= 10) return 1 + (stage-1)*0.05;
     if(stage <= 20) return 1.45 + (stage-10)*0.06;
     return Math.min(2.40, 2.05 + (stage-20)*0.04);
   }
-    
+
   function addXp(xp){
     xp*=player.xpGainMul;
     state.xp+=xp;
@@ -747,25 +899,40 @@ function beamChanceByStage(stage){
 
   let fireAcc=0;
   function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
-  function pierceTotal(){ return player.pierce_perm + (buffs.pierceBonusT>0?1:0); }
+  function pierceTotal(){ return player.pierce_perm; } // 限時穿透已移除
 
-  function shotsFromSpread(s){ return 1 + clamp(s,0,4); }
+  function shotsFromSpread(s){
+    // 散射值 1 -> 2發，2 -> 3發...（最少 1，最多依散射而定）
+    // 注意：s 允許超過 4（商店提升 cap 後會有 >5發）
+    return Math.max(1, 1 + Math.floor(s));
+  }
+
   function spreadDmgMul(n){
+    // 保留原本節奏：n=2 -> 0.8、n=5 -> 0.5
+    // 公式：1 / (1 + 0.25*(n-1))
     if(n<=1) return 1;
-    if(n===2) return .80;
-    if(n===3) return .68;
-    if(n===4) return .58;
-    return .50;
+    return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
+
   function shotVXPattern(n){
-    if(n===1) return [0];
-    if(n===2) return [-120,120];
-    if(n===3) return [-160,0,160];
-    if(n===4) return [-210,-70,70,210];
-    return [-240,-120,0,120,240];
+    // 生成對稱 vx 陣列，支援任意發數（避免硬編 1~5）
+    if(n<=1) return [0];
+
+    // 發數越多，橫向覆蓋稍微擴大，但不要擴到飛出螢幕
+    const baseMax = 240;
+    const extra = Math.max(0, n-5) * 26;
+    const maxV = clamp(baseMax + extra, 240, 520);
+
+    const arr=[];
+    const step = (2*maxV)/(n-1);
+    for(let i=0;i<n;i++){
+      arr.push(-maxV + step*i);
+    }
+    return arr;
   }
+
   function shoot(dt){
-    const rate=player.fireRate*(buffs.rapid>0?1.18:1.0);
+    const rate=player.fireRate;
     fireAcc+=dt*rate;
     while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
   }
@@ -794,7 +961,7 @@ function beamChanceByStage(stage){
 
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-    const empSpdMul=1.0; // EMP 道具移除
+    const empSpdMul=1.0;
     let spd=(e.bulletSpeed??300)*sMul*empSpdMul*ENEMY_BULLET_SPEED_MUL;
 
     const isBeam = !!meta.beam;
@@ -810,8 +977,7 @@ function beamChanceByStage(stage){
   }
 
   function mobShoot(e){
-    // healer 不攻擊
-    if(e.type==='healer') return;
+    if(e.type==='healer') return; // healer 不攻擊
 
     const ang=Math.atan2(player.y-e.y,player.x-e.x);
 
@@ -829,19 +995,18 @@ function beamChanceByStage(stage){
     if(isElite){
       const spread = 0.10;
       const lanes = (Math.random() < 0.55) ? 2 : 1;
-      const useBeam = (Math.random() < 0.50);
-    
+      const useBeam2 = (Math.random() < 0.50);
+
       if(lanes === 1){
-        enemyShoot(e, ang, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?34:28) : 0 });
+        enemyShoot(e, ang, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam2, len: useBeam2 ? (enBrutal?34:28) : 0 });
       }else{
         for(const da of [-spread, spread]){
-          enemyShoot(e, ang + da, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam, len: useBeam ? (enBrutal?34:28) : 0 });
+          enemyShoot(e, ang + da, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam2, len: useBeam2 ? (enBrutal?34:28) : 0 });
         }
       }
       return;
     }
 
-    // 小兵永遠不 beam
     if(evoS && (enLate || Math.random()<0.55)){
       const lanes = enBrutal?4:3;
       const spread = enBrutal?SPREAD_EVOL_4:SPREAD_EVOL_3;
@@ -877,7 +1042,6 @@ function beamChanceByStage(stage){
     const densMul = bossEasy ? 0.72 : 1.0;
     const cdMul   = bossEasy ? 1.18 : 1.0;
 
-    // Boss 彈：好清但不紙糊
     const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
 
     e.burstCd-=dt;
@@ -955,7 +1119,6 @@ function beamChanceByStage(stage){
   function gameOver(){
     mode='gameover';
     paused=true;
-    $btnPause.textContent='繼續';
     $toast.classList.remove('show');
 
     const bestKey='blaster_best_score_v4';
@@ -970,6 +1133,7 @@ function beamChanceByStage(stage){
     $panelSub.style.display='block';
     $panelSub.innerHTML=
       `本局分數：<b>${state.score}</b><br>`+
+      `本局金幣：<b>${state.coins}</b><br>`+
       `最高分：<b>${best}</b><br>`+
       `關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
     $panelRow.style.display='flex';
@@ -982,7 +1146,6 @@ function beamChanceByStage(stage){
       resetRun();
       mode='play';
       paused=false;
-      $btnPause.textContent='暫停';
       lastT=performance.now();
     });
     $panelRow.appendChild(btn);
@@ -995,14 +1158,20 @@ function beamChanceByStage(stage){
   }
 
   function resetRun(){
-    state.stage=1;state.wave=1;state.score=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
+    state.stage=1;state.wave=1;state.score=0;state.coins=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
     player.hpMax=BASE_HP; player.hp=BASE_HP;
     player.moveSpeed=520;player.fireRate=6.2;player.dmg=26;player.bulletSpeed=820;
-    player.spread_perm=1;player.pierce_perm=2;
+    player.spread_perm=1;player.spreadCap=SPREAD_CAP_BASE;
+    player.pierce_perm=2;
     player.shield=0;player.shieldMax=0;
     player.regen=0; player.xpGainMul=1.0;
     player.bulletR=BULLET_R_BASE;
+
+    // shop reset（本局永久）
+    for(const k in shopState) shopState[k]=0;
+    BURST_DURATION = 20; BURST_CD = 50;
+    INVULN_DURATION = 20; INVULN_CD = 80;
 
     for(const k in buffs) buffs[k]=0;
     hitIFrameT = 0;
@@ -1019,7 +1188,6 @@ function beamChanceByStage(stage){
   }
   let toastT=0, lastToastText='';
   function toastMsg(text,sec=.75){
-    // 同訊息短時間內不連刷，避免 UI 通路塞車
     if(text===lastToastText && toastT>0.25) return;
     lastToastText = text;
     $toast.textContent=text;
@@ -1033,9 +1201,10 @@ function beamChanceByStage(stage){
     if(h.healCd>0) return;
     h.healCd = h.healPeriod;
 
-    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer' && e.type!=='boss');
+    // 會補到 Boss（你的設計：healer 用來強化 Boss）
+    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
     if(!targets.length) return;
-    
+
     let totalAdd = 0;
     for(const t of targets){
       const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1);
@@ -1050,7 +1219,7 @@ function beamChanceByStage(stage){
   // ---------- Update / Draw ----------
   function update(dt){
     // buffs decay
-    for(const k of ['rapid','magnet','spreadBonusT','pierceBonusT','invulnT','burstT']){
+    for(const k of ['magnet','spreadBonusT','invulnT','burstT']){
       if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
     }
     // cooldown decay
@@ -1078,7 +1247,7 @@ function beamChanceByStage(stage){
 
       if(e.type==='boss') bossTick(e,dt);
       else if(e.type==='healer') healerTick(e,dt);
-      else { // mob/elite
+      else {
         e.fireCd-=dt;
         if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}
       }
@@ -1158,6 +1327,11 @@ function beamChanceByStage(stage){
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
+            // 金幣：擊殺必給
+            if(e.type==='boss') state.coins += 5;
+            else if(e.type==='elite') state.coins += 2;
+            else state.coins += 1; // mob + healer
+
             if(e.type==='boss'){
               state.score+=320; addXp(260* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
               addBurst(e.x,e.y,26);
@@ -1178,7 +1352,7 @@ function beamChanceByStage(stage){
       }
     }
 
-    // enemy bullets vs player (beam capsule + normal)
+    // enemy bullets vs player
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -1261,7 +1435,7 @@ function beamChanceByStage(stage){
       ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(120,255,200,.95)';ctx.font='12px system-ui,"Noto Sans TC"';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      const icon=d.type==='heal'?'✚':d.type==='shield'?'⛨':d.type==='rapid'?'⚡':d.type==='spread'?'✦':d.type==='pierce'?'➹':'🧲';
+      const icon=d.type==='heal'?'✚':d.type==='shield'?'⛨':d.type==='spread'?'✦':'🧲';
       ctx.fillText(icon,d.x,d.y+.5);ctx.restore();
     }
 
@@ -1343,12 +1517,10 @@ function beamChanceByStage(stage){
     ctx.save();
     ctx.translate(player.x,player.y);
 
-    // 受擊閃
     if(hitIFrameT > 0){
       ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
     }
 
-    // 爆發特效：紅色脈動圈
     if(buffs.burstT>0){
       ctx.save();
       const a = 0.25 + 0.15*Math.sin(performance.now()/90);
@@ -1361,18 +1533,15 @@ function beamChanceByStage(stage){
       ctx.restore();
     }
 
-    // 機體
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);ctx.closePath();ctx.fill();ctx.stroke();
 
-    // 護盾圈
     if(player.shield>0){
       ctx.globalAlpha*=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=1;
     }
 
-    // 無敵圈
     if(buffs.invulnT>0){
       ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+15,0,Math.PI*2);ctx.stroke();
@@ -1388,12 +1557,14 @@ function beamChanceByStage(stage){
     const shieldTxt=player.shield>0?` +${Math.floor(player.shield)}`:'';
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}${shieldTxt}`;
 
+    $hudCoins.textContent = `🪙 ${state.coins}`;
+
     $lv.textContent=`LV ${state.level}`;
     const xpPct=clamp(state.xp/state.nextXp,0,1);
     $xpFill.style.width=`${xpPct*100}%`;
     $xpNum.textContent=`${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`;
 
-    // skill HUD: 顯示倒數或剩餘時間
+    // skill HUD
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
     else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
     else $cdBurst.textContent = 'Ready';
@@ -1404,6 +1575,9 @@ function beamChanceByStage(stage){
 
     $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
     $btnInvuln.disabled = !(canUseSkill('invuln') && buffs.invulnT<=0);
+
+    // 商店鍵在 levelup/gameover 不給按，避免流程炸掉
+    $btnPause.disabled = !(mode==='play' || mode==='shop');
   }
 
   let lastT=performance.now();
