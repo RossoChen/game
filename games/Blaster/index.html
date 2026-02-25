@@ -1325,7 +1325,7 @@ canvas{width:100%;height:100%;display:block}
       d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
         const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
-        const spd = shopState.magnetRun ? 820 : 260; // 永久磁鐵：吸更快
+        const spd = shopState.magnetRun ? 820 : 260;
         d.x+=(dx/l)*spd*dt; d.y+=(dy/l)*spd*dt;
       }
       if(d.y>H+60||d.life<=0) d.dead=true;
@@ -1385,7 +1385,6 @@ canvas{width:100%;height:100%;display:block}
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
-            // coin:必掉（要撿才算）
             let coinAmt = 1;
             if(e.type === 'boss')  coinAmt = 30;
             if(e.type === 'elite') coinAmt = 3;
@@ -1393,16 +1392,16 @@ canvas{width:100%;height:100%;display:block}
             dropCoin(e.x, e.y, coinAmt);
 
             if(e.type==='boss'){
-              state.score+=320; addXp(260* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
+              state.score+=320; addXp(3000* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
               addBurst(e.x,e.y,26);
             }else if(e.type==='elite'){
-              state.score+=38; addXp(12* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              state.score+=38; addXp(20* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,12);
             }else if(e.type==='healer'){
-              state.score+=30; addXp(11* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              state.score+=30; addXp(15* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,14);
             }else{
-              state.score+=18; addXp(7* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              state.score+=18; addXp(10* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
               addBurst(e.x,e.y,10);
             }
           }
