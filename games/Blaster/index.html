@@ -213,11 +213,17 @@ canvas{width:100%;height:100%;display:block}
   }
   function readEnvInsetPx(side){
     const d=document.createElement('div');
-    d.style.cssText=`position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;height:env(safe-area-inset-${side});width:0;`;
+    const isLR = (side === 'left' || side === 'right');
+    d.style.cssText =
+      `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;` +
+      (isLR
+        ? `width:env(safe-area-inset-${side});height:0;`
+        : `height:env(safe-area-inset-${side});width:0;`);
     document.body.appendChild(d);
-    const px=d.getBoundingClientRect().height;
+    const r = d.getBoundingClientRect();
     d.remove();
-    return px||0;
+    const px = isLR ? r.width : r.height;
+    return px || 0;
   }
   function isDynamicIslandSize(){
     const w=Math.min(screen.width, screen.height);
@@ -254,8 +260,9 @@ canvas{width:100%;height:100%;display:block}
   window.addEventListener('orientationchange', applySafeArea, {passive:true});
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) applySafeArea(); }, {passive:true});
   if(window.visualViewport){
-    visualViewport.addEventListener('resize', applySafeArea, {passive:true});
-    visualViewport.addEventListener('scroll', applySafeArea, {passive:true});
+    const vvSync = ()=>{ applySafeArea(); resize(); };
+    visualViewport.addEventListener('resize', vvSync, {passive:true});
+    visualViewport.addEventListener('scroll', vvSync, {passive:true});
   }
 
   // ---------- Canvas ----------
