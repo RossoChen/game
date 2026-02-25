@@ -1369,8 +1369,10 @@ canvas{width:100%;height:100%;display:block}
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
-            // coin 必掉（不撿就沒有）
-            const coinAmt = (e.type==='boss') ? 5 : (e.type==='elite' ? 2 : 1);
+            let coinAmt = 1;
+            if(e.type === 'boss')  coinAmt = 30;
+            if(e.type === 'elite') coinAmt = 3;
+            if(e.type === 'healer') coinAmt = 10;
             dropCoin(e.x, e.y, coinAmt);
 
             if(e.type==='boss'){
