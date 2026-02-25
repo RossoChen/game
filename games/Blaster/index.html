@@ -651,10 +651,54 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function spawnBoss(){
-    const holdY=enemyHoldY()-12,
-          hp=(650+state.stage*170)*stageDifficultyMul(state.stage),
-          baseSpd=240+state.stage*12;
-
+    const holdY = enemyHoldY() - 12;
+  
+    // ---------- Boss variant selector ----------
+    // stage 31~50 -> Sniper Boss (stationary, center-top)
+    const isSniper = (state.stage >= 31 && state.stage <= 50);
+  
+    const hp = (650 + state.stage*170) * stageDifficultyMul(state.stage);
+  
+    if(isSniper){
+      const baseSpd = 520 + state.stage*10; // faster bullet base for sniper feel
+      const boss = {
+        type:'boss',
+        kind:'sniper',                 // 👈 new
+        x: W*0.5,
+        y: -100,
+        targetY: holdY,
+        r: 30,
+        hp, hpMax: hp,
+  
+        bulletSpeed: baseSpd,
+        bulletDmg: 12 + state.stage*2.2,
+  
+        // no movement
+        strafeAmp: 0,
+        strafeSpd: 0,
+        strafePhase: 0,
+  
+        // reuse phase logic (optional, but keeps difficulty scaling consistent)
+        phase: 1,
+  
+        // sniper firing control
+        snipeCd: 0.55,                 // wind-up at entry
+        snipeGap: 0.055,               // rapid fire interval (秒)
+        snipeGapCd: 0,
+        snipeMode: 'normal',           // 'normal' | 'beam'
+        snipeLeft: 20,                 // 20 normal then 20 beam, repeat
+        snipeSwitchN: 20,              // just for readability
+  
+        hitFlash: 0
+      };
+      enemies.push(boss);
+      toastMsg('Boss（Sniper）入場', 0.9);
+      return;
+    }
+  
+    // ---------- Default boss (your original behavior) ----------
+    const baseSpd=240+state.stage*12;
+  
     const boss={
       type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,
       bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.0,
@@ -1103,6 +1147,76 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function bossTick(e,dt){
+    // ---------- Sniper boss ----------
+    if(e.kind === 'sniper'){
+      // phase based on HP ratio (keeps scaling consistent, but attack stays "sniper")
+      const rr = e.hp/e.hpMax;
+      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
+      if(newPhase!==e.phase){
+        e.phase=newPhase;
+        toastMsg(`Sniper：Phase ${e.phase}`, 0.55);
+      }
+  
+      // stationary center-top
+      e.x = W*0.5;
+  
+      // phase tuning: later phase slightly more aggressive
+      const phaseMul = (e.phase===1 ? 1.00 : (e.phase===2 ? 1.08 : 1.18));
+      const gap = Math.max(0.028, (e.snipeGap ?? 0.055) / phaseMul);
+  
+      e.snipeCd -= dt;
+      if(e.snipeCd > 0) return;
+  
+      // rapid single lane aimed at player (sniper)
+      e.snipeGapCd -= dt;
+      if(e.snipeGapCd > 0) return;
+  
+      const ang = Math.atan2(player.y - e.y, player.x - e.x);
+  
+      const useBeam = (e.snipeMode === 'beam');
+      if(useBeam){
+        enemyShoot(
+          e,
+          ang,
+          1.28,            // speed multiplier (sniper feel)
+          1.00,
+          {
+            beam:true,
+            len:(state.stage>=40?40:34),
+            r:(state.stage>=40?6:5),
+            pierce:0,
+            hp:1            // beam has hp 1 by your enemyShoot default, keeping it consistent
+          }
+        );
+      }else{
+        enemyShoot(
+          e,
+          ang,
+          1.38,
+          1.00,
+          {
+            beam:false,
+            r:(state.stage>=40?5:4),
+            pierce:0,
+            hp: enemyBulletHpByStage(state.stage) * 0.55
+          }
+        );
+      }
+  
+      // schedule next shot
+      e.snipeGapCd = gap;
+  
+      // handle 20/20 alternating
+      e.snipeLeft = (e.snipeLeft ?? 20) - 1;
+      if(e.snipeLeft <= 0){
+        e.snipeMode = (e.snipeMode === 'normal') ? 'beam' : 'normal';
+        e.snipeLeft = (e.snipeSwitchN ?? 20);
+        toastMsg(e.snipeMode === 'beam' ? '⚡ Beam Mode' : '🎯 Normal Mode', 0.35);
+      }
+      return;
+    }
+  
+    // ---------- Default boss (your original behavior) ----------
     const r=e.hp/e.hpMax;
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
@@ -1112,14 +1226,14 @@ canvas{width:100%;height:100%;display:block}
     }
     const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
     const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
-
+  
     const brutal = state.stage>=20;
     const bossEasy = state.stage < 10;
     const densMul = bossEasy ? 0.72 : 1.0;
     const cdMul   = bossEasy ? 1.18 : 1.0;
-
+  
     const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
-
+  
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
@@ -1132,7 +1246,7 @@ canvas{width:100%;height:100%;display:block}
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
         const lanes = Math.max(3, Math.round(lanesBase * densMul));
-        const spread=(e.phase===1?0.24:(e.phase===2?0.26:0.30));
+        const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
@@ -1141,7 +1255,7 @@ canvas{width:100%;height:100%;display:block}
         e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
       }
     }
-
+  
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
       const nBase=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
@@ -1153,7 +1267,7 @@ canvas{width:100%;height:100%;display:block}
       }
       e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0) * cdMul;
     }
-
+  
     e.spiralCd-=dt;
     e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
     if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
@@ -1166,7 +1280,7 @@ canvas{width:100%;height:100%;display:block}
       }
       e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
     }
-
+  
     if(e.phase===3){
       e.summonCd-=dt;
       if(e.summonCd<=0){
@@ -1621,16 +1735,26 @@ canvas{width:100%;height:100%;display:block}
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
+      const isSniperBoss = isBoss && (e.kind === 'sniper');
       const isElite=e.type==='elite';
       const isHealer=e.type==='healer';
 
       ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
+        : isSniperBoss ? 'rgba(120,220,255,.12)'   // 👈 新色系：偏冷藍，不撞你現有 boss 紅系
         : isBoss ? 'rgba(255,120,120,.14)'
         : isElite ? 'rgba(220,180,255,.14)'
         : isHealer ? 'rgba(140,190,255,.14)'
         : 'rgba(255,255,255,.10)';
+        : isElite ? 'rgba(220,180,255,.14)'
+        : isHealer ? 'rgba(140,190,255,.14)'
+        : 'rgba(255,255,255,.10)';
 
-      ctx.strokeStyle = isBoss ? 'rgba(255,120,120,.35)'
+      ctx.strokeStyle =
+        isSniperBoss ? 'rgba(120,220,255,.42)'     // 👈 外框也換色
+        : isBoss ? 'rgba(255,120,120,.35)'
+        : isElite ? 'rgba(220,180,255,.45)'
+        : isHealer ? 'rgba(140,190,255,.40)'
+        : 'rgba(255,255,255,.20)';
         : isElite ? 'rgba(220,180,255,.45)'
         : isHealer ? 'rgba(140,190,255,.40)'
         : 'rgba(255,255,255,.20)';
