@@ -742,7 +742,7 @@ canvas{width:100%;height:100%;display:block}
       {
         id:'burstCdDown',
         name:'爆發 CD -1s',
-        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
+        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>,
         cost:price(320, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
@@ -754,7 +754,7 @@ canvas{width:100%;height:100%;display:block}
       {
         id:'invulnCdDown',
         name:'無敵 CD -1s',
-        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
+        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>,
         cost:price(320, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
@@ -772,7 +772,7 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.burstDurUp++;
           BURST_DURATION = Math.min(60, BURST_DURATION + 1);
-          if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION; // 防呆：總CD不可小於持續
+          if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION;
         }
       },
       {
@@ -789,8 +789,8 @@ canvas{width:100%;height:100%;display:block}
       },
       {
         id:'magnetRun',
-        name:'本局磁鐵（永久吸附）',
-        desc:'本局獲得磁鐵效果：敵方掉落物會自動飛到你身上（直到 Game Over）',
+        name:'強力磁鐵',
+        desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到 Game Over）',
         cost:2000,
         canBuy:()=>shopState.magnetRun===0,
         buy:()=>{
@@ -1331,8 +1331,8 @@ canvas{width:100%;height:100%;display:block}
       `回復：<b>${player.regen}</b>/s`,
       `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
       `磁鐵：<b>${shopState.magnetRun ? '永久（本局）' : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')}</b>`,
-      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>（CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）`,
-      `無敵 CD：<b>${invDown.toFixed(0)}s</b>（CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
+      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>,
+      `無敵 CD：<b>${invDown.toFixed(0)}s</b>,
       `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發CD↓ <b>${shopState.burstCdDown}</b>｜無敵CD↓ <b>${shopState.invulnCdDown}</b>`,
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
