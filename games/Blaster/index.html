@@ -81,6 +81,9 @@ button.pill:disabled{opacity:.45;cursor:default}
   text-align:right;
   white-space:nowrap;
 }
+/* clickable stats */
+#btnStats{cursor:pointer}
+#btnStats:active{transform:scale(.995)}
 
 .hpRowRight{display:flex;align-items:center;gap:var(--gap);flex:0 0 auto}
 
@@ -193,7 +196,7 @@ canvas{width:100%;height:100%;display:block}
       <span class="pill" id="hudStage">關卡 1</span>
       <span class="pill" id="hudCoins">🪙 0</span>
 
-      <div class="lvx lvxTop">
+      <div class="lvx lvxTop" id="btnStats" role="button" tabindex="0" aria-label="查看狀態一覽">
         <span class="label" id="hudLv">LV 1</span>
         <span class="num" id="xpPct">0%</span>
       </div>
@@ -207,7 +210,6 @@ canvas{width:100%;height:100%;display:block}
       </div>
 
       <div class="hpRowRight">
-        <!-- Shield always visible -->
         <span class="pill" id="hudShield">🛡 +0</span>
         <button class="pill" id="btnShop">商店</button>
       </div>
@@ -228,7 +230,6 @@ canvas{width:100%;height:100%;display:block}
 
     <div class="skills" id="skills">
       <button class="sbtn" id="btnBurst"><span class="ico">🔥</span><span class="name">爆發</span><span class="cd" id="cdBurst">Ready</span></button>
-      <!-- Invuln icon changed to ✨ -->
       <button class="sbtn" id="btnInvuln"><span class="ico">✨</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
     </div>
   </div>
@@ -320,7 +321,6 @@ canvas{width:100%;height:100%;display:block}
     visualViewport.addEventListener('resize', vvSync, {passive:true});
     visualViewport.addEventListener('scroll', vvSync, {passive:true});
   }
-
   resize();
 
   // ---------- HUD refs ----------
@@ -329,6 +329,7 @@ canvas{width:100%;height:100%;display:block}
   const $xpPct=document.getElementById('xpPct');
   const $hudCoins=document.getElementById('hudCoins');
   const $hudShield=document.getElementById('hudShield');
+  const $btnStats=document.getElementById('btnStats');
 
   const $hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack'),
@@ -347,11 +348,12 @@ canvas{width:100%;height:100%;display:block}
   const $cdBurst=document.getElementById('cdBurst');
   const $cdInvuln=document.getElementById('cdInvuln');
 
+  // Back -> /games/
   $btnBack.addEventListener('click',()=>{
     if(document.referrer){
       try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
     }
-    location.href='./games/';
+    location.href='../';
   });
 
   // ---------- Orientation guard ----------
@@ -413,9 +415,11 @@ canvas{width:100%;height:100%;display:block}
 
   // skills (shop adjustable)
   let BURST_DURATION = 20;
-  let BURST_CD = 50;
+  let BURST_CD = 50;      // 這裡是「總CD（從按下開始算）」=> 空窗 = BURST_CD - BURST_DURATION
   let INVULN_DURATION = 20;
-  let INVULN_CD = 80;
+  let INVULN_CD = 80;     // 同上：空窗 = INVULN_CD - INVULN_DURATION
+
+  function downtime(totalCd, dur){ return Math.max(0, Math.round((totalCd - dur)*10)/10); }
 
   // healer
   const HEALER_CHANCE_BY_STAGE = (stage)=>{
@@ -455,7 +459,6 @@ canvas{width:100%;height:100%;display:block}
     if(stage < 26) return 18;
     return 22;
   }
-  function beamChanceByStage(stage){ return 0.50; }
 
   // ---------- State ----------
   const state={
@@ -679,6 +682,10 @@ canvas{width:100%;height:100%;display:block}
     return pool[0]?.key || 'heal';
   }
 
+  function dropCoin(x,y,amt){
+    drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt});
+  }
+
   function maybeDrop(x,y,isBoss=false){
     const p = isBoss ? .92 : .22;
     if(Math.random() > p) return;
@@ -687,12 +694,7 @@ canvas{width:100%;height:100%;display:block}
       dropCoin(x, y, 3);
       return;
     }
-  
     drops.push({x,y,r:10,vy:rand(70,140),type:t,life:12});
-  }
-
-  function dropCoin(x,y,amt){
-    drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt});
   }
 
   function applyDrop(type, d){
@@ -708,7 +710,6 @@ canvas{width:100%;height:100%;display:block}
     }else if(type==='coin'){
       const amt = Math.max(1, d?.amt ?? 1);
       state.coins += amt;
-      // no toast for coin (avoid spam)
     }
   }
 
@@ -720,6 +721,9 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function shopItems(){
+    const burstDown = downtime(BURST_CD, BURST_DURATION);
+    const invDown   = downtime(INVULN_CD, INVULN_DURATION);
+
     return [
       {
         id:'spreadCapUp',
@@ -734,25 +738,25 @@ canvas{width:100%;height:100%;display:block}
       },
       {
         id:'burstCdDown',
-        name:'爆發 CD -1s',
-        desc:`降低爆發冷卻（目前 ${BURST_CD.toFixed(0)}s）`,
+        name:'爆發 空窗 -1s',
+        desc:`降低爆發「空窗」：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.burstCdDown, 1.5),
-        canBuy:()=>BURST_CD > 15,
+        canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
           shopState.burstCdDown++;
-          BURST_CD = Math.max(15, BURST_CD - 1);
+          BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1); // 至少保留 5s 空窗
           if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
         }
       },
       {
         id:'invulnCdDown',
-        name:'無敵 CD -1s',
-        desc:`降低無敵冷卻（目前 ${INVULN_CD.toFixed(0)}s）`,
+        name:'無敵 空窗 -1s',
+        desc:`降低無敵「空窗」：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.invulnCdDown, 1.5),
-        canBuy:()=>INVULN_CD > 20,
+        canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
           shopState.invulnCdDown++;
-          INVULN_CD = Math.max(20, INVULN_CD - 1);
+          INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1); // 至少保留 8s 空窗
           if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
         }
       },
@@ -765,6 +769,7 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.burstDurUp++;
           BURST_DURATION = Math.min(60, BURST_DURATION + 1);
+          if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION; // 防呆：總CD不可小於持續
         }
       },
       {
@@ -776,6 +781,7 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.invulnDurUp++;
           INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
+          if(INVULN_CD < INVULN_DURATION) INVULN_CD = INVULN_DURATION;
         }
       },
       {
@@ -786,7 +792,6 @@ canvas{width:100%;height:100%;display:block}
         canBuy:()=>shopState.magnetRun===0,
         buy:()=>{
           shopState.magnetRun = 1;
-          // 讓磁鐵效果「幾乎等同永久」：不需要額外改 timer 邏輯
           buffs.magnet = Math.max(buffs.magnet, 1e9);
         }
       },
@@ -840,7 +845,7 @@ canvas{width:100%;height:100%;display:block}
   }
 
   let paused=false;
-  let mode='play'; // play | levelup | shop | gameover
+  let mode='play'; // play | levelup | shop | stats | gameover
 
   function openShop(){
     if(mode!=='play') return;
@@ -956,7 +961,7 @@ canvas{width:100%;height:100%;display:block}
   function xpStageMul(stage){
     if(stage <= 10) return 1 + (stage-1)*0.05;
     if(stage <= 20) return 1.45 + (stage-10)*0.06;
-    return 2.05 + (stage-20)*0.04;
+    return 2.05 + (stage-20)*0.04; // 解除 cap
   }
   function addXp(xp){
     xp*=player.xpGainMul;
@@ -964,7 +969,7 @@ canvas{width:100%;height:100%;display:block}
     while(state.xp>=state.nextXp){
       state.xp-=state.nextXp;
       state.level+=1;
-      state.nextXp=Math.floor(state.nextXp*1.15+14);
+      state.nextXp=Math.floor(state.nextXp*1.15+14); // 下調成長係數
       openLevelUp();
     }
   }
@@ -1004,7 +1009,6 @@ canvas{width:100%;height:100%;display:block}
   function spawnPlayerShot(){
     const s=spreadTotal();
     const n=shotsFromSpread(s);
-
     const r = clamp(player.bulletR, BULLET_R_MIN, BULLET_R_CAP);
 
     const burstMul = (buffs.burstT>0)?2.0:1.0;
@@ -1271,9 +1275,93 @@ canvas{width:100%;height:100%;display:block}
       totalAdd += Math.max(0, t.hp - before);
       addBurst(t.x, t.y, 6);
     }
-    // keep healer toast short
     toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
   }
+
+  // ---------- Stats Panel ----------
+  const BASE_PLAYER = { hpMax: BASE_HP, dmg: 26, fireRate: 6.2, bulletSpeed: 820, pierce_perm: 2, bulletR: BULLET_R_BASE, xpGainMul: 1.0 };
+
+  function pctMul(now, base){
+    if(!base) return 0;
+    return Math.round(((now/base)-1)*1000)/10;
+  }
+  function openStats(){
+    if(lockedLandscape) return;
+    if(mode==='gameover') return;
+    if(mode==='shop') return;
+
+    mode='stats';
+    paused=true;
+    $toast.classList.remove('show');
+
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    $panelTitle.textContent='狀態一覽';
+    $panelSub.style.display='block';
+
+    const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
+    const spreadShotsLive = Math.max(1, 1 + Math.floor(spreadTotal()));
+
+    const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
+    const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
+    const xpPctM = pctMul(player.xpGainMul, 1.0);
+
+    const burstDown = downtime(BURST_CD, BURST_DURATION);
+    const invDown   = downtime(INVULN_CD, INVULN_DURATION);
+
+    const lines = [
+      `關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b>　等級：<b>${state.level}</b>`,
+      `HP：<b>${Math.floor(player.hp)}/${Math.floor(player.hpMax)}</b>（上限 +${Math.floor(player.hpMax-BASE_PLAYER.hpMax)}）`,
+      `護盾：<b>${Math.floor(player.shield)}/${Math.floor(player.shieldMax)}</b>（上限 +${Math.floor(player.shieldMax)}）`,
+      `攻擊：<b>${Math.floor(player.dmg)}</b>（+${dmgPct}%）`,
+      `射速：<b>${player.fireRate.toFixed(2)}</b>/s（+${frPct}%）`,
+      `散射：永久 <b>${spreadShotsPerm}</b> 發（上限 <b>${player.spreadCap}</b>）｜目前 <b>${spreadShotsLive}</b> 發`,
+      `穿透：<b>${player.pierce_perm}</b>`,
+      `彈體大小：<b>${player.bulletR}</b>`,
+      `回復：<b>${player.regen}</b>/s`,
+      `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
+      `磁鐵：<b>${shopState.magnetRun ? '永久（本局）' : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')}</b>`,
+      `技能（空窗）：🔥 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）｜✨ <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
+      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發空窗↓ <b>${shopState.burstCdDown}</b>｜無敵空窗↓ <b>${shopState.invulnCdDown}</b>｜爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>`,
+    ];
+    $panelSub.innerHTML = lines.join('<br>');
+
+    const pills = [
+      ['🪙 金幣', state.coins],
+      ['🧠 XP', `${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`],
+      ['🛡 護盾', `${Math.floor(player.shield)}/${Math.floor(player.shieldMax)}`],
+      ['🔥 爆發', buffs.burstT>0 ? `${Math.ceil(buffs.burstT)}s` : '—'],
+      ['✨ 無敵', buffs.invulnT>0 ? `${Math.ceil(buffs.invulnT)}s` : '—'],
+      ['🧲 磁鐵', shopState.magnetRun ? 'ON' : (buffs.magnet>0 ? 'ON' : 'OFF')],
+    ];
+    for(const [k,v] of pills){
+      const el=document.createElement('div');
+      el.className='opt';
+      el.style.cursor='default';
+      el.innerHTML = `<div class="t">${k}</div><div class="d"><b>${v}</b></div>`;
+      opts.appendChild(el);
+    }
+
+    $panelRow.style.display='flex';
+    const btnClose=document.createElement('button');
+    btnClose.className='pill';
+    btnClose.textContent='關閉';
+    btnClose.addEventListener('click',closeStats);
+    $panelRow.appendChild(btnClose);
+  }
+  function closeStats(){
+    overlay.classList.remove('show');
+    mode='play';
+    paused=false;
+    lastT=performance.now();
+  }
+
+  $btnStats.addEventListener('click', openStats);
+  $btnStats.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(); }
+  });
 
   // ---------- Update ----------
   function update(dt){
@@ -1629,21 +1717,20 @@ canvas{width:100%;height:100%;display:block}
     $hpFill.style.width=`${hpPct*100}%`;
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}`;
 
-    // shield always visible
     $hudShield.textContent=`🛡 +${Math.floor(player.shield)}`;
-
     $hudCoins.textContent = `🪙 ${state.coins}`;
 
     $lv.textContent=`LV ${state.level}`;
-    const xpPct=clamp(state.xp/state.nextXp,0,1);
-    $xpPct.textContent=`${Math.floor(xpPct*100)}%`;
+    const xpP=clamp(state.xp/state.nextXp,0,1);
+    $xpPct.textContent=`${Math.floor(xpP*100)}%`;
 
+    // 技能顯示：優先顯示「剩餘持續」，否則顯示「空窗剩餘」
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
-    else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
+    else if(skills.burst.cd>0) $cdBurst.textContent = `空窗 ${Math.ceil(skills.burst.cd)}s`;
     else $cdBurst.textContent = 'Ready';
 
     if(buffs.invulnT>0) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
-    else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(skills.invuln.cd)}s`;
+    else if(skills.invuln.cd>0) $cdInvuln.textContent = `空窗 ${Math.ceil(skills.invuln.cd)}s`;
     else $cdInvuln.textContent = 'Ready';
 
     $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
