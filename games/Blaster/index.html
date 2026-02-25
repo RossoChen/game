@@ -1392,7 +1392,7 @@ canvas{width:100%;height:100%;display:block}
             dropCoin(e.x, e.y, coinAmt);
 
             if(e.type==='boss'){
-              state.score+=320; addXp(3000* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
+              state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
               addBurst(e.x,e.y,26);
             }else if(e.type==='elite'){
               state.score+=38; addXp(20* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
