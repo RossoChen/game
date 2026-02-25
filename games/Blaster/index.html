@@ -1016,8 +1016,15 @@ function beamChanceByStage(stage){
   function addBurst(x,y,n=10){
     for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
   }
-  let toastT=0;
-  function toastMsg(text,sec=.75){$toast.textContent=text;$toast.classList.add('show');toastT=sec}
+  let toastT=0, lastToastText='';
+  function toastMsg(text,sec=.75){
+    // 同訊息短時間內不連刷，避免 UI 通路塞車
+    if(text===lastToastText && toastT>0.25) return;
+    lastToastText = text;
+    $toast.textContent=text;
+    $toast.classList.add('show');
+    toastT=sec;
+  }
 
   // ---------- healer logic ----------
   function healerTick(h,dt){
