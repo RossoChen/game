@@ -741,8 +741,8 @@ canvas{width:100%;height:100%;display:block}
       },
       {
         id:'burstCdDown',
-        name:'爆發 -1s',
-        desc:`降低爆發：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
+        name:'爆發 CD -1s',
+        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)}s / 持續 ${BURST_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
@@ -753,8 +753,8 @@ canvas{width:100%;height:100%;display:block}
       },
       {
         id:'invulnCdDown',
-        name:'無敵 -1s',
-        desc:`降低無敵：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
+        name:'無敵 CD -1s',
+        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)}s / 持續 ${INVULN_DURATION.toFixed(0)}s）`,
         cost:price(320, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
@@ -1331,8 +1331,8 @@ canvas{width:100%;height:100%;display:block}
       `回復：<b>${player.regen}</b>/s`,
       `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
       `磁鐵：<b>${shopState.magnetRun ? '永久（本局）' : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')}</b>`,
-      `技能：🔥 <b>${burstDown.toFixed(0)}s</b>（總CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）`,
-      `技能：✨ <b>${invDown.toFixed(0)}s</b>（總CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
+      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>（CD ${BURST_CD.toFixed(0)} / 持續 ${BURST_DURATION.toFixed(0)}）`,
+      `無敵 CD：<b>${invDown.toFixed(0)}s</b>（CD ${INVULN_CD.toFixed(0)} / 持續 ${INVULN_DURATION.toFixed(0)}）`,
       `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發CD↓ <b>${shopState.burstCdDown}</b>｜無敵CD↓ <b>${shopState.invulnCdDown}</b>`,
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
@@ -1736,11 +1736,11 @@ canvas{width:100%;height:100%;display:block}
     $xpPct.textContent=`${Math.floor(xpP*100)}%`;
 
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
-    else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
+    else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(Math.max(0, skills.burst.cd - BURST_DURATION))}s`;
     else $cdBurst.textContent = 'Ready';
 
     if(buffs.invulnT>0) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
-    else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(skills.invuln.cd)}s`;
+    else if(skills.invuln.cd>0) $cdInvuln.textContent = `CD ${Math.ceil(Math.max(0, skills.invuln.cd - INVULN_DURATION))}s`;
     else $cdInvuln.textContent = 'Ready';
 
     $btnBurst.disabled  = !(canUseSkill('burst') && buffs.burstT<=0);
