@@ -1739,25 +1739,19 @@ canvas{width:100%;height:100%;display:block}
       const isElite=e.type==='elite';
       const isHealer=e.type==='healer';
 
-      ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
-        : isSniperBoss ? 'rgba(120,220,255,.12)'   // 👈 新色系：偏冷藍，不撞你現有 boss 紅系
-        : isBoss ? 'rgba(255,120,120,.14)'
-        : isElite ? 'rgba(220,180,255,.14)'
-        : isHealer ? 'rgba(140,190,255,.14)'
-        : 'rgba(255,255,255,.10)';
-        : isElite ? 'rgba(220,180,255,.14)'
-        : isHealer ? 'rgba(140,190,255,.14)'
-        : 'rgba(255,255,255,.10)';
-
-      ctx.strokeStyle =
-        isSniperBoss ? 'rgba(120,220,255,.42)'     // 👈 外框也換色
-        : isBoss ? 'rgba(255,120,120,.35)'
-        : isElite ? 'rgba(220,180,255,.45)'
-        : isHealer ? 'rgba(140,190,255,.40)'
-        : 'rgba(255,255,255,.20)';
-        : isElite ? 'rgba(220,180,255,.45)'
-        : isHealer ? 'rgba(140,190,255,.40)'
-        : 'rgba(255,255,255,.20)';
+    ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
+      : isSniperBoss ? 'rgba(120,220,255,.12)'   // Sniper Boss：冷藍
+      : isBoss ? 'rgba(255,120,120,.14)'         // 原 Boss：紅
+      : isElite ? 'rgba(220,180,255,.14)'        // Elite：紫
+      : isHealer ? 'rgba(140,190,255,.14)'       // Healer：藍
+      : 'rgba(255,255,255,.10)';
+    
+    ctx.strokeStyle =
+      isSniperBoss ? 'rgba(120,220,255,.42)'
+      : isBoss ? 'rgba(255,120,120,.35)'
+      : isElite ? 'rgba(220,180,255,.45)'
+      : isHealer ? 'rgba(140,190,255,.40)'
+      : 'rgba(255,255,255,.20)';
 
       ctx.lineWidth = isBoss?2:(isElite?1.8:1);
 
