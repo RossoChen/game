@@ -375,7 +375,8 @@ canvas{width:100%;height:100%;display:block}
 }
   const HEALER_HEAL_PCT = 0.05;
   const HEALER_PERIOD = 10.0;
-
+  const HEALER_BOSS_MUL = 4.0;
+  
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
     return clamp(1 - dr*0.06, 0.70, 1.00);
@@ -561,7 +562,7 @@ function beamChanceByStage(stage){
 
   function spawnAdds(count=4,power=.90){
     const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
-    const addHealer = (state.stage>=10) && Math.random()<0.18; // 少量機率跟著 boss adds 出現
+    const addHealer = (state.stage>=10) && Math.random()<0.65;
     for(let i=0;i<count;i++){
       if(addHealer && i===0){
         const x=rand(40,W-40);
@@ -1032,12 +1033,12 @@ function beamChanceByStage(stage){
     if(h.healCd>0) return;
     h.healCd = h.healPeriod;
 
-    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
+    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer' && e.type!=='boss');
     if(!targets.length) return;
     
     let totalAdd = 0;
     for(const t of targets){
-      const add = t.hpMax * h.healPct;
+      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1);
       const before = t.hp;
       t.hp = Math.min(t.hpMax, t.hp + add);
       totalAdd += Math.max(0, t.hp - before);
