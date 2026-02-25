@@ -74,7 +74,7 @@ button.pill:disabled{opacity:.45;cursor:default}
   overflow:hidden;border:1px solid rgba(255,255,255,.10)
 }
 .lvx .fill{height:100%;width:0%;background:rgba(120,180,255,.95)}
-.lvx .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:110px;text-align:right}
+.lvx .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
 
 .hpRowRight{display:flex;align-items:center;gap:var(--gap);flex:0 0 auto}
 
@@ -189,8 +189,7 @@ canvas{width:100%;height:100%;display:block}
 
       <div class="lvx lvxTop">
         <span class="label" id="hudLv">LV 1</span>
-        <div class="track"><div class="fill" id="xpFill"></div></div>
-        <span class="num" id="xpNum">0/60</span>
+        <span class="num" id="xpPct">0%</span>
       </div>
     </div>
 
@@ -319,8 +318,7 @@ canvas{width:100%;height:100%;display:block}
   // ---------- HUD refs ----------
   const $stage=document.getElementById('hudStage');
   const $lv=document.getElementById('hudLv');
-  const $xpFill=document.getElementById('xpFill');
-  const $xpNum=document.getElementById('xpNum');
+  const $xpPct=document.getElementById('xpPct');
   const $hudCoins=document.getElementById('hudCoins');
   const $hudShield=document.getElementById('hudShield');
 
@@ -731,10 +729,10 @@ canvas{width:100%;height:100%;display:block}
         name:'爆發 CD -1s',
         desc:`降低爆發冷卻（目前 ${BURST_CD.toFixed(0)}s）`,
         cost:price(320, shopState.burstCdDown, 1.5),
-        canBuy:()=>BURST_CD > 18,
+        canBuy:()=>BURST_CD > 15,
         buy:()=>{
           shopState.burstCdDown++;
-          BURST_CD = Math.max(18, BURST_CD - 1);
+          BURST_CD = Math.max(15, BURST_CD - 1);
           if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
           toastMsg(`✅ 爆發CD → ${BURST_CD.toFixed(0)}s`,0.7);
         }
@@ -744,10 +742,10 @@ canvas{width:100%;height:100%;display:block}
         name:'無敵 CD -1s',
         desc:`降低無敵冷卻（目前 ${INVULN_CD.toFixed(0)}s）`,
         cost:price(320, shopState.invulnCdDown, 1.5),
-        canBuy:()=>INVULN_CD > 28,
+        canBuy:()=>INVULN_CD > 20,
         buy:()=>{
           shopState.invulnCdDown++;
-          INVULN_CD = Math.max(28, INVULN_CD - 1);
+          INVULN_CD = Math.max(20, INVULN_CD - 1);
           if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
           toastMsg(`✅ 無敵CD → ${INVULN_CD.toFixed(0)}s`,0.7);
         }
@@ -757,10 +755,10 @@ canvas{width:100%;height:100%;display:block}
         name:'爆發持續 +1s',
         desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
         cost:price(300, shopState.burstDurUp, 1.5),
-        canBuy:()=>BURST_DURATION < 45,
+        canBuy:()=>BURST_DURATION < 60,
         buy:()=>{
           shopState.burstDurUp++;
-          BURST_DURATION = Math.min(45, BURST_DURATION + 1);
+          BURST_DURATION = Math.min(60, BURST_DURATION + 1);
           toastMsg(`✅ 爆發時間 → ${BURST_DURATION.toFixed(0)}s`,0.7);
         }
       },
@@ -769,10 +767,10 @@ canvas{width:100%;height:100%;display:block}
         name:'無敵持續 +1s',
         desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
         cost:price(300, shopState.invulnDurUp, 1.5),
-        canBuy:()=>INVULN_DURATION < 30,
+        canBuy:()=>INVULN_DURATION < 40,
         buy:()=>{
           shopState.invulnDurUp++;
-          INVULN_DURATION = Math.min(30, INVULN_DURATION + 1);
+          INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
           toastMsg(`✅ 無敵時間 → ${INVULN_DURATION.toFixed(0)}s`,0.7);
         }
       },
@@ -1610,8 +1608,7 @@ canvas{width:100%;height:100%;display:block}
 
     $lv.textContent=`LV ${state.level}`;
     const xpPct=clamp(state.xp/state.nextXp,0,1);
-    $xpFill.style.width=`${xpPct*100}%`;
-    $xpNum.textContent=`${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`;
+    $xpPct.textContent=`${Math.floor(xpPct*100)}%`;
 
     if(buffs.burstT>0) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
     else if(skills.burst.cd>0) $cdBurst.textContent = `CD ${Math.ceil(skills.burst.cd)}s`;
