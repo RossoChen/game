@@ -58,23 +58,29 @@ button.pill:disabled{opacity:.45;cursor:default}
 
 #hudStage{min-width:56px;padding:8px 8px;text-align:center}
 
-.lvxTop{flex:1 1 auto;min-width:160px;max-width:none;}
+/* ===== LV area: force single-line, never grow HUD height ===== */
+.lvxTop{flex:1 1 auto;min-width:0;max-width:none;}
 .lvx{
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:10px;
   padding:8px 10px;border-radius:16px;
   border:1px solid rgba(255,255,255,.12);
   background:rgba(255,255,255,.05);
+  flex-wrap:nowrap;
+  white-space:nowrap;
+  overflow:hidden;
 }
-.lvx .label{opacity:.85;font-weight:900;letter-spacing:.2px;min-width:44px}
-.lvx .track{
-  flex:1 1 auto; min-width:120px; max-width:360px;
-  height:12px;border-radius:999px;
-  background:rgba(255,255,255,.10);
-  overflow:hidden;border:1px solid rgba(255,255,255,.10)
+.lvx .label{
+  opacity:.85;font-weight:900;letter-spacing:.2px;
+  min-width:0;
+  white-space:nowrap;
 }
-.lvx .fill{height:100%;width:0%;background:rgba(120,180,255,.95)}
-.lvx .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:48px;text-align:right}
+.lvx .num{
+  opacity:.85;font-variant-numeric:tabular-nums;
+  min-width:0;
+  text-align:right;
+  white-space:nowrap;
+}
 
 .hpRowRight{display:flex;align-items:center;gap:var(--gap);flex:0 0 auto}
 
@@ -201,7 +207,8 @@ canvas{width:100%;height:100%;display:block}
       </div>
 
       <div class="hpRowRight">
-        <span class="pill" id="hudShield" style="display:none">🛡 +0</span>
+        <!-- Shield always visible -->
+        <span class="pill" id="hudShield">🛡 +0</span>
         <button class="pill" id="btnShop">商店</button>
       </div>
     </div>
@@ -221,7 +228,8 @@ canvas{width:100%;height:100%;display:block}
 
     <div class="skills" id="skills">
       <button class="sbtn" id="btnBurst"><span class="ico">🔥</span><span class="name">爆發</span><span class="cd" id="cdBurst">Ready</span></button>
-      <button class="sbtn" id="btnInvuln"><span class="ico">🛡</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
+      <!-- Invuln icon changed to ✨ -->
+      <button class="sbtn" id="btnInvuln"><span class="ico">✨</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
     </div>
   </div>
 </div>
@@ -346,7 +354,7 @@ canvas{width:100%;height:100%;display:block}
     location.href='./games/';
   });
 
-  // ---------- Orientation guard (PWA on iOS may rotate; force stop in landscape) ----------
+  // ---------- Orientation guard ----------
   const $rotateLock=document.getElementById('rotateLock');
   let lockedLandscape=false;
 
@@ -471,7 +479,6 @@ canvas{width:100%;height:100%;display:block}
   };
 
   let hitIFrameT = 0;
-
   const skills={ burst:{cd:0}, invuln:{cd:0} };
 
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
@@ -684,28 +691,24 @@ canvas{width:100%;height:100%;display:block}
 
   function applyDrop(type, d){
     if(type==='heal'){
-      player.hp=clamp(player.hp+35,0,player.hpMax); toastMsg('HP +35');
+      player.hp=clamp(player.hp+35,0,player.hpMax);
     }else if(type==='shield'){
       player.shieldMax=Math.max(player.shieldMax,30);
       player.shield=clamp(player.shield+30,0,player.shieldMax);
-      toastMsg('Shield +30');
     }else if(type==='spread'){
       buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);
-      toastMsg('Spread +1（限時）');
     }else if(type==='magnet'){
       buffs.magnet=Math.max(buffs.magnet,9.0);
-      toastMsg('Magnet');
     }else if(type==='coin'){
       const amt = Math.max(1, d?.amt ?? 1);
       state.coins += amt;
-      toastMsg(`🪙 +${amt}`,0.55);
+      // no toast for coin (avoid spam)
     }
   }
 
   // ---------- Shop ----------
   const shopState={ spreadCapUp:0, burstCdDown:0, invulnCdDown:0, burstDurUp:0, invulnDurUp:0 };
 
-  // 初始至少 300，成長 1.5x
   function price(base, lvl, growth=1.5){
     return Math.floor(base * Math.pow(growth, lvl));
   }
@@ -721,7 +724,6 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.spreadCapUp++;
           player.spreadCap++;
-          toastMsg(`✅ 散射上限 → ${player.spreadCap}`,0.7);
         }
       },
       {
@@ -734,7 +736,6 @@ canvas{width:100%;height:100%;display:block}
           shopState.burstCdDown++;
           BURST_CD = Math.max(15, BURST_CD - 1);
           if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
-          toastMsg(`✅ 爆發CD → ${BURST_CD.toFixed(0)}s`,0.7);
         }
       },
       {
@@ -747,7 +748,6 @@ canvas{width:100%;height:100%;display:block}
           shopState.invulnCdDown++;
           INVULN_CD = Math.max(20, INVULN_CD - 1);
           if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
-          toastMsg(`✅ 無敵CD → ${INVULN_CD.toFixed(0)}s`,0.7);
         }
       },
       {
@@ -759,7 +759,6 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.burstDurUp++;
           BURST_DURATION = Math.min(60, BURST_DURATION + 1);
-          toastMsg(`✅ 爆發時間 → ${BURST_DURATION.toFixed(0)}s`,0.7);
         }
       },
       {
@@ -771,7 +770,6 @@ canvas{width:100%;height:100%;display:block}
         buy:()=>{
           shopState.invulnDurUp++;
           INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
-          toastMsg(`✅ 無敵時間 → ${INVULN_DURATION.toFixed(0)}s`,0.7);
         }
       },
     ];
@@ -784,7 +782,7 @@ canvas{width:100%;height:100%;display:block}
 
     $panelTitle.textContent='商店';
     $panelSub.style.display='block';
-    $panelSub.innerHTML=`金幣：<b>${state.coins}</b><br><span style="opacity:.8"></span>`;
+    $panelSub.innerHTML=`金幣：<b>${state.coins}</b>`;
 
     const items=shopItems();
     for(const it of items){
@@ -852,13 +850,13 @@ canvas{width:100%;height:100%;display:block}
     if(!canUseSkill('burst')) return;
     skills.burst.cd = BURST_CD;
     buffs.burstT = Math.max(buffs.burstT, BURST_DURATION);
-    toastMsg(`🔥 爆發：傷害×2（${BURST_DURATION.toFixed(0)}s）`,0.95);
+    toastMsg(`🔥 爆發：傷害×2（${BURST_DURATION.toFixed(0)}s）`,0.7);
   }
   function useInvuln(){
     if(!canUseSkill('invuln')) return;
     skills.invuln.cd = INVULN_CD;
     buffs.invulnT = Math.max(buffs.invulnT, INVULN_DURATION);
-    toastMsg(`🛡 無敵（${INVULN_DURATION.toFixed(0)}s）`,0.9);
+    toastMsg(`✨ 無敵（${INVULN_DURATION.toFixed(0)}s）`,0.7);
   }
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
@@ -1143,8 +1141,6 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  function enemyBulletCapClamp(){return enemies.some(e=>e.type==='boss')?260:140}
-
   // ---------- damage / gameover ----------
   function damagePlayer(dmg){
     if(buffs.invulnT>0) return;
@@ -1257,7 +1253,8 @@ canvas{width:100%;height:100%;display:block}
       totalAdd += Math.max(0, t.hp - before);
       addBurst(t.x, t.y, 6);
     }
-    toastMsg(`💙 全體治療 +${Math.floor(totalAdd)}`, 0.55);
+    // keep healer toast short
+    toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
   }
 
   // ---------- Update ----------
@@ -1369,6 +1366,7 @@ canvas{width:100%;height:100%;display:block}
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
+            // coin:必掉（要撿才算）
             let coinAmt = 1;
             if(e.type === 'boss')  coinAmt = 30;
             if(e.type === 'elite') coinAmt = 3;
@@ -1383,7 +1381,6 @@ canvas{width:100%;height:100%;display:block}
               addBurst(e.x,e.y,12);
             }else if(e.type==='healer'){
               state.score+=30; addXp(11* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
-              toastMsg('💙 Healer 擊破',0.7);
               addBurst(e.x,e.y,14);
             }else{
               state.score+=18; addXp(7* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
@@ -1445,8 +1442,8 @@ canvas{width:100%;height:100%;display:block}
       }
     }else{
       if(enemies.length===0){
-        if(state.wave===state.bossEveryWaves) { state.stage+=1; state.wave=1; state.waveClearCooldown=.85; state.waveInProgress=false; }
-        else { state.wave+=1; state.waveClearCooldown=.55; state.waveInProgress=false; }
+        if(state.wave===state.bossEveryWaves) { nextStage(); }
+        else { nextWave(); }
       }
     }
 
@@ -1470,21 +1467,33 @@ canvas{width:100%;height:100%;display:block}
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // drops (coin icon by value)
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
       ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(120,255,200,.95)';ctx.font='12px system-ui,"Noto Sans TC"';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      const icon =
+
+      let icon =
         d.type==='heal'?'✚':
         d.type==='shield'?'⛨':
         d.type==='spread'?'✦':
-        d.type==='magnet'?'🧲':'🪙';
+        d.type==='magnet'?'🧲':'';
+
+      if(d.type==='coin'){
+        const a = Math.max(1, d.amt ?? 1);
+        icon =
+          (a>=30) ? '🎁' :
+          (a>=10) ? '💎' :
+          (a>=3)  ? '💰' : '🪙';
+      }
+
       ctx.fillText(icon,d.x,d.y+.5);
       ctx.restore();
     }
 
+    // enemies
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
@@ -1528,10 +1537,12 @@ canvas{width:100%;height:100%;display:block}
       ctx.restore();
     }
 
+    // player bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
+    // enemy bullets
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){
       if(!b.beam){
@@ -1556,6 +1567,7 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
+    // player
     ctx.save();
     ctx.translate(player.x,player.y);
 
@@ -1599,12 +1611,8 @@ canvas{width:100%;height:100%;display:block}
     $hpFill.style.width=`${hpPct*100}%`;
     $hpNum.textContent=`${Math.floor(player.hp)}/${Math.floor(player.hpMax)}`;
 
-    if(player.shield>0){
-      $hudShield.style.display='';
-      $hudShield.textContent=`🛡 +${Math.floor(player.shield)}`;
-    }else{
-      $hudShield.style.display='none';
-    }
+    // shield always visible
+    $hudShield.textContent=`🛡 +${Math.floor(player.shield)}`;
 
     $hudCoins.textContent = `🪙 ${state.coins}`;
 
