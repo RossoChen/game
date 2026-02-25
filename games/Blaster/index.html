@@ -1885,52 +1885,7 @@ canvas{width:100%;height:100%;display:block}
 
   // init
   setPadX(.5);
-  
-
-// === DEBUG: 直接跳到 31關 第5波（Boss 波），並給測試強度 ===
-if(!localStorage.getItem('blaster_debug_jump31w5')){
-  localStorage.setItem('blaster_debug_jump31w5','1');
-
-  // 目標：第31關 / 第5波（Boss 波）
-  state.stage = 31;
-  state.wave  = state.bossEveryWaves;  // = 5
-  state.waveClearCooldown = 0;
-  state.waveInProgress = true;         // 告訴系統：波次正在進行中
-
-  // 給你「像真的玩到31」的測試強度（不然看不到差異）
-  state.level = 14;
-  state.xp = 0;
-  state.nextXp = 160;
-
-  player.hpMax = 520; player.hp = player.hpMax;
-  player.dmg = 60;
-  player.fireRate = 9.0;
-  player.bulletSpeed = 980;
-  player.pierce_perm = 4;
-  player.spreadCap = 7;
-  player.spread_perm = 4;
-  player.bulletR = 6;
-
-  player.shieldMax = 90;
-  player.shield = 90;
-
-  // 清空場上物件，避免殘留狀態
-  enemies.length = 0;
-  eBullets.length = 0;
-  pBullets.length = 0;
-  drops.length = 0;
-  particles.length = 0;
-
-  // 直接叫 Boss 入場（31~50 會自動走 Sniper Boss 分支）
-  spawnBoss();
-}
-
-
-
-  
-  
-  
-  //spawnWave();
+  spawnWave();
   syncOrientationLock();
   requestAnimationFrame(frame);
 })();
