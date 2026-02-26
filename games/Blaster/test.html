@@ -938,6 +938,11 @@ const AI = {
   jukeT: 0,
   jukeTargetX: 0,
   jukeDir: 1,
+  
+  // ✅ Sniper 專用：常態左右走位（不等開槍才動）
+  sniperStrafeCd: 0,
+  sniperStrafeX: 0,
+  sniperStrafeDir: 1,
   // shop
   autoShop: true,
   nextShopAtMs: 0,
@@ -954,6 +959,9 @@ const AI = {
     // 讓開啟 AI 後可以立刻觸發一次採購評估
     this.shopLock = false;
     this.nextShopAtMs = 0;
+    this.sniperStrafeCd = 0;
+    this.sniperStrafeX = player.x;
+    this.sniperStrafeDir = 1;
   },
 
   // ---------- 升級自動選 ----------
@@ -1115,23 +1123,36 @@ const AI = {
     if(sniperBoss){
       const pre = (sniperBoss.snipeCd ?? 999);
     
-      // 0.16s 內要開槍：觸發一次 juke（持續 0.45s）
+      // ✅ Sniper 常態走位：一直左右移動（避免被「站樁鎖定」）
+      this.sniperStrafeCd = Math.max(0, (this.sniperStrafeCd||0) - dt);
+      if((this.sniperStrafeCd||0) <= 0){
+        const swing = W * 0.42;                 // 走位幅度（越大越像人在閃）
+        this.sniperStrafeDir = (this.sniperStrafeDir||1) * -1;
+        if(Math.random() < 0.12) this.sniperStrafeDir *= -1; // 偶爾反向破節奏
+        this.sniperStrafeX = clamp(player.x + this.sniperStrafeDir * swing, safeL, safeR);
+        this.sniperStrafeCd = 0.38 + Math.random()*0.22;     // 走位節奏（別固定）
+      }
+    
+      // 0.16s 內要開槍：額外突刺（更劇烈變向）
       if(pre < 0.16 && this.jukeT <= 0){
         const roomL = player.x - safeL;
         const roomR = safeR - player.x;
     
-        // 優先往空間大的一側閃，偶爾反向避免被鎖定節奏抓到
         this.jukeDir = (roomR > roomL) ? +1 : -1;
         if(Math.random() < 0.18) this.jukeDir *= -1;
     
-        this.jukeTargetX = clamp(player.x + this.jukeDir * (W * 0.32), safeL, safeR);
-        this.jukeT = 0.45;
+        this.jukeTargetX = clamp(player.x + this.jukeDir * (W * 0.36), safeL, safeR);
+        this.jukeT = 0.50;
       }
     
-      // --- Sniper 預警：快開槍就先開無敵（避免第一發直接下班） ---
-      if(canUseSkill('invuln') && pre < 0.09){
+      // 快開槍：先開無敵（不降難度，這是 AI 會按技能而已）
+      if(canUseSkill('invuln') && pre < 0.10){
         useInvuln();
       }
+    }else{
+      // 離開 Sniper 戰：清掉狀態
+      this.sniperStrafeCd = 0;
+      this.sniperStrafeX = player.x;
     }
     // 目標：優先 Boss；否則 y 最大的怪
     let aimX = W * 0.5;
@@ -1247,9 +1268,15 @@ const AI = {
       
       score -= Math.abs(x - aimX) * aimW;
       
-      // juke：強制往突刺目標靠
       if(this.jukeT > 0){
         score += 9000 - Math.abs(x - this.jukeTargetX) * 80;
+      }
+      
+      // ✅ Sniper 模式：juke 以外時間也要「持續變位」
+      // （危險區扣分是 1e6 等級，這個只是在安全前提下推你動起來）
+      if(sniperBoss && this.jukeT <= 0){
+        const tx = (this.sniperStrafeX || player.x);
+        score += 3200 - Math.abs(x - tx) * 34;
       }
 
       const edge = Math.min(x-safeL, safeR-x);
