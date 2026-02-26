@@ -1275,7 +1275,14 @@ const AI = {
     }
 
     // 走位（限速）
-    const maxStep = player.moveSpeed * dt * 0.95;
+    // ✅ Sniper 時把角色移動速度上限改成「慢慢往右移」的速度
+    let maxStep = player.moveSpeed * dt * 0.95;
+    
+    if(sniperBoss){ // 你原本就有 sniperBoss 變數
+      const sniperSlowPxPerSec = 60;   // 👈 這就是你要調的「慢慢往右移速度」
+      maxStep = sniperSlowPxPerSec * dt;
+    }
+    
     const nx = clamp(bestX, safeL, safeR);
     const dx = nx - player.x;
     const step = clamp(dx, -maxStep, maxStep);
