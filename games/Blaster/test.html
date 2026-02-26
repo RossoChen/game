@@ -193,7 +193,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: NEW123
+  BUILD: rosso345
 </div>
 <div class="app">
   <div class="hud">
@@ -1316,7 +1316,7 @@ const AI = {
     let maxStep = player.moveSpeed * dt * 0.95;
     
     if(sniperBoss){ // 你原本就有 sniperBoss 變數
-      const sniperSlowPxPerSec = 60;   // 👈 這就是你要調的「慢慢往右移速度」
+      const sniperSlowPxPerSec = 80;   // 👈 這就是你要調的「慢慢往右移速度」
       maxStep = sniperSlowPxPerSec * dt;
     }
     
