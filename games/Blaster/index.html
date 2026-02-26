@@ -1967,48 +1967,48 @@ for(const b of eBullets){
   }
 
 // init
-// setPadX(.5);
+setPadX(.5);
 
-// // === DEBUG: 每次都跳到 31關 第5波（Boss波）===
-// state.stage = 31;
-// state.wave  = state.bossEveryWaves;  // = 5
-// state.waveClearCooldown = 0;
-// state.waveInProgress = true;
+// === DEBUG:（Boss波）===
+state.stage = 51;
+state.wave  = state.bossEveryWaves;
+state.waveClearCooldown = 0;
+state.waveInProgress = true;
 
-// // 給測試強度
-// state.level = 14;
-// state.xp = 0;
-// state.nextXp = 160;
+// 給測試強度
+state.level = 50;
+state.xp = 0;
+state.nextXp = 160;
 
-// player.hpMax = 520; player.hp = player.hpMax;
-// player.dmg = 60;
-// player.fireRate = 9.0;
-// player.bulletSpeed = 980;
-// player.pierce_perm = 4;
-// player.spreadCap = 7;
-// player.spread_perm = 4;
-// player.bulletR = 6;
+player.hpMax = 520; player.hp = player.hpMax;
+player.dmg = 150;
+player.fireRate = 9.0;
+player.bulletSpeed = 980;
+player.pierce_perm = 4;
+player.spreadCap = 7;
+player.spread_perm = 4;
+player.bulletR = 6;
 
-// player.shieldMax = 90;
-// player.shield = 90;
+player.shieldMax = 90;
+player.shield = 90;
 
-// enemies.length = 0;
-// eBullets.length = 0;
-// pBullets.length = 0;
-// drops.length = 0;
-// particles.length = 0;
+enemies.length = 0;
+eBullets.length = 0;
+pBullets.length = 0;
+drops.length = 0;
+particles.length = 0;
 // === DEBUG: 一開始就開啟強力磁鐵（本局永久）===
 shopState.magnetRun = 1;
 buffs.magnet = Math.max(buffs.magnet, 1e9);
-// spawnBoss();
+spawnBoss();
 
-// syncOrientationLock();
-// requestAnimationFrame(frame);
-// init
-setPadX(.5);
-spawnWave();
 syncOrientationLock();
 requestAnimationFrame(frame);
+// init
+// setPadX(.5);
+// spawnWave();
+// syncOrientationLock();
+// requestAnimationFrame(frame);
 })();
 </script>
 </body>
