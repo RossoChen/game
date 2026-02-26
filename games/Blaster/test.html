@@ -1148,7 +1148,7 @@ const AI = {
       this.sniperSweepX = clamp(this.sniperSweepX + baseSweep * dt, leftX, rightX);
 
       sniperSweepTargetX = this.sniperSweepX;
-      sniperWantTeleport = (this.sniperSweepX >= rightX - 8);
+      sniperWantTeleport = (player.x >= rightX - 8);
     }else{
       // 離開 Sniper 戰：重置，下一次遇到 Sniper 再先瞬左
       this.sniperForceLeft = true;
@@ -1283,10 +1283,22 @@ const AI = {
       maxStep = sniperSlowPxPerSec * dt;
     }
     
-    const nx = clamp(bestX, safeL, safeR);
-    const dx = nx - player.x;
-    const step = clamp(dx, -maxStep, maxStep);
-    setPadX((player.x + step) / W);
+      const nx = clamp(bestX, safeL, safeR);
+      let dx = nx - player.x;
+      
+      // ✅ Sniper SOP：不允許往左飄（你就是死在這個「左飄撞 beam」）
+      if(sniperBoss && dx < 0){
+        const leftX = safeL + 2;
+      
+        // 需要左移代表眼前局面很爛：直接瞬移回左（符合你的操作習慣）
+        setPadX(leftX / W);
+        this.sniperSweepX = leftX; // 重置掃過起點（避免下一幀又判錯）
+        dx = 0;                    // 本幀不再做一般走位
+      }
+      
+      // 正常限速移動
+      const step = clamp(dx, -maxStep, maxStep);
+      setPadX((player.x + step) / W);
 
     // ---------- 技能決策 ----------
     const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
