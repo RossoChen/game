@@ -660,7 +660,7 @@ canvas{width:100%;height:100%;display:block}
     // stage 31~50 -> Sniper Boss (stationary, center-top)
     const isSniper = (state.stage >= 31 && state.stage <= 50);
   
-    const hp = (650 + state.stage*170) * stageDifficultyMul(state.stage) * 4;
+    const hp = (650 + state.stage*170) * stageDifficultyMul(state.stage);
   
     if(isSniper){
       const baseSpd = 520 + state.stage*10;
@@ -672,27 +672,14 @@ canvas{width:100%;height:100%;display:block}
         y: -100,
         targetY: holdY,
         r: 30,
-        hp, hpMax: hp,
-  
+        hp: hp2, hpMax: hp2,
         bulletSpeed: baseSpd,
         bulletDmg: 12 + state.stage*2.2,
-  
-        // no movement
         strafeAmp: 0,
         strafeSpd: 0,
         strafePhase: 0,
-  
-        // reuse phase logic (optional, but keeps difficulty scaling consistent)
         phase: 1,
-  
-        // sniper firing control
-        snipeCd: 0.25,                 // wind-up at entry
-        snipeGap: 0.001,               // rapid fire interval (秒)
-        snipeGapCd: 0,
-        snipeMode: 'normal',           // 'normal' | 'beam'
-        snipeLeft: 20,                 // 20 normal then 20 beam, repeat
-        snipeSwitchN: 20,              // just for readability
-  
+        snipeCd: 0.25,
         hitFlash: 0
       };
       enemies.push(boss);
@@ -702,7 +689,6 @@ canvas{width:100%;height:100%;display:block}
   
     // ---------- Default boss (your original behavior) ----------
     const baseSpd=240+state.stage*12;
-  
     const boss={
       type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp,hpMax:hp,
       bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.0,
