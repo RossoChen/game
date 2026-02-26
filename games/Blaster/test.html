@@ -1771,10 +1771,10 @@ function bossTick(e,dt){
       });
       $panelRow.appendChild(btnRestart);
     
-      // ✅ 原本「留在這裡」→ 改成「查看加成」
+      // ✅ 原本「留在這裡」→ 改成「查看狀態」
       const btnStats=document.createElement('button');
       btnStats.className='pill';
-      btnStats.textContent='查看加成';
+      btnStats.textContent='查看狀態';
       btnStats.addEventListener('click',()=>{
         openStats(true); // 從 GameOver 進 Stats
       });
