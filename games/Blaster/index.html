@@ -660,13 +660,14 @@ canvas{width:100%;height:100%;display:block}
     // stage 31~50 -> Sniper Boss (stationary, center-top)
     const isSniper = (state.stage >= 31 && state.stage <= 50);
   
-    const hp = (650 + state.stage*170) * stageDifficultyMul(state.stage);
+    const hp = (650 + state.stage*170) * stageDifficultyMul(state.stage) * 4;
   
     if(isSniper){
-      const baseSpd = 520 + state.stage*10; // faster bullet base for sniper feel
+      const baseSpd = 520 + state.stage*10;
+      const hp2 = hp * 1.85;
       const boss = {
         type:'boss',
-        kind:'sniper',                 // 👈 new
+        kind:'sniper',
         x: W*0.5,
         y: -100,
         targetY: holdY,
@@ -685,8 +686,8 @@ canvas{width:100%;height:100%;display:block}
         phase: 1,
   
         // sniper firing control
-        snipeCd: 0.55,                 // wind-up at entry
-        snipeGap: 0.055,               // rapid fire interval (秒)
+        snipeCd: 0.25,                 // wind-up at entry
+        snipeGap: 0.001,               // rapid fire interval (秒)
         snipeGapCd: 0,
         snipeMode: 'normal',           // 'normal' | 'beam'
         snipeLeft: 20,                 // 20 normal then 20 beam, repeat
@@ -1152,70 +1153,44 @@ canvas{width:100%;height:100%;display:block}
   function bossTick(e,dt){
     // ---------- Sniper boss ----------
     if(e.kind === 'sniper'){
-      // phase based on HP ratio (keeps scaling consistent, but attack stays "sniper")
+      // phase based on HP ratio（保留 phase 顯示，但不拿來降射速）
       const rr = e.hp/e.hpMax;
       const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
       if(newPhase!==e.phase){
         e.phase=newPhase;
-        toastMsg(`Sniper：Phase ${e.phase}`, 0.55);
+        toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
       }
-  
+
       // stationary center-top
       e.x = W*0.5;
-  
-      // phase tuning: later phase slightly more aggressive
-      const phaseMul = (e.phase===1 ? 1.00 : (e.phase===2 ? 1.08 : 1.18));
-      const gap = Math.max(0.028, (e.snipeGap ?? 0.055) / phaseMul);
-  
+
+      // wind-up
       e.snipeCd -= dt;
       if(e.snipeCd > 0) return;
-  
-      // rapid single lane aimed at player (sniper)
+
+      // ultra rapid fire
       e.snipeGapCd -= dt;
       if(e.snipeGapCd > 0) return;
-  
+
       const ang = Math.atan2(player.y - e.y, player.x - e.x);
-  
-      const useBeam = (e.snipeMode === 'beam');
-      if(useBeam){
-        enemyShoot(
-          e,
-          ang,
-          1.28,            // speed multiplier (sniper feel)
-          1.00,
-          {
-            beam:true,
-            len:(state.stage>=40?40:34),
-            r:(state.stage>=40?6:5),
-            pierce:0,
-            hp:1            // beam has hp 1 by your enemyShoot default, keeping it consistent
-          }
-        );
-      }else{
-        enemyShoot(
-          e,
-          ang,
-          1.38,
-          1.00,
-          {
-            beam:false,
-            r:(state.stage>=40?5:4),
-            pierce:0,
-            hp: enemyBulletHpByStage(state.stage) * 0.55
-          }
-        );
-      }
-  
-      // schedule next shot
-      e.snipeGapCd = gap;
-  
-      // handle 20/20 alternating
-      e.snipeLeft = (e.snipeLeft ?? 20) - 1;
-      if(e.snipeLeft <= 0){
-        e.snipeMode = (e.snipeMode === 'normal') ? 'beam' : 'normal';
-        e.snipeLeft = (e.snipeSwitchN ?? 20);
-        toastMsg(e.snipeMode === 'beam' ? '⚡ Beam Mode' : '🎯 Normal Mode', 0.35);
-      }
+
+      // ALWAYS BEAM：不會被子彈互撞清掉，威脅才成立
+      enemyShoot(
+        e,
+        ang,
+        1.55,   // 速度倍數（最後仍會乘 ENEMY_BULLET_SPEED_MUL=0.30）
+        1.15,   // 傷害倍數
+        {
+          beam:true,
+          len:(state.stage>=40?46:40),
+          r:(state.stage>=40?7:6),
+          pierce:0,
+          hp:1
+        }
+      );
+
+      // 下一發間隔：phase 越高越密
+      e.snipeGapCd = (e.phase===1 ? 0.030 : (e.phase===2 ? 0.026 : 0.022));
       return;
     }
   
