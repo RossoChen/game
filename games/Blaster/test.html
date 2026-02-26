@@ -1163,10 +1163,26 @@ const AI = {
 
     for(const b of eBullets){
       if(!b?.alive) continue;
-
+    
+      // ✅ Defender 球：不看 vy、不等它「穿過玩家 y」才算危險
+      if(b.ball){
+        const Rb = (b.r || 18);
+        const rad = Rb + player.r + 16;     // 危險半徑（你覺得太保守就調小）
+        const w = 14;                       // 權重（越大越怕它）
+    
+        // 直接把球的「現在位置」當成高危險走廊
+        intervals.push([b.x - rad, b.x + rad, w * 10]);
+    
+        // 再加一個「短期預測」(0.22s)：讓 AI 更早避開
+        const px1 = b.x + (b.vx||0) * 0.22;
+        intervals.push([px1 - rad, px1 + rad, w * 6]);
+    
+        continue;
+      }
+    
       const vy = b.vy || 0;
       if(vy <= 1) continue;
-
+    
       const tHit = (py - b.y) / vy;
       if(tHit < 0 || tHit > horizon) continue;
 
@@ -1195,37 +1211,58 @@ const AI = {
     // beams：預估撞線就開無敵（保留你原本的保命邏輯）
     for(const b of eBullets){
       if(!b?.alive || !b.beam) continue;
-
+    
       const vy = b.vy || 0;
       if(vy <= 1) continue;
-
+    
       const tHit = clamp((py - b.y) / vy, 0, 1.10);
       const bx = b.x + (b.vx||0) * tHit;
       const by = b.y + (b.vy||0) * tHit;
-
+    
       const ang = Math.atan2(vy, (b.vx||0));
       const L = b.len || 28;
       const R = b.r || 5;
-
+    
       const dx = Math.cos(ang) * (L/2);
       const dy = Math.sin(ang) * (L/2);
       const ax = bx - dx, ay = by - dy;
       const cx2 = bx + dx, cy2 = by + dy;
-
+    
       const px = player.x, py2 = py;
       const vx2 = cx2-ax, vy2 = cy2-ay;
       const wx = px-ax, wy = py2-ay;
       let tt = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
       tt = clamp(tt, 0, 1);
       const hx = ax + tt*vx2, hy = ay + tt*vy2;
-
+    
       const rad = player.r + R + 2;
       if(dist2(px, py2, hx, hy) < rad*rad){
         if(canUseSkill('invuln')) useInvuln();
       }
+    } // ✅ beams for 迴圈結束
+    
+    // ✅ Defender 球貼身：直接瞬移到遠離球的一側（你保留的玩法特性）
+    {
+      let nearest = null;
+      let bestD = 1e18;
+      for(const b of eBullets){
+        if(!b?.alive || !b.ball) continue;
+        const d = dist2(b.x, b.y, player.x, player.y);
+        if(d < bestD){ bestD = d; nearest = b; }
+      }
+      if(nearest){
+        const rad = (nearest.r||18) + player.r + 10;
+        if(bestD < rad*rad){
+          const leftX  = safeL + 2;
+          const rightX = safeR - 2;
+          const goLeft = (Math.abs(nearest.x - leftX) > Math.abs(nearest.x - rightX));
+          const tx = goLeft ? leftX : rightX;
+          setPadX(tx / W);
+          return;
+        }
+      }
     }
-
-    // ---------- 候選站位掃描：避彈(核彈級) + 對齊輸出 ----------
+      // ---------- 候選站位掃描：避彈(核彈級) + 對齊輸出 ----------
     const candidates = sniperBoss ? 29 : 23;
     let bestX = player.x;
     let bestScore = -1e18;
