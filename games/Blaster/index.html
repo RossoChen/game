@@ -920,7 +920,10 @@ function spawnBoss(){
 
   let paused=false;
   let mode='play'; // play | levelup | shop | stats | gameover
-
+  // ✅ GameOver → Stats → GameOver 用
+  let gameOverSummary = null;
+  let statsFromGameOver = false;
+  
   function openShop(){
     if(mode!=='play') return;
     if(lockedLandscape) return;
@@ -1364,48 +1367,75 @@ function bossTick(e,dt){
     if(player.hp<=0) gameOver();
   }
 
-  function gameOver(){
-    mode='gameover';
-    paused=true;
-    $toast.classList.remove('show');
-
-    const bestKey='blaster_best_score_v4';
-    const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
-    localStorage.setItem(bestKey,String(best));
-
-    $panel.classList.remove('isStats');
-    overlay.classList.add('show');
-    opts.innerHTML='';
-    $panelRow.innerHTML='';
-
-    $panelTitle.textContent='Game Over';
-    $panelSub.style.display='block';
-    $panelSub.innerHTML=
-      `本局分數：<b>${state.score}</b><br>`+
-      `本局金幣：<b>${state.coins}</b><br>`+
-      `最高分：<b>${best}</b><br>`+
-      `關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
-    $panelRow.style.display='flex';
-
-    const btn=document.createElement('button');
-    btn.className='pill';
-    btn.textContent='重新開始';
-    btn.addEventListener('click',()=>{
-      overlay.classList.remove('show');
-      resetRun();
-      mode='play';
-      paused=false;
-      lastT=performance.now();
-    });
-    $panelRow.appendChild(btn);
-
-    const btnStay=document.createElement('button');
-    btnStay.className='pill';
-    btnStay.textContent='留在這裡';
-    btnStay.addEventListener('click',()=>{});
-    $panelRow.appendChild(btnStay);
-  }
-
+    function renderGameOverPanel(){
+      $panel.classList.remove('isStats');
+      overlay.classList.add('show');
+      opts.innerHTML='';
+      $panelRow.innerHTML='';
+    
+      const s = gameOverSummary || {
+        score: state.score,
+        coins: state.coins,
+        best: Number(localStorage.getItem('blaster_best_score_v4')||0),
+        stage: state.stage,
+        wave: state.wave,
+        level: state.level
+      };
+    
+      $panelTitle.textContent='Game Over';
+      $panelSub.style.display='block';
+      $panelSub.innerHTML=
+        `本局分數：<b>${s.score}</b><br>`+
+        `本局金幣：<b>${s.coins}</b><br>`+
+        `最高分：<b>${s.best}</b><br>`+
+        `關卡 ${s.stage} / 波次 ${s.wave} / 等級 ${s.level}`;
+    
+      $panelRow.style.display='flex';
+    
+      // 重新開始
+      const btnRestart=document.createElement('button');
+      btnRestart.className='pill';
+      btnRestart.textContent='重新開始';
+      btnRestart.addEventListener('click',()=>{
+        overlay.classList.remove('show');
+        resetRun();
+        mode='play';
+        paused=false;
+        lastT=performance.now();
+      });
+      $panelRow.appendChild(btnRestart);
+    
+      // ✅ 原本「留在這裡」→ 改成「查看加成」
+      const btnStats=document.createElement('button');
+      btnStats.className='pill';
+      btnStats.textContent='查看加成';
+      btnStats.addEventListener('click',()=>{
+        openStats(true); // 從 GameOver 進 Stats
+      });
+      $panelRow.appendChild(btnStats);
+    }
+    
+    function gameOver(){
+      mode='gameover';
+      paused=true;
+      $toast.classList.remove('show');
+    
+      const bestKey='blaster_best_score_v4';
+      const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
+      localStorage.setItem(bestKey,String(best));
+    
+      // ✅ 存起來，Stats 關閉時要回來用
+      gameOverSummary = {
+        score: state.score,
+        coins: state.coins,
+        best,
+        stage: state.stage,
+        wave: state.wave,
+        level: state.level
+      };
+    
+      renderGameOverPanel();
+    }
   function resetRun(){
     state.stage=1;state.wave=1;state.score=0;state.coins=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
@@ -1470,33 +1500,35 @@ function bossTick(e,dt){
     if(!base) return 0;
     return Math.round(((now/base)-1)*1000)/10;
   }
-  function openStats(){
+  function openStats(fromGameOver=false){
     if(lockedLandscape) return;
-    if(mode==='gameover') return;
     if(mode==='shop') return;
-
+  
+    // ✅ 記錄是否從 GameOver 進來
+    statsFromGameOver = !!fromGameOver || (mode === 'gameover');
+  
     mode='stats';
     paused=true;
     $toast.classList.remove('show');
-
+  
     overlay.classList.add('show');
     $panel.classList.add('isStats');
     opts.innerHTML='';
     $panelRow.innerHTML='';
-
+  
     $panelTitle.textContent='狀態一覽';
     $panelSub.style.display='block';
-
+  
     const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
     const spreadShotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT>0?1:0)));
-
+  
     const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
     const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
     const xpPctM = pctMul(player.xpGainMul, 1.0);
-
+  
     const burstDown = downtime(BURST_CD, BURST_DURATION);
     const invDown   = downtime(INVULN_CD, INVULN_DURATION);
-
+  
     const lines = [
       `關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b>　等級：<b>${state.level}</b>`,
       `HP：<b>${Math.floor(player.hp)}/${Math.floor(player.hpMax)}</b>（上限 +${Math.floor(player.hpMax-BASE_PLAYER.hpMax)}）`,
@@ -1515,7 +1547,7 @@ function bossTick(e,dt){
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
     $panelSub.innerHTML = lines.join('<br>');
-
+  
     const pills = [
       ['🪙 金幣', state.coins],
       ['🧠 XP', `${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`],
@@ -1531,7 +1563,7 @@ function bossTick(e,dt){
       el.innerHTML = `<div class="t">${k}</div><div class="d"><b>${v}</b></div>`;
       opts.appendChild(el);
     }
-
+  
     $panelRow.style.display='flex';
     const btnClose=document.createElement('button');
     btnClose.className='pill';
@@ -1539,7 +1571,18 @@ function bossTick(e,dt){
     btnClose.addEventListener('click',closeStats);
     $panelRow.appendChild(btnClose);
   }
+  
   function closeStats(){
+    // ✅ 從 GameOver 進來 → 關閉時回 GameOver
+    if(statsFromGameOver){
+      mode='gameover';
+      paused=true;
+      $panel.classList.remove('isStats');
+      renderGameOverPanel();
+      return;
+    }
+  
+    // 原本：回到遊戲
     overlay.classList.remove('show');
     $panel.classList.remove('isStats');
     mode='play';
