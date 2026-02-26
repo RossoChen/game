@@ -699,31 +699,33 @@ function spawnBoss(){
     return;
   }
 
-  // ===== Sniper Boss (31~50) =====
-  if(isSniper){
-    const baseSpd = 520 + state.stage*10;
-    const hp2 = hpBase * 1.85;
-    const boss = {
-      type:'boss',
-      kind:'sniper',
-      x: W*0.5,
-      y: -100,
-      targetY: holdY,
-      r: 30,
-      hp: hp2, hpMax: hp2,
-      bulletSpeed: baseSpd,
-      bulletDmg: 12 + state.stage*2.2,
-      strafeAmp: 0,
-      strafeSpd: 0,
-      strafePhase: 0,
-      phase: 1,
-      snipeCd: 0.25,
-      hitFlash: 0
-    };
-    enemies.push(boss);
-    toastMsg('Boss（Sniper）入場', 0.9);
-    return;
-  }
+    // ===== Sniper Boss (31~50) =====
+    if(isSniper){
+      const baseSpd = 520 + state.stage*10;
+      const hp2 = hpBase * 1.85;
+      const boss = {
+        type:'boss',
+        kind:'sniper',
+        x: W*0.5,
+        y: -100,
+        targetY: holdY,
+        r: 30,
+        hp: hp2, hpMax: hp2,
+        bulletSpeed: baseSpd,
+        bulletDmg: 12 + state.stage*2.2,
+        strafeAmp: 0,
+        strafeSpd: 0,
+        strafePhase: 0,
+        phase: 1,
+        hitFlash: 0,
+    
+        // ✅ 單一計時器：瞄準玩家、快速連射（去掉 snipeCd / snipeGapCd 冗餘）
+        snipeT: 0.25,
+      };
+      enemies.push(boss);
+      toastMsg('Boss（Sniper）入場', 0.9);
+      return;
+    }
 
   // ===== Default boss =====
   const baseSpd=240+state.stage*12;
@@ -935,14 +937,12 @@ function spawnBoss(){
 // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
 const AI = {
   enabled: false,
-  jukeT: 0,
-  jukeTargetX: 0,
-  jukeDir: 1,
-  
+
   // ✅ Sniper 專用：常態左右走位（不等開槍才動）
   sniperStrafeCd: 0,
   sniperStrafeX: 0,
   sniperStrafeDir: 1,
+
   // shop
   autoShop: true,
   nextShopAtMs: 0,
@@ -953,12 +953,11 @@ const AI = {
     if($aiState) $aiState.textContent = this.enabled ? 'ON' : 'OFF';
     if($btnAI) $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
 
-    // 讓 AI 接管時別被觸控拖曳狀態卡住
     padActive = false;
 
-    // 讓開啟 AI 後可以立刻觸發一次採購評估
     this.shopLock = false;
     this.nextShopAtMs = 0;
+
     this.sniperStrafeCd = 0;
     this.sniperStrafeX = player.x;
     this.sniperStrafeDir = 1;
@@ -1052,10 +1051,8 @@ const AI = {
     if(!this.autoShop || !this.enabled) return;
     if(mode!=='play' || paused || lockedLandscape) return;
 
-    // 有錢才買（商店最便宜 300）
     if(state.coins < 300) return;
 
-    // 先檢查「是否有任何東西真的買得起+允許買」，不然不要一直開店
     const itemsNow = shopItems();
     const hasAffordable = itemsNow.some(it => (state.coins >= it.cost) && (it.canBuy ? it.canBuy() : true));
     if(!hasAffordable) return;
@@ -1065,10 +1062,9 @@ const AI = {
     if(now < (this.nextShopAtMs||0)) return;
 
     this.shopLock = true;
-    this.nextShopAtMs = now + 6500; // 每 6.5 秒最多採購一次
+    this.nextShopAtMs = now + 6500;
 
-    openShop(); // 進 shop 會 paused=true
-
+    openShop();
     setTimeout(()=>{ this.autoBuyInShop(ctx); }, 60);
   },
 
@@ -1090,7 +1086,6 @@ const AI = {
       bought.push(pick.name);
     }
 
-    // 更新商店畫面（你剛好看到商店時，會是最新的）
     try{ renderShop(); }catch(_){}
 
     setTimeout(()=>{
@@ -1110,60 +1105,48 @@ const AI = {
     const py = player.y;
     const safeL = player.r + 10;
     const safeR = W - player.r - 10;
-    
-    // ✅ 目前散射「實際發數」（永久 + 臨時 buff）
-    const shotsLive = Math.max(
-      1,
-      1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0))
-    );
-    // --- Sniper juke：開槍前先左右突刺，別站著等死 ---
-    this.jukeT = Math.max(0, (this.jukeT||0) - dt);
-    
+
+    // ✅ 目前發數（永久 + 臨時 buff）
+    const shotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0)));
+
     const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+
+    // ✅ Sniper：永遠持續左右移動（但仍以避彈為最高優先）
     if(sniperBoss){
-      const pre = (sniperBoss.snipeCd ?? 999);
-    
-      // ✅ Sniper 常態走位：一直左右移動（避免被「站樁鎖定」）
       this.sniperStrafeCd = Math.max(0, (this.sniperStrafeCd||0) - dt);
       if((this.sniperStrafeCd||0) <= 0){
-        const swing = W * 0.42;                 // 走位幅度（越大越像人在閃）
+        const swing = W * 0.40;
         this.sniperStrafeDir = (this.sniperStrafeDir||1) * -1;
-        if(Math.random() < 0.12) this.sniperStrafeDir *= -1; // 偶爾反向破節奏
+        if(Math.random() < 0.14) this.sniperStrafeDir *= -1;
         this.sniperStrafeX = clamp(player.x + this.sniperStrafeDir * swing, safeL, safeR);
-        this.sniperStrafeCd = 0.38 + Math.random()*0.22;     // 走位節奏（別固定）
-      }
-    
-      // 0.16s 內要開槍：額外突刺（更劇烈變向）
-      if(pre < 0.16 && this.jukeT <= 0){
-        const roomL = player.x - safeL;
-        const roomR = safeR - player.x;
-    
-        this.jukeDir = (roomR > roomL) ? +1 : -1;
-        if(Math.random() < 0.18) this.jukeDir *= -1;
-    
-        this.jukeTargetX = clamp(player.x + this.jukeDir * (W * 0.36), safeL, safeR);
-        this.jukeT = 0.50;
-      }
-    
-      // 快開槍：先開無敵（不降難度，這是 AI 會按技能而已）
-      if(canUseSkill('invuln') && pre < 0.10){
-        useInvuln();
+        this.sniperStrafeCd = 0.32 + Math.random()*0.22;
       }
     }else{
-      // 離開 Sniper 戰：清掉狀態
       this.sniperStrafeCd = 0;
       this.sniperStrafeX = player.x;
     }
+
     // 目標：優先 Boss；否則 y 最大的怪
-    let aimX = W * 0.5;
+    let target = null;
     if(enemies.length){
-      const boss = enemies.find(e=>e.type==='boss');
-      if(boss) aimX = boss.x;
-      else{
-        let m=null;
-        for(const e of enemies){ if(!m || e.y > m.y) m = e; }
-        if(m) aimX = m.x;
+      target = enemies.find(e=>e.type==='boss') || null;
+      if(!target){
+        for(const e of enemies){ if(!target || e.y > target.y) target = e; }
       }
+    }
+    const aimBaseX = target ? target.x : (W*0.5);
+
+    // ✅ 散射=1（兩發）例外：不要對齊敵人中心，改成對齊「左右偏移命中線」
+    // 兩發時 vx=±240，水平偏移 ≈ dy*(240/bulletSpeed)
+    let aimTargets = [aimBaseX];
+    if(target && shotsLive === 2){
+      const dy = Math.max(140, player.y - target.y);
+      const bulletVx = 240;
+      const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
+      aimTargets = [
+        clamp(aimBaseX - off, safeL, safeR),
+        clamp(aimBaseX + off, safeL, safeR),
+      ];
     }
 
     // 預測子彈穿過玩家 y 的危險區
@@ -1173,68 +1156,61 @@ const AI = {
 
     for(const b of eBullets){
       if(!b?.alive) continue;
-    
+
       const vy = b.vy || 0;
       if(vy <= 1) continue;
-    
+
       const tHit = (py - b.y) / vy;
       if(tHit < 0 || tHit > horizon) continue;
-    
+
       const xHit = b.x + (b.vx||0) * tHit;
-    
-      // beam：把它當成「寬走廊」危險帶，權重拉高（強迫 AI 先閃）
+
       if(b.beam){
         const rad = (b.r||5) + player.r + 14;
-        const w = (6 / (0.05 + tHit));       // 更重的權重
+        const w = (6 / (0.05 + tHit));
         intervals.push([xHit - rad, xHit + rad, w * 6]);
         continue;
       }
-    
-      // 一般子彈：照舊
+
       const rad  = (b.r||4) + player.r + margin;
       const w    = 1 / (0.15 + tHit);
       intervals.push([xHit - rad, xHit + rad, w]);
     }
 
-    // beams：用「預估到達玩家 y 的時間」來判斷（更不會太晚）
+    // beams：預估撞線就開無敵（你原本的保命邏輯保留）
     for(const b of eBullets){
       if(!b?.alive || !b.beam) continue;
-    
+
       const vy = b.vy || 0;
       if(vy <= 1) continue;
-    
-      // 預估 beam 中心到達玩家 y 的時間
+
       const tHit = clamp((py - b.y) / vy, 0, 1.10);
-    
-      // 預估到達時 beam 的中心位置
       const bx = b.x + (b.vx||0) * tHit;
       const by = b.y + (b.vy||0) * tHit;
-    
+
       const ang = Math.atan2(vy, (b.vx||0));
       const L = b.len || 28;
       const R = b.r || 5;
-    
-      // 預估時刻的 capsule 端點
+
       const dx = Math.cos(ang) * (L/2);
       const dy = Math.sin(ang) * (L/2);
       const ax = bx - dx, ay = by - dy;
       const cx2 = bx + dx, cy2 = by + dy;
-    
-      // 玩家點到線段最短距離
+
       const px = player.x, py2 = py;
       const vx2 = cx2-ax, vy2 = cy2-ay;
       const wx = px-ax, wy = py2-ay;
       let tt = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
       tt = clamp(tt, 0, 1);
       const hx = ax + tt*vx2, hy = ay + tt*vy2;
-    
+
       const rad = player.r + R + 2;
       if(dist2(px, py2, hx, hy) < rad*rad){
         if(canUseSkill('invuln')) useInvuln();
       }
     }
 
-    // 候選站位掃描：避彈 + 對齊輸出
+    // 候選站位掃描：避彈（最高優先） + 對齊輸出（常態）
     const candidates = 23;
     let bestX = player.x;
     let bestScore = -1e18;
@@ -1243,6 +1219,7 @@ const AI = {
       const x = safeL + (safeR-safeL)*(i/(candidates-1));
       let score = 0;
 
+      // 避彈：權重極大，確保不會為了輸出去吃子彈
       for(const [l,r,w] of intervals){
         if(x>=l && x<=r){
           score -= 1e6 * w;
@@ -1252,31 +1229,23 @@ const AI = {
         }
       }
 
-      // ✅ 對齊輸出權重：散射越高越不需要對齊（生存 KPI > 輸出 KPI）
-      let aimW = 0.65;
-      
-      // Sniper 在場：基本上不對齊（不然就是用臉接雷射）
-      if(sniperBoss) aimW = 0.08;
-      
-      // 散射上來後：逐步把對齊權重歸零
-      if(shotsLive >= 3) aimW = Math.min(aimW, 0.12);
-      if(shotsLive >= 4) aimW = Math.min(aimW, 0.06);
-      if(shotsLive >= 5) aimW = 0.0;
-      
-      // juke 期間：完全不對齊
-      if(this.jukeT > 0) aimW = 0.0;
-      
-      score -= Math.abs(x - aimX) * aimW;
-      
-      if(this.jukeT > 0){
-        score += 9000 - Math.abs(x - this.jukeTargetX) * 80;
-      }
-      
-      // ✅ Sniper 模式：juke 以外時間也要「持續變位」
-      // （危險區扣分是 1e6 等級，這個只是在安全前提下推你動起來）
-      if(sniperBoss && this.jukeT <= 0){
+      // ✅ 對齊輸出：常態要求「貼著目標」；Sniper 降低對齊權重（因為必須移動）
+      let aimW = sniperBoss ? 1.0 : 3.4;
+
+      // ✅ 散射=1（兩發）用偏移命中線，但仍允許追擊（不是對齊敵人中心）
+      if(shotsLive === 2) aimW = sniperBoss ? 0.7 : 2.4;
+
+      // 散射很高時不用那麼死命對齊，但仍保有對齊傾向（符合你「基本都要對齊」的 KPI）
+      if(!sniperBoss && shotsLive >= 5) aimW = 2.2;
+      if(!sniperBoss && shotsLive >= 7) aimW = 1.8;
+
+      const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+      score -= aimDist * aimW;
+
+      // ✅ Sniper：在安全前提下強迫持續變位（左右走位 KPI）
+      if(sniperBoss){
         const tx = (this.sniperStrafeX || player.x);
-        score += 3200 - Math.abs(x - tx) * 34;
+        score += 4200 - Math.abs(x - tx) * 42;
       }
 
       const edge = Math.min(x-safeL, safeR-x);
@@ -1292,7 +1261,7 @@ const AI = {
     const step = clamp(dx, -maxStep, maxStep);
     setPadX((player.x + step) / W);
 
-    // 技能決策
+    // 技能決策（保留你原本的保命邏輯）
     const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
     const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
     const bulletPressure = intervals.length;
@@ -1311,7 +1280,7 @@ const AI = {
       if(safeEnough && (boss || manyEnemies)) useBurst();
     }
 
-    // ✅ 最後：自動採購（會自動開店、暫停、買完關店）
+    // 最後：自動採購
     this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
   }
 };
@@ -1649,43 +1618,51 @@ function bossTick(e,dt){
     return;
   }
 
-  // ---------- Sniper boss ----------
-  if(e.kind === 'sniper'){
-    const rr = e.hp/e.hpMax;
-    const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
-    if(newPhase!==e.phase){
-      e.phase=newPhase;
-      toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
-    }
-
-    e.x = W*0.5;
-
-    e.snipeCd -= dt;
-    if(e.snipeCd > 0) return;
-
-    e.snipeGapCd -= dt;
-    if(e.snipeGapCd > 0) return;
-
-    const ang = Math.atan2(player.y - e.y, player.x - e.x);
-
-    enemyShoot(
-      e,
-      ang,
-      1.55,
-      1.15,
-      {
-        beam:true,
-        len:(state.stage>=40?46:40),
-        r:(state.stage>=40?7:6),
-        pierce:0,
-        hp:1
+    // ---------- Sniper boss ----------
+    if(e.kind === 'sniper'){
+      const rr = e.hp/e.hpMax;
+      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
+      if(newPhase!==e.phase){
+        e.phase=newPhase;
+        toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
       }
-    );
-
-    e.snipeGapCd = (e.phase===1 ? 0.030 : (e.phase===2 ? 0.026 : 0.022));
-    return;
-  }
-
+    
+      e.x = W*0.5;
+    
+      // ✅ phase 越高越快；stage 也會微幅加速（有下限保護避免變成機關槍失控）
+      const baseInterval = (e.phase===1 ? 0.050 : (e.phase===2 ? 0.044 : 0.038));
+      const stageBoost = Math.max(0, state.stage - 31) * 0.00025;
+      const interval = clamp(baseInterval - stageBoost, 0.026, baseInterval);
+    
+      e.snipeT = (e.snipeT ?? 0.20) - dt;
+    
+      // dt 偶爾偏大時用 while 補射；同時受 enemyBulletCap() 保護
+      let guard = 0;
+      while(e.snipeT <= 0 && guard++ < 4){
+        const ang = Math.atan2(player.y - e.y, player.x - e.x);
+    
+        enemyShoot(
+          e,
+          ang,
+          1.55,
+          1.15,
+          {
+            beam:true,
+            len:(state.stage>=40?46:40),
+            r:(state.stage>=40?7:6),
+            pierce:0,
+            hp:1
+          }
+        );
+    
+        if(eBullets.length >= enemyBulletCap()){
+          e.snipeT = interval;
+          break;
+        }
+        e.snipeT += interval;
+      }
+      return;
+    }
   // ---------- Default boss ----------
   const r=e.hp/e.hpMax;
   const newPhase=(r<=.40)?3:(r<=.70?2:1);
