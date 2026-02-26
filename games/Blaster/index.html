@@ -1055,7 +1055,7 @@ function spawnBoss(){
   const boss = enemies.find(e=>e.type==='boss');
   if(!boss) return 140;
   if(boss.kind === 'sniper')   return 420;
-  if(boss.kind === 'defender') return 1200; // Defender：球會累積，放寬上限
+  if(boss.kind === 'defender') return 30; // Defender：球會累積，放寬上限
   return 260;
   }
 
