@@ -672,7 +672,7 @@ function spawnBoss(){
 
   // ===== Defender Boss (51~80) =====
   if(isDefender){
-    const hpD = hpBase * 7.5; // 超厚：你可再加/減
+    const hpD = hpBase * 9;
     const boss = {
       type:'boss',
       kind:'defender',
@@ -692,7 +692,7 @@ function spawnBoss(){
 
       // 丟球節奏
       ballCd: 1.0,
-      ballPeriod: 5.0,
+      ballPeriod: 4.0,
     };
     enemies.push(boss);
     toastMsg('Boss（Defender）入場', 0.9);
@@ -1649,8 +1649,8 @@ function bossTick(e,dt){
       const jitter = rand(-0.50, 0.50);
       const ang = aim + jitter;
 
-      const spd = 260 + state.stage*3; // 球速
-      const R = 25;                      // 球半徑
+      const spd = 260 + state.stage*5; // 球速
+      const R = 18;                      // 球半徑
       const dmg = 40 + Math.floor(state.stage*0.35);
 
       // 這顆球：不離場、會反彈、會擋子彈
