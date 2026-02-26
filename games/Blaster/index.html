@@ -944,23 +944,21 @@ function spawnBoss(){
 
   // ---------- Skills ----------
   const SKILL_EPS = 1e-6;
-
-  function skillDowntimeLeft(k){
-    if(k==='burst')  return Math.max(0, (skills.burst.cd||0)  - BURST_DURATION);
-    if(k==='invuln') return Math.max(0, (skills.invuln.cd||0) - INVULN_DURATION);
-    return Math.max(0, (skills[k]?.cd||0));
+  
+  function skillCdLeft(k){
+    return Math.max(0, (skills[k]?.cd || 0));
   }
   
   function canUseSkill(k){
     if(mode!=='play' || paused) return false;
   
     if(k==='burst'){
-      return (buffs.burstT <= SKILL_EPS) && (skillDowntimeLeft('burst') <= SKILL_EPS);
+      return (buffs.burstT <= SKILL_EPS) && (skillCdLeft('burst') <= SKILL_EPS);
     }
     if(k==='invuln'){
-      return (buffs.invulnT <= SKILL_EPS) && (skillDowntimeLeft('invuln') <= SKILL_EPS);
+      return (buffs.invulnT <= SKILL_EPS) && (skillCdLeft('invuln') <= SKILL_EPS);
     }
-    return (skills[k]?.cd||0) <= SKILL_EPS;
+    return (skillCdLeft(k) <= SKILL_EPS);
   }
   function useBurst(){
     if(!canUseSkill('burst')) return;
@@ -1961,19 +1959,19 @@ for(const b of eBullets){
     const xpP=clamp(state.xp/state.nextXp,0,1);
     $xpPct.textContent=`${Math.floor(xpP*100)}%`;
 
-    const burstDownLeft  = skillDowntimeLeft('burst');
-    const invulnDownLeft = skillDowntimeLeft('invuln');
+    const burstLeft  = skillCdLeft('burst');
+    const invulnLeft = skillCdLeft('invuln');
     
     if(buffs.burstT > SKILL_EPS) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
-    else if(burstDownLeft > SKILL_EPS) $cdBurst.textContent = `CD ${Math.ceil(burstDownLeft)}s`;
+    else if(burstLeft > SKILL_EPS) $cdBurst.textContent = `CD ${Math.ceil(burstLeft)}s`;
     else $cdBurst.textContent = 'Ready';
     
     if(buffs.invulnT > SKILL_EPS) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
-    else if(invulnDownLeft > SKILL_EPS) $cdInvuln.textContent = `CD ${Math.ceil(invulnDownLeft)}s`;
+    else if(invulnLeft > SKILL_EPS) $cdInvuln.textContent = `CD ${Math.ceil(invulnLeft)}s`;
     else $cdInvuln.textContent = 'Ready';
     
-    $btnBurst.disabled  = !(mode==='play' && !paused && buffs.burstT<=SKILL_EPS  && burstDownLeft<=SKILL_EPS);
-    $btnInvuln.disabled = !(mode==='play' && !paused && buffs.invulnT<=SKILL_EPS && invulnDownLeft<=SKILL_EPS);
+    $btnBurst.disabled  = !(mode==='play' && !paused && buffs.burstT<=SKILL_EPS  && burstLeft<=SKILL_EPS);
+    $btnInvuln.disabled = !(mode==='play' && !paused && buffs.invulnT<=SKILL_EPS && invulnLeft<=SKILL_EPS);
 
     $btnShop.disabled = lockedLandscape || !(mode==='play' || mode==='shop');
   }
