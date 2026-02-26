@@ -447,7 +447,7 @@ canvas{width:100%;height:100%;display:block}
     return n;
   }
   const HEALER_HEAL_PCT = 0.05;
-  const HEALER_PERIOD = 10.0;
+  const HEALER_PERIOD = 3.0;
   const HEALER_BOSS_MUL = 4.0;
 
   function bulletSizeDmgMul(r){
@@ -567,7 +567,7 @@ canvas{width:100%;height:100%;display:block}
       x,y,targetY,r:15,
       hp,hpMax:hp,
       healCd: rand(1.0, 2.2),
-      healPeriod: 10.0,
+      healPeriod: HEALER_PERIOD,
       healPct: 0.05,
       strafeAmp: rand(40,90),
       strafeSpd: rand(1.0,2.0),
