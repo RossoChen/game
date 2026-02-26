@@ -1102,6 +1102,12 @@ const AI = {
     const py = player.y;
     const safeL = player.r + 10;
     const safeR = W - player.r - 10;
+    
+    // ✅ 目前散射「實際發數」（永久 + 臨時 buff）
+    const shotsLive = Math.max(
+      1,
+      1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0))
+    );
     // --- Sniper juke：開槍前先左右突刺，別站著等死 ---
     this.jukeT = Math.max(0, (this.jukeT||0) - dt);
     
@@ -1225,13 +1231,24 @@ const AI = {
         }
       }
 
-      let aimW = sniperBoss ? 0.22 : 0.65;  // Sniper 在場：少追輸出，多保命
-      if(this.jukeT > 0) aimW = 0.0;        // juke 期間：不對齊，先閃
+      // ✅ 對齊輸出權重：散射越高越不需要對齊（生存 KPI > 輸出 KPI）
+      let aimW = 0.65;
       
-      score -= Math.abs(x-aimX) * aimW;
+      // Sniper 在場：基本上不對齊（不然就是用臉接雷射）
+      if(sniperBoss) aimW = 0.08;
       
+      // 散射上來後：逐步把對齊權重歸零
+      if(shotsLive >= 3) aimW = Math.min(aimW, 0.12);
+      if(shotsLive >= 4) aimW = Math.min(aimW, 0.06);
+      if(shotsLive >= 5) aimW = 0.0;
+      
+      // juke 期間：完全不對齊
+      if(this.jukeT > 0) aimW = 0.0;
+      
+      score -= Math.abs(x - aimX) * aimW;
+      
+      // juke：強制往突刺目標靠
       if(this.jukeT > 0){
-        // 強制往 jukeTargetX 靠攏（做出「突然變向」）
         score += 9000 - Math.abs(x - this.jukeTargetX) * 80;
       }
 
