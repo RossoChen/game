@@ -812,7 +812,7 @@ function spawnBoss(){
         id:'spreadCapUp',
         name:'散射上限 +1',
         desc:`提升散射上限（目前 ${player.spreadCap}）`,
-        cost:price(300, shopState.spreadCapUp, 1.5),
+        cost:price(260, shopState.spreadCapUp, 1.5),
         canBuy:()=>true,
         buy:()=>{
           shopState.spreadCapUp++;
@@ -823,7 +823,7 @@ function spawnBoss(){
         id:'burstCdDown',
         name:'爆發 CD -1s',
         desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
-        cost:price(320, shopState.burstCdDown, 1.5),
+        cost:price(240, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
         buy:()=>{
           shopState.burstCdDown++;
@@ -835,7 +835,7 @@ function spawnBoss(){
         id:'invulnCdDown',
         name:'無敵 CD -1s',
         desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
-        cost:price(320, shopState.invulnCdDown, 1.5),
+        cost:price(240, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
         buy:()=>{
           shopState.invulnCdDown++;
@@ -847,7 +847,7 @@ function spawnBoss(){
         id:'burstDurUp',
         name:'爆發持續 +1s',
         desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
-        cost:price(300, shopState.burstDurUp, 1.5),
+        cost:price(240, shopState.burstDurUp, 1.5),
         canBuy:()=>BURST_DURATION < 60,
         buy:()=>{
           shopState.burstDurUp++;
@@ -859,7 +859,7 @@ function spawnBoss(){
         id:'invulnDurUp',
         name:'無敵持續 +1s',
         desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
-        cost:price(300, shopState.invulnDurUp, 1.5),
+        cost:price(240, shopState.invulnDurUp, 1.5),
         canBuy:()=>INVULN_DURATION < 40,
         buy:()=>{
           shopState.invulnDurUp++;
@@ -930,16 +930,14 @@ function spawnBoss(){
 
     let paused=false;
     let mode='play'; // play | levelup | shop | stats | gameover
-    
-    // ✅ GameOver → Stats → GameOver 用
     let gameOverSummary = null;
     let statsFromGameOver = false;
+
+  
 // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
 const AI = {
   enabled: false,
-
-  // ✅ Sniper：仿你手動 SOP
-  // 進場先瞬移到最左 -> 慢慢往右掃 -> 到最右瞬移回最左
+  
   sniperSweepX: 0,
   sniperForceLeft: true,
 
@@ -1098,11 +1096,8 @@ const AI = {
     const py = player.y;
     const safeL = player.r + 10;
     const safeR = W - player.r - 10;
-
-    // ✅ 目前發數（永久 + 臨時 buff）
     const shotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0)));
 
-    // 目標：優先 Boss；否則 y 最大的怪
     let target = null;
     if(enemies.length){
       target = enemies.find(e=>e.type==='boss') || null;
@@ -1114,7 +1109,6 @@ const AI = {
     const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
     const aimBaseX = target ? target.x : (W*0.5);
 
-    // ✅ 散射=1（兩發）例外：不要對齊敵人中心，改成對齊「左右偏移命中線」
     let aimTargets = [aimBaseX];
     if(target && shotsLive === 2){
       const dy = Math.max(140, player.y - target.y);
@@ -1139,7 +1133,7 @@ const AI = {
       // 第一次進 Sniper 場：先瞬移到最左
       if(this.sniperForceLeft){
         this.sniperSweepX = leftX;
-        setPadX(this.sniperSweepX / W);  // ✅ 瞬移（你保留的操作）
+        setPadX(this.sniperSweepX / W);
         this.sniperForceLeft = false;
       }
 
@@ -1163,20 +1157,16 @@ const AI = {
 
     for(const b of eBullets){
       if(!b?.alive) continue;
-    
-      // ✅ Defender 球：不看 vy、不等它「穿過玩家 y」才算危險
+
       if(b.ball){
         const Rb = (b.r || 18);
-        const rad = Rb + player.r + 16;     // 危險半徑（你覺得太保守就調小）
-        const w = 14;                       // 權重（越大越怕它）
-    
-        // 直接把球的「現在位置」當成高危險走廊
+        const rad = Rb + player.r + 16;
+        const w = 14;
+
         intervals.push([b.x - rad, b.x + rad, w * 10]);
-    
-        // 再加一個「短期預測」(0.22s)：讓 AI 更早避開
+
         const px1 = b.x + (b.vx||0) * 0.22;
         intervals.push([px1 - rad, px1 + rad, w * 6]);
-    
         continue;
       }
     
@@ -1188,7 +1178,6 @@ const AI = {
 
       const xHit = b.x + (b.vx||0) * tHit;
 
-      // beam：把 len 的投影算進去，避免「看起來安全其實擦到」
       if(b.beam){
         const ang = Math.atan2(vy, (b.vx||0));
         const L = b.len || 28;
@@ -1208,7 +1197,6 @@ const AI = {
       intervals.push([xHit - rad, xHit + rad, w]);
     }
 
-    // beams：預估撞線就開無敵（保留你原本的保命邏輯）
     for(const b of eBullets){
       if(!b?.alive || !b.beam) continue;
     
@@ -1239,9 +1227,8 @@ const AI = {
       if(dist2(px, py2, hx, hy) < rad*rad){
         if(canUseSkill('invuln')) useInvuln();
       }
-    } // ✅ beams for 迴圈結束
+    }
     
-    // ✅ Defender 球貼身：直接瞬移到遠離球的一側（你保留的玩法特性）
     {
       let nearest = null;
       let bestD = 1e18;
@@ -1281,16 +1268,13 @@ const AI = {
         }
       }
 
-      // 對齊輸出：常態「要貼目標」
       let aimW = sniperBoss ? 1.2 : 3.4;
 
-      // 兩發（散射=1）例外：用偏移命中線
       if(shotsLive === 2) aimW = sniperBoss ? 0.9 : 2.4;
 
       const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
       score -= aimDist * aimW;
 
-      // Sniper：在安全前提下，把站位推向「掃過目標」
       if(sniperMode && typeof sniperSweepTargetX === 'number'){
         score += 5200 - Math.abs(x - sniperSweepTargetX) * 55;
       }
@@ -1301,39 +1285,33 @@ const AI = {
       if(score > bestScore){ bestScore = score; bestX = x; }
     }
 
-    // ✅ Sniper：到最右 或 安全分數太爛 -> 直接瞬移回最左（你的核心操作）
     if(sniperMode){
       const leftX = safeL + 2;
       const scoreBad = (bestScore < -3.6e5);
       if(sniperWantTeleport || scoreBad){
-        setPadX(leftX / W);       // ✅ 瞬移
-        this.sniperSweepX = leftX; // 重置掃過起點
+        setPadX(leftX / W);
+        this.sniperSweepX = leftX;
       }
     }
-
-    // 走位（限速）
-    // ✅ Sniper 時把角色移動速度上限改成「慢慢往右移」的速度
+    
     let maxStep = player.moveSpeed * dt * 0.95;
     
-    if(sniperBoss){ // 你原本就有 sniperBoss 變數
-      const sniperSlowPxPerSec = 80;   // 👈 這就是你要調的「慢慢往右移速度」
+    if(sniperBoss){
+      const sniperSlowPxPerSec = 80;   //「慢慢往右移速度」
       maxStep = sniperSlowPxPerSec * dt;
     }
     
       const nx = clamp(bestX, safeL, safeR);
       let dx = nx - player.x;
       
-      // ✅ Sniper SOP：不允許往左飄（你就是死在這個「左飄撞 beam」）
       if(sniperBoss && dx < 0){
         const leftX = safeL + 2;
       
-        // 需要左移代表眼前局面很爛：直接瞬移回左（符合你的操作習慣）
         setPadX(leftX / W);
-        this.sniperSweepX = leftX; // 重置掃過起點（避免下一幀又判錯）
-        dx = 0;                    // 本幀不再做一般走位
+        this.sniperSweepX = leftX;
+        dx = 0;
       }
       
-      // 正常限速移動
       const step = clamp(dx, -maxStep, maxStep);
       setPadX((player.x + step) / W);
 
@@ -1343,7 +1321,6 @@ const AI = {
     const bulletPressure = intervals.length;
     const boss = enemies.find(e=>e.type==='boss');
 
-    // Sniper：beam 快到就提早開（避免 32 關反應來不及）
     if(canUseSkill('invuln') && sniperBoss){
       if(minBeamHit < 0.34 || bestScore < -3.2e5) useInvuln();
     }
@@ -1436,7 +1413,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1'},
     {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +20，並回滿'},
-    {key:'regen',t:'自動修復',d:'每秒回復 +1'},
+    {key:'regen',t:'自動修復',d:'每秒回復 +2'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +10%'},
     {key:'bullet_size',t:'彈體增強',d:'子彈更大'},
   ];
@@ -1508,7 +1485,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
     else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
     else if(key==='spread_perm') player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
     else if(key==='shield_cap'){player.shieldMax+=20;player.shield=player.shieldMax}
-    else if(key==='regen') player.regen+=1;
+    else if(key==='regen') player.regen+=2;
     else if(key==='xp_gain') player.xpGainMul*=1.10;
     else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
   }
@@ -1534,7 +1511,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
   const boss = enemies.find(e=>e.type==='boss');
   if(!boss) return 140;
   if(boss.kind === 'sniper')   return 420;
-  if(boss.kind === 'defender') return 30; // Defender：球會累積，放寬上限
+  if(boss.kind === 'defender') return 30;
   return 260;
   }
 
@@ -1653,7 +1630,6 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
 function bossTick(e,dt){
   // ---------- Defender boss ----------
   if(e.kind === 'defender'){
-    // phase 只是顯示用（你也可以拿來加速丟球）
     const rr = e.hp/e.hpMax;
     const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
     if(newPhase!==e.phase){
@@ -1664,20 +1640,18 @@ function bossTick(e,dt){
     // stationary center-top
     e.x = W*0.5;
 
-    // 丟球：越後期越快一點（可調）
     const period =
       (e.phase===1 ? e.ballPeriod : (e.phase===2 ? e.ballPeriod*0.90 : e.ballPeriod*0.80));
 
     e.ballCd -= dt;
     if(e.ballCd <= 0){
-      // spawn 1 ball
       const aim = Math.atan2(player.y - e.y, player.x - e.x);
-      const jitter = rand(-0.50, 0.50); // 角度微擾，避免每顆都走同一路徑
+      const jitter = rand(-0.50, 0.50);
       const ang = aim + jitter;
 
-      const spd = 260 + state.stage*2.2; // 球速（可調）
-      const R = 18;                      // 球半徑（大顆）
-      const dmg = 22 + Math.floor(state.stage*0.35);
+      const spd = 260 + state.stage*3; // 球速
+      const R = 25;                      // 球半徑
+      const dmg = 40 + Math.floor(state.stage*0.35);
 
       // 這顆球：不離場、會反彈、會擋子彈
       eBullets.push({
@@ -1688,12 +1662,11 @@ function bossTick(e,dt){
         vx:Math.cos(ang)*spd,
         vy:Math.sin(ang)*spd,
         dmg,
-        hitCd: 0,              // 撞到玩家後的冷卻，避免連續判定秒殺
+        hitCd: 0,
       });
 
       addBurst(e.x, e.y+e.r+10, 10);
 
-      // 下一次丟球
       e.ballCd = period;
     }
     return;
@@ -1710,14 +1683,12 @@ function bossTick(e,dt){
     
       e.x = W*0.5;
     
-      // ✅ phase 越高越快；stage 也會微幅加速（有下限保護避免變成機關槍失控）
       const baseInterval = (e.phase===1 ? 0.050 : (e.phase===2 ? 0.044 : 0.038));
       const stageBoost = Math.max(0, state.stage - 31) * 0.00025;
       const interval = clamp(baseInterval - stageBoost, 0.026, baseInterval);
     
       e.snipeT = (e.snipeT ?? 0.20) - dt;
     
-      // dt 偶爾偏大時用 while 補射；同時受 enemyBulletCap() 保護
       let guard = 0;
       while(e.snipeT <= 0 && guard++ < 4){
         const ang = Math.atan2(player.y - e.y, player.x - e.x);
@@ -1873,12 +1844,11 @@ function bossTick(e,dt){
       });
       $panelRow.appendChild(btnRestart);
     
-      // ✅ 原本「留在這裡」→ 改成「查看狀態」
       const btnStats=document.createElement('button');
       btnStats.className='pill';
       btnStats.textContent='查看狀態';
       btnStats.addEventListener('click',()=>{
-        openStats(true); // 從 GameOver 進 Stats
+        openStats(true);
       });
       $panelRow.appendChild(btnStats);
     }
@@ -1892,7 +1862,6 @@ function bossTick(e,dt){
       const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
       localStorage.setItem(bestKey,String(best));
     
-      // ✅ 存起來，Stats 關閉時要回來用
       gameOverSummary = {
         score: state.score,
         coins: state.coins,
@@ -1970,13 +1939,11 @@ function bossTick(e,dt){
     return Math.round(((now/base)-1)*1000)/10;
   }
   function openStats(fromGameOver=false){
-    // ✅ 修正：addEventListener 會把 event 物件傳進來，不能拿來當 boolean
     const _fromGameOver = (fromGameOver === true);
   
     if(lockedLandscape) return;
     if(mode==='shop') return;
-  
-    // ✅ 記錄是否從 GameOver 進來
+
     statsFromGameOver = _fromGameOver || (mode === 'gameover');
   
     mode='stats';
@@ -2045,7 +2012,6 @@ function bossTick(e,dt){
   }
   
   function closeStats(){
-    // ✅ 從 GameOver 進來 → 關閉時回 GameOver
     if(statsFromGameOver){
       mode='gameover';
       paused=true;
@@ -2054,7 +2020,6 @@ function bossTick(e,dt){
       return;
     }
   
-    // 原本：回到遊戲
     overlay.classList.remove('show');
     $panel.classList.remove('isStats');
     mode='play';
