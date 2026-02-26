@@ -1117,11 +1117,11 @@ const AI = {
         this.jukeTargetX = clamp(player.x + this.jukeDir * (W * 0.32), safeL, safeR);
         this.jukeT = 0.45;
       }
-    }
-    // --- Sniper 預警：快開槍就先開無敵（避免第一發直接下班） ---
-    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
-    if(sniperBoss && canUseSkill('invuln') && (sniperBoss.snipeCd ?? 999) < 0.09){
-      useInvuln();
+    
+      // --- Sniper 預警：快開槍就先開無敵（避免第一發直接下班） ---
+      if(canUseSkill('invuln') && pre < 0.09){
+        useInvuln();
+      }
     }
     // 目標：優先 Boss；否則 y 最大的怪
     let aimX = W * 0.5;
