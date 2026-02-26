@@ -672,7 +672,7 @@ function spawnBoss(){
 
   // ===== Defender Boss (51~80) =====
   if(isDefender){
-    const hpD = hpBase * 9;
+    const hpD = hpBase * 7.5;
     const boss = {
       type:'boss',
       kind:'defender',
@@ -1649,9 +1649,9 @@ function bossTick(e,dt){
       const jitter = rand(-0.50, 0.50);
       const ang = aim + jitter;
 
-      const spd = 260 + state.stage*5; // 球速
+      const spd = 260 + state.stage*3.4; // 球速
       const R = 18;                      // 球半徑
-      const dmg = 40 + Math.floor(state.stage*0.35);
+      const dmg = 24 + Math.floor(state.stage*0.35);
 
       // 這顆球：不離場、會反彈、會擋子彈
       eBullets.push({
