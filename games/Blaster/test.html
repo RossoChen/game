@@ -931,7 +931,9 @@ function spawnBoss(){
 // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
 const AI = {
   enabled: false,
-
+  jukeT: 0,
+  jukeTargetX: 0,
+  jukeDir: 1,
   // shop
   autoShop: true,
   nextShopAtMs: 0,
@@ -1096,6 +1098,26 @@ const AI = {
     const py = player.y;
     const safeL = player.r + 10;
     const safeR = W - player.r - 10;
+    // --- Sniper juke：開槍前先左右突刺，別站著等死 ---
+    this.jukeT = Math.max(0, (this.jukeT||0) - dt);
+    
+    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+    if(sniperBoss){
+      const pre = (sniperBoss.snipeCd ?? 999);
+    
+      // 0.16s 內要開槍：觸發一次 juke（持續 0.45s）
+      if(pre < 0.16 && this.jukeT <= 0){
+        const roomL = player.x - safeL;
+        const roomR = safeR - player.x;
+    
+        // 優先往空間大的一側閃，偶爾反向避免被鎖定節奏抓到
+        this.jukeDir = (roomR > roomL) ? +1 : -1;
+        if(Math.random() < 0.18) this.jukeDir *= -1;
+    
+        this.jukeTargetX = clamp(player.x + this.jukeDir * (W * 0.32), safeL, safeR);
+        this.jukeT = 0.45;
+      }
+    }
     // --- Sniper 預警：快開槍就先開無敵（避免第一發直接下班） ---
     const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
     if(sniperBoss && canUseSkill('invuln') && (sniperBoss.snipeCd ?? 999) < 0.09){
@@ -1120,13 +1142,24 @@ const AI = {
 
     for(const b of eBullets){
       if(!b?.alive) continue;
-      if(b.beam) continue;
+    
       const vy = b.vy || 0;
       if(vy <= 1) continue;
+    
       const tHit = (py - b.y) / vy;
       if(tHit < 0 || tHit > horizon) continue;
-
+    
       const xHit = b.x + (b.vx||0) * tHit;
+    
+      // beam：把它當成「寬走廊」危險帶，權重拉高（強迫 AI 先閃）
+      if(b.beam){
+        const rad = (b.r||5) + player.r + 14;
+        const w = (6 / (0.05 + tHit));       // 更重的權重
+        intervals.push([xHit - rad, xHit + rad, w * 6]);
+        continue;
+      }
+    
+      // 一般子彈：照舊
       const rad  = (b.r||4) + player.r + margin;
       const w    = 1 / (0.15 + tHit);
       intervals.push([xHit - rad, xHit + rad, w]);
@@ -1188,7 +1221,15 @@ const AI = {
         }
       }
 
-      score -= Math.abs(x-aimX) * 0.65;
+      let aimW = sniperBoss ? 0.22 : 0.65;  // Sniper 在場：少追輸出，多保命
+      if(this.jukeT > 0) aimW = 0.0;        // juke 期間：不對齊，先閃
+      
+      score -= Math.abs(x-aimX) * aimW;
+      
+      if(this.jukeT > 0){
+        // 強制往 jukeTargetX 靠攏（做出「突然變向」）
+        score += 9000 - Math.abs(x - this.jukeTargetX) * 80;
+      }
 
       const edge = Math.min(x-safeL, safeR-x);
       score += edge * 0.05;
