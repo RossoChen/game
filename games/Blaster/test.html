@@ -938,10 +938,10 @@ function spawnBoss(){
 const AI = {
   enabled: false,
 
-  // ✅ Sniper 專用：常態左右走位（不等開槍才動）
-  sniperStrafeCd: 0,
-  sniperStrafeX: 0,
-  sniperStrafeDir: 1,
+  // ✅ Sniper：仿你手動 SOP
+  // 進場先瞬移到最左 -> 慢慢往右掃 -> 到最右瞬移回最左
+  sniperSweepX: 0,
+  sniperForceLeft: true,
 
   // shop
   autoShop: true,
@@ -958,9 +958,9 @@ const AI = {
     this.shopLock = false;
     this.nextShopAtMs = 0;
 
-    this.sniperStrafeCd = 0;
-    this.sniperStrafeX = player.x;
-    this.sniperStrafeDir = 1;
+    // reset sniper SOP
+    this.sniperSweepX = player.x;
+    this.sniperForceLeft = true;
   },
 
   // ---------- 升級自動選 ----------
@@ -1014,20 +1014,13 @@ const AI = {
 
     const scoreId = (id)=>{
       switch(id){
-        case 'magnetRun':
-          return shopState.magnetRun ? -1e9 : 900;
-        case 'spreadCapUp':
-          return spreadBlocked ? 280 : 140;
-        case 'invulnCdDown':
-          return (wantSurvive ? 360 : 220);
-        case 'invulnDurUp':
-          return (wantSurvive ? 240 : 150);
-        case 'burstCdDown':
-          return (ctx?.hasBoss ? 240 : 160);
-        case 'burstDurUp':
-          return (ctx?.hasBoss ? 200 : 130);
-        default:
-          return 0;
+        case 'magnetRun':   return shopState.magnetRun ? -1e9 : 900;
+        case 'spreadCapUp': return spreadBlocked ? 280 : 140;
+        case 'invulnCdDown':return (wantSurvive ? 360 : 220);
+        case 'invulnDurUp': return (wantSurvive ? 240 : 150);
+        case 'burstCdDown': return (ctx?.hasBoss ? 240 : 160);
+        case 'burstDurUp':  return (ctx?.hasBoss ? 200 : 130);
+        default: return 0;
       }
     };
 
@@ -1109,23 +1102,6 @@ const AI = {
     // ✅ 目前發數（永久 + 臨時 buff）
     const shotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0)));
 
-    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
-
-    // ✅ Sniper：永遠持續左右移動（但仍以避彈為最高優先）
-    if(sniperBoss){
-      this.sniperStrafeCd = Math.max(0, (this.sniperStrafeCd||0) - dt);
-      if((this.sniperStrafeCd||0) <= 0){
-        const swing = W * 0.40;
-        this.sniperStrafeDir = (this.sniperStrafeDir||1) * -1;
-        if(Math.random() < 0.14) this.sniperStrafeDir *= -1;
-        this.sniperStrafeX = clamp(player.x + this.sniperStrafeDir * swing, safeL, safeR);
-        this.sniperStrafeCd = 0.32 + Math.random()*0.22;
-      }
-    }else{
-      this.sniperStrafeCd = 0;
-      this.sniperStrafeX = player.x;
-    }
-
     // 目標：優先 Boss；否則 y 最大的怪
     let target = null;
     if(enemies.length){
@@ -1134,14 +1110,15 @@ const AI = {
         for(const e of enemies){ if(!target || e.y > target.y) target = e; }
       }
     }
+
+    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
     const aimBaseX = target ? target.x : (W*0.5);
 
     // ✅ 散射=1（兩發）例外：不要對齊敵人中心，改成對齊「左右偏移命中線」
-    // 兩發時 vx=±240，水平偏移 ≈ dy*(240/bulletSpeed)
     let aimTargets = [aimBaseX];
     if(target && shotsLive === 2){
       const dy = Math.max(140, player.y - target.y);
-      const bulletVx = 240;
+      const bulletVx = 240; // shotVXPattern(2) 的 ±240
       const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
       aimTargets = [
         clamp(aimBaseX - off, safeL, safeR),
@@ -1149,10 +1126,40 @@ const AI = {
       ];
     }
 
-    // 預測子彈穿過玩家 y 的危險區
-    const horizon = 1.25;
+    // ===== Sniper SOP：瞬到最左 -> 往右掃 -> 右側瞬回 =====
+    let sniperMode = false;
+    let sniperSweepTargetX = null;
+    let sniperWantTeleport = false;
+
+    if(sniperBoss){
+      sniperMode = true;
+      const leftX  = safeL + 2;
+      const rightX = safeR - 2;
+
+      // 第一次進 Sniper 場：先瞬移到最左
+      if(this.sniperForceLeft){
+        this.sniperSweepX = leftX;
+        setPadX(this.sniperSweepX / W);  // ✅ 瞬移（你保留的操作）
+        this.sniperForceLeft = false;
+      }
+
+      // 慢慢往右掃
+      const baseSweep = 240; // px/s（你覺得太慢/太快都可以改這個）
+      this.sniperSweepX = clamp(this.sniperSweepX + baseSweep * dt, leftX, rightX);
+
+      sniperSweepTargetX = this.sniperSweepX;
+      sniperWantTeleport = (this.sniperSweepX >= rightX - 8);
+    }else{
+      // 離開 Sniper 戰：重置，下一次遇到 Sniper 再先瞬左
+      this.sniperForceLeft = true;
+      this.sniperSweepX = player.x;
+    }
+
+    // ---------- 危險區預測 ----------
+    const horizon = sniperBoss ? 1.65 : 1.25;
     const margin  = 6;
     const intervals = [];
+    let minBeamHit = 999;
 
     for(const b of eBullets){
       if(!b?.alive) continue;
@@ -1165,10 +1172,18 @@ const AI = {
 
       const xHit = b.x + (b.vx||0) * tHit;
 
+      // beam：把 len 的投影算進去，避免「看起來安全其實擦到」
       if(b.beam){
-        const rad = (b.r||5) + player.r + 14;
-        const w = (6 / (0.05 + tHit));
-        intervals.push([xHit - rad, xHit + rad, w * 6]);
+        const ang = Math.atan2(vy, (b.vx||0));
+        const L = b.len || 28;
+        const R = b.r || 5;
+        const xHalf = Math.abs(Math.cos(ang)) * (L/2);
+
+        const rad = player.r + R + margin + 12 + xHalf;
+        const w = (9 / (0.05 + tHit));
+        intervals.push([xHit - rad, xHit + rad, w * 8]);
+
+        if(tHit < minBeamHit) minBeamHit = tHit;
         continue;
       }
 
@@ -1177,7 +1192,7 @@ const AI = {
       intervals.push([xHit - rad, xHit + rad, w]);
     }
 
-    // beams：預估撞線就開無敵（你原本的保命邏輯保留）
+    // beams：預估撞線就開無敵（保留你原本的保命邏輯）
     for(const b of eBullets){
       if(!b?.alive || !b.beam) continue;
 
@@ -1210,8 +1225,8 @@ const AI = {
       }
     }
 
-    // 候選站位掃描：避彈（最高優先） + 對齊輸出（常態）
-    const candidates = 23;
+    // ---------- 候選站位掃描：避彈(核彈級) + 對齊輸出 ----------
+    const candidates = sniperBoss ? 29 : 23;
     let bestX = player.x;
     let bestScore = -1e18;
 
@@ -1219,7 +1234,7 @@ const AI = {
       const x = safeL + (safeR-safeL)*(i/(candidates-1));
       let score = 0;
 
-      // 避彈：權重極大，確保不會為了輸出去吃子彈
+      // 避彈：權重極大
       for(const [l,r,w] of intervals){
         if(x>=l && x<=r){
           score -= 1e6 * w;
@@ -1229,29 +1244,34 @@ const AI = {
         }
       }
 
-      // ✅ 對齊輸出：常態要求「貼著目標」；Sniper 降低對齊權重（因為必須移動）
-      let aimW = sniperBoss ? 1.0 : 3.4;
+      // 對齊輸出：常態「要貼目標」
+      let aimW = sniperBoss ? 1.2 : 3.4;
 
-      // ✅ 散射=1（兩發）用偏移命中線，但仍允許追擊（不是對齊敵人中心）
-      if(shotsLive === 2) aimW = sniperBoss ? 0.7 : 2.4;
-
-      // 散射很高時不用那麼死命對齊，但仍保有對齊傾向（符合你「基本都要對齊」的 KPI）
-      if(!sniperBoss && shotsLive >= 5) aimW = 2.2;
-      if(!sniperBoss && shotsLive >= 7) aimW = 1.8;
+      // 兩發（散射=1）例外：用偏移命中線
+      if(shotsLive === 2) aimW = sniperBoss ? 0.9 : 2.4;
 
       const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
       score -= aimDist * aimW;
 
-      // ✅ Sniper：在安全前提下強迫持續變位（左右走位 KPI）
-      if(sniperBoss){
-        const tx = (this.sniperStrafeX || player.x);
-        score += 4200 - Math.abs(x - tx) * 42;
+      // Sniper：在安全前提下，把站位推向「掃過目標」
+      if(sniperMode && typeof sniperSweepTargetX === 'number'){
+        score += 5200 - Math.abs(x - sniperSweepTargetX) * 55;
       }
 
       const edge = Math.min(x-safeL, safeR-x);
       score += edge * 0.05;
 
       if(score > bestScore){ bestScore = score; bestX = x; }
+    }
+
+    // ✅ Sniper：到最右 或 安全分數太爛 -> 直接瞬移回最左（你的核心操作）
+    if(sniperMode){
+      const leftX = safeL + 2;
+      const scoreBad = (bestScore < -3.6e5);
+      if(sniperWantTeleport || scoreBad){
+        setPadX(leftX / W);       // ✅ 瞬移
+        this.sniperSweepX = leftX; // 重置掃過起點
+      }
     }
 
     // 走位（限速）
@@ -1261,11 +1281,16 @@ const AI = {
     const step = clamp(dx, -maxStep, maxStep);
     setPadX((player.x + step) / W);
 
-    // 技能決策（保留你原本的保命邏輯）
+    // ---------- 技能決策 ----------
     const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
     const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
     const bulletPressure = intervals.length;
     const boss = enemies.find(e=>e.type==='boss');
+
+    // Sniper：beam 快到就提早開（避免 32 關反應來不及）
+    if(canUseSkill('invuln') && sniperBoss){
+      if(minBeamHit < 0.34 || bestScore < -3.2e5) useInvuln();
+    }
 
     if(canUseSkill('invuln')){
       const imminent = (bestScore < -5e5);
