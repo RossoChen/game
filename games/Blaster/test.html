@@ -217,6 +217,7 @@ canvas{width:100%;height:100%;display:block}
 
       <div class="hpRowRight">
         <span class="pill" id="hudShield">🛡 +0</span>
+        <button class="pill" id="btnAI" title="自動遊玩（測試用，可拔掉）">🤖 AI: OFF</button>
         <button class="pill" id="btnShop">商店</button>
       </div>
     </div>
@@ -339,7 +340,8 @@ canvas{width:100%;height:100%;display:block}
 
   const $hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
         $toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack'),
-        $btnShop=document.getElementById('btnShop');
+        $btnShop=document.getElementById('btnShop'),
+        $btnAI=document.getElementById('btnAI');
 
   // overlay refs
   const overlay=document.getElementById('overlay');
@@ -920,7 +922,290 @@ function spawnBoss(){
 
   let paused=false;
   let mode='play'; // play | levelup | shop | stats | gameover
+  // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
+  const AI = {
+    enabled: false,
+  
+    toggle(on){
+      this.enabled = (on==null) ? !this.enabled : !!on;
+      if($btnAI) $btnAI.textContent = this.enabled ? '🤖 AI: ON' : '🤖 AI: OFF';
+      // 讓 AI 接管時別被觸控拖曳狀態卡住
+      padActive = false;
+    },
+  
+    // 升級自動選擇：回傳 picks 裡面「最值得投資」的那個
+    pickUpgrade(picks){
+      // 企業級決策：先活下來，再拚輸出（不然 KPI 直接歸零）
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+  
+      const scoreOf = (k)=>{
+        let s = 0;
+  
+        // 基礎優先序（可依你手感調）
+        if(k==='spread_perm')      s = 95;
+        else if(k==='pierce_perm') s = 78;
+        else if(k==='dmg')         s = 72;
+        else if(k==='firerate')    s = 68;
+        else if(k==='shield_cap')  s = 60;
+        else if(k==='hp')          s = 58;
+        else if(k==='regen')       s = 38;
+        else if(k==='bullet_size') s = 28;
+        else if(k==='xp_gain')     s = 18;
+  
+        // 動態調權：血/盾太低就先補命
+        if(hpPct < 0.35){
+          if(k==='hp') s += 55;
+          if(k==='shield_cap') s += 45;
+          if(k==='regen') s += 18;
+        }
+        if(shieldPct < 0.20){
+          if(k==='shield_cap') s += 25;
+        }
+  
+        // 已接近上限就別再浪費投資
+        if(k==='spread_perm' && player.spread_perm >= player.spreadCap) s = -1e9;
+        if(k==='pierce_perm' && player.pierce_perm >= PIERCE_CAP) s = -1e9;
+        if(k==='bullet_size' && player.bulletR >= BULLET_R_UPG_CAP) s = -1e9;
+  
+        return s;
+      };
+  
+      let best = picks[0];
+      let bestS = -1e18;
+      for(const u of picks){
+        const sc = scoreOf(u.key);
+        if(sc > bestS){ bestS = sc; best = u; }
+      }
+      return best;
+    },
+  pickShopItem(items, ctx){
+  const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+  const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
 
+  const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01); // 升級可能卡住散射上限
+  const wantSurvive = (hpPct < 0.45) || (shieldPct < 0.20) || (ctx.bulletPressure >= 6);
+
+  const scoreId = (id)=>{
+    // 核心策略：先把「長期 ROI」拉起來，再補「生存 SLA」
+    switch(id){
+      case 'magnetRun':
+        // 有錢直接上：本局永久磁鐵=體驗大升級（而且省操作）
+        return shopState.magnetRun ? -1e9 : 900;
+
+      case 'spreadCapUp':
+        // 散射上限會卡到 levelup 的 spread_perm，卡住就優先解鎖
+        return spreadBlocked ? 280 : 140;
+
+      case 'invulnCdDown':
+        return (wantSurvive ? 360 : 220);
+
+      case 'invulnDurUp':
+        return (wantSurvive ? 240 : 150);
+
+      case 'burstCdDown':
+        return (ctx.hasBoss ? 240 : 160);
+
+      case 'burstDurUp':
+        return (ctx.hasBoss ? 200 : 130);
+
+      default:
+        return 0;
+    }
+  };
+
+  let best=null, bestS=-1e18;
+  for(const it of items){
+    if(!it) continue;
+    const affordable = state.coins >= it.cost;
+    const allowed = it.canBuy ? it.canBuy() : true;
+    if(!affordable || !allowed) continue;
+
+    // 價格越高，分數要更高才值得（避免當盤子）
+    const pricePenalty = it.cost * 0.06;
+
+    const s = scoreId(it.id) - pricePenalty;
+    if(s > bestS){ bestS=s; best=it; }
+  }
+  return best;
+},
+
+    shopTick(dt, ctx){
+      if(!this.autoShop) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+    
+      this.shopThinkCd = Math.max(0, (this.shopThinkCd||0) - dt);
+      if(this.shopThinkCd > 0) return;
+    
+      // 風險控管：彈幕太密 or 站位分數很爛 -> 先別購物，活著才有採購權
+      if(ctx.bulletPressure >= 8) { this.shopThinkCd = 0.6; return; }
+      if(ctx.bestScore != null && ctx.bestScore < -4e5) { this.shopThinkCd = 0.6; return; }
+    
+      // 只要有一個買得起的再進採購迴圈（避免每幀都在想要不要買）
+      let bought = [];
+      for(let loop=0; loop<6; loop++){
+        const items = shopItems();
+        const pick = this.pickShopItem(items, ctx);
+        if(!pick) break;
+    
+        // 後台下單：不開 UI，直接扣款+執行 buy()
+        state.coins -= pick.cost;
+        try{ pick.buy && pick.buy(); }catch(_){ /* ignore */ }
+        bought.push(pick.name);
+    
+        // 買完一次立刻重算 items（價格會成長、canBuy 會變）
+      }
+    
+      if(bought.length){
+        toastMsg(`🛒 自動採購：${bought.slice(0,2).join(' / ')}${bought.length>2?'…':''}`, 0.55);
+      }
+    
+      // 節流：買完休息一下，避免變成「AI 逛街模式」
+      this.shopThinkCd = bought.length ? 1.2 : 0.9;
+    },
+    // 每幀決策：走位 + 技能
+    tick(dt){
+      if(!this.enabled) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+  
+      const py = player.y;
+      const safeL = player.r + 10;
+      const safeR = W - player.r - 10;
+  
+      // 目標：優先打 Boss；沒有就打最靠近玩家的怪（y 最大）
+      let aimX = W * 0.5;
+      if(enemies.length){
+        const boss = enemies.find(e=>e.type==='boss');
+        if(boss) aimX = boss.x;
+        else{
+          let m = null;
+          for(const e of enemies){ if(!m || e.y > m.y) m = e; }
+          if(m) aimX = m.x;
+        }
+      }
+  
+      // 估算「未來一小段時間」子彈會穿過玩家 y 的危險區
+      const horizon = 1.25;   // 秒
+      const margin  = 6;      // 額外安全距
+      const intervals = [];   // [l, r, weight]
+  
+      for(const b of eBullets){
+        if(!b?.alive) continue;
+        if(b.beam) continue;
+        const vy = b.vy || 0;
+        if(vy <= 1) continue; // 沒往下就先不管
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > horizon) continue;
+  
+        const xHit = b.x + (b.vx||0) * tHit;
+        const rad  = (b.r||4) + player.r + margin;
+        const w    = 1 / (0.15 + tHit); // 越快撞到權重越大
+        intervals.push([xHit - rad, xHit + rad, w]);
+      }
+  
+      // beams：粗略看最近 0.45s 是否會貼到玩家（急就直接開無敵）
+      for(const b of eBullets){
+        if(!b?.alive || !b.beam) continue;
+        const look = 0.45;
+        const steps = 3;
+        let bestD = 1e18;
+  
+        for(let i=0;i<=steps;i++){
+          const tt = look*(i/steps);
+          const bx = b.x + (b.vx||0)*tt;
+          const by = b.y + (b.vy||0)*tt;
+  
+          const ang = Math.atan2(b.vy||0, b.vx||0);
+          const L = b.len || 28;
+          const Rb = b.r || 5;
+  
+          const dx = Math.cos(ang)*(L/2), dy = Math.sin(ang)*(L/2);
+          const ax = bx - dx, ay = by - dy;
+          const cx = bx + dx, cy = by + dy;
+  
+          const vx2 = cx-ax, vy2 = cy-ay;
+          const wx = player.x-ax, wy = py-ay;
+          let tproj = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
+          tproj = clamp(tproj, 0, 1);
+          const px2 = ax + tproj*vx2, py2 = ay + tproj*vy2;
+  
+          const d = dist2(player.x, py, px2, py2);
+          if(d < bestD) bestD = d;
+        }
+  
+        const rad = player.r + (b.r||5) + 4;
+        if(bestD < rad*rad){
+          if(canUseSkill('invuln')) useInvuln();
+        }
+      }
+  
+      // 候選位置掃描：挑一個「不在危險區」且「靠近目標怪」的位置
+      const candidates = 23;
+      let bestX = player.x;
+      let bestScore = -1e18;
+  
+      for(let i=0;i<candidates;i++){
+        const x = safeL + (safeR-safeL)*(i/(candidates-1));
+        let score = 0;
+  
+        // 危險區：在區內直接大扣分；離區越近也扣
+        for(const [l,r,w] of intervals){
+          if(x>=l && x<=r){
+            score -= 1e6 * w; // 硬拒絕：別站在撞點上
+          }else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * 3200 * w;
+          }
+        }
+  
+        // 對齊目標怪（比較好收頭）
+        score -= Math.abs(x-aimX) * 0.65;
+  
+        // 不要太貼牆（留操作空間）
+        const edge = Math.min(x-safeL, safeR-x);
+        score += edge * 0.05;
+  
+        if(score > bestScore){ bestScore = score; bestX = x; }
+      }
+  
+      // 走位：做速度上限，避免抖動
+      const maxStep = player.moveSpeed * dt * 0.95;
+      const nx = clamp(bestX, safeL, safeR);
+      const dx = nx - player.x;
+      const step = clamp(dx, -maxStep, maxStep);
+      setPadX((player.x + step) / W);
+  
+      // 技能決策
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+      const bulletPressure = intervals.length;
+      const boss = enemies.find(e=>e.type==='boss');
+  
+      if(canUseSkill('invuln')){
+        const imminent = (bestScore < -5e5); // 幾乎肯定在撞點附近
+        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+        const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
+        if(imminent || fragile || panic) useInvuln();
+      }
+  
+      if(canUseSkill('burst')){
+        const manyEnemies = enemies.length >= 10;
+        const safeEnough  = (bestScore > -2e5) && (buffs.invulnT<=0);
+        if(safeEnough && (boss || manyEnemies)) useBurst();
+      }
+      // ✅ 就放這裡：tick() 的最後一段（結尾大括號前）
+      this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
+    }
+  };
+  
+  if($btnAI){
+    $btnAI.addEventListener('click', ()=>AI.toggle());
+    $btnAI.textContent = '🤖 AI: OFF';
+  }
+  // 鍵盤備援：B 切換（桌機測試方便）
+  window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
+  // === AUTOPLAY AI (EASY-REMOVE) END ===
+  
   function openShop(){
     if(mode!=='play') return;
     if(lockedLandscape) return;
@@ -1005,7 +1290,17 @@ function spawnBoss(){
       if(u && !picks.some(p=>p.key===u.key) && canPickUpgrade(u.key)) picks.push(u);
       else break;
     }
-
+    // AI 自動選升級（測試用）
+    if(AI.enabled){
+      const best = AI.pickUpgrade(picks);
+      applyUpgrade(best.key);
+      overlay.classList.remove('show');
+      mode='play';
+      paused=false;
+      $toast.classList.remove('show');
+      lastT=performance.now();
+      return;
+    }
     for(const u of picks){
       const el=document.createElement('div');
       el.className='opt';
@@ -1549,6 +1844,7 @@ function bossTick(e,dt){
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
+    AI.tick(dt);
     player.x=clamp(player.x,player.r+8,W-player.r-8);
     shoot(dt);
 
