@@ -930,6 +930,9 @@ function spawnBoss(){
   let mode='play'; // play | levelup | shop | stats | gameover
   // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
   const AI = {
+    autoShop: true,
+    nextShopAtMs: 0,
+    shopLock: false,
     enabled: false,
   
     toggle(on){
@@ -990,18 +993,15 @@ function spawnBoss(){
   const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
   const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
 
-  const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01); // 升級可能卡住散射上限
+  const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01);
   const wantSurvive = (hpPct < 0.45) || (shieldPct < 0.20) || (ctx.bulletPressure >= 6);
 
   const scoreId = (id)=>{
-    // 核心策略：先把「長期 ROI」拉起來，再補「生存 SLA」
     switch(id){
       case 'magnetRun':
-        // 有錢直接上：本局永久磁鐵=體驗大升級（而且省操作）
         return shopState.magnetRun ? -1e9 : 900;
 
       case 'spreadCapUp':
-        // 散射上限會卡到 levelup 的 spread_perm，卡住就優先解鎖
         return spreadBlocked ? 280 : 140;
 
       case 'invulnCdDown':
@@ -1038,58 +1038,58 @@ function spawnBoss(){
 },
 
     shopTick(dt, ctx){
-      if(!this.autoShop) return;
+      if(!this.autoShop || !this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
     
-      this.shopThinkCd = Math.max(0, (this.shopThinkCd||0) - dt);
-      if(this.shopThinkCd > 0) return;
+      // 有錢才買（商店最便宜 300）
+      if(state.coins < 300) return;
     
-      // 風險控管：彈幕太密 or 站位分數很爛 -> 先別購物，活著才有採購權
-      if(ctx.bulletPressure >= 8) { this.shopThinkCd = 0.6; return; }
-      if(ctx.bestScore != null && ctx.bestScore < -4e5) { this.shopThinkCd = 0.6; return; }
+      const now = performance.now();
+      if(this.shopLock) return;
+      if(now < (this.nextShopAtMs||0)) return;
     
-      // 只要有一個買得起的再進採購迴圈（避免每幀都在想要不要買）
-      let bought = [];
+      // 節流：避免一直開關商店
+      this.shopLock = true;
+      this.nextShopAtMs = now + 6500; // 每 6.5 秒最多採購一次（想更常買就改小）
+    
+      // 開商店（會 paused=true）
+      openShop();
+    
+      // paused 狀態下用 timeout 完成採購
+      setTimeout(()=>{
+        this.autoBuyInShop(ctx);
+      }, 60);
+    },
+    
+    autoBuyInShop(ctx){
+      if(mode!=='shop' || !paused) { this.shopLock = false; return; }
+    
+      const safeCtx = ctx || { hasBoss:false, bulletPressure:0, bestScore:0 };
+      const bought = [];
+    
       for(let loop=0; loop<6; loop++){
         const items = shopItems();
-        const pick = this.pickShopItem(items, ctx);
+        const pick = this.pickShopItem(items, safeCtx);
         if(!pick) break;
+        if(state.coins < pick.cost) break;
+        if(pick.canBuy && !pick.canBuy()) break;
     
-        // 後台下單：不開 UI，直接扣款+執行 buy()
         state.coins -= pick.cost;
-        try{ pick.buy && pick.buy(); }catch(_){ /* ignore */ }
+        try{ pick.buy && pick.buy(); }catch(_){}
         bought.push(pick.name);
-    
-        // 買完一次立刻重算 items（價格會成長、canBuy 會變）
       }
     
-      if(bought.length){
-        toastMsg(`🛒 自動採購：${bought.slice(0,2).join(' / ')}${bought.length>2?'…':''}`, 0.55);
-      }
+      // 刷新商店畫面（你剛好看到時會是更新後的）
+      try{ renderShop(); }catch(_){}
     
-      // 節流：買完休息一下，避免變成「AI 逛街模式」
-      this.shopThinkCd = bought.length ? 1.2 : 0.9;
-    },
-    // 每幀決策：走位 + 技能
-    tick(dt){
-      if(!this.enabled) return;
-      if(mode!=='play' || paused || lockedLandscape) return;
-  
-      const py = player.y;
-      const safeL = player.r + 10;
-      const safeR = W - player.r - 10;
-  
-      // 目標：優先打 Boss；沒有就打最靠近玩家的怪（y 最大）
-      let aimX = W * 0.5;
-      if(enemies.length){
-        const boss = enemies.find(e=>e.type==='boss');
-        if(boss) aimX = boss.x;
-        else{
-          let m = null;
-          for(const e of enemies){ if(!m || e.y > m.y) m = e; }
-          if(m) aimX = m.x;
+      setTimeout(()=>{
+        closeShop();
+        if(bought.length){
+          toastMsg(`🛒 自動採購：${bought.slice(0,2).join(' / ')}${bought.length>2?'…':''}`, 0.55);
         }
-      }
+        this.shopLock = false;
+      }, 80);
+    },
   
       // 估算「未來一小段時間」子彈會穿過玩家 y 的危險區
       const horizon = 1.25;   // 秒
@@ -1200,14 +1200,16 @@ function spawnBoss(){
         const safeEnough  = (bestScore > -2e5) && (buffs.invulnT<=0);
         if(safeEnough && (boss || manyEnemies)) useBurst();
       }
-      // ✅ 就放這裡：tick() 的最後一段（結尾大括號前）
+      
+      // ✅ 新增：讓 AI 有機會自動開店買
       this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
-    }
+      }
   };
   
   if($btnAI){
     $btnAI.addEventListener('click', ()=>AI.toggle());
-    $btnAI.textContent = '🤖 AI: OFF';
+    if($aiState) $aiState.textContent = 'OFF';
+    $btnAI.setAttribute('aria-pressed', 'false');
   }
   // 鍵盤備援：B 切換（桌機測試方便）
   window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
