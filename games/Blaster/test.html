@@ -1096,7 +1096,11 @@ const AI = {
     const py = player.y;
     const safeL = player.r + 10;
     const safeR = W - player.r - 10;
-
+    // --- Sniper 預警：快開槍就先開無敵（避免第一發直接下班） ---
+    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+    if(sniperBoss && canUseSkill('invuln') && (sniperBoss.snipeCd ?? 999) < 0.09){
+      useInvuln();
+    }
     // 目標：優先 Boss；否則 y 最大的怪
     let aimX = W * 0.5;
     if(enemies.length){
@@ -1128,38 +1132,40 @@ const AI = {
       intervals.push([xHit - rad, xHit + rad, w]);
     }
 
-    // beams：接近就開無敵
+    // beams：用「預估到達玩家 y 的時間」來判斷（更不會太晚）
     for(const b of eBullets){
       if(!b?.alive || !b.beam) continue;
-      const look = 0.45;
-      const steps = 3;
-      let bestD = 1e18;
-
-      for(let i=0;i<=steps;i++){
-        const tt = look*(i/steps);
-        const bx = b.x + (b.vx||0)*tt;
-        const by = b.y + (b.vy||0)*tt;
-
-        const ang = Math.atan2(b.vy||0, b.vx||0);
-        const L = b.len || 28;
-        const Rb = b.r || 5;
-
-        const dx = Math.cos(ang)*(L/2), dy = Math.sin(ang)*(L/2);
-        const ax = bx - dx, ay = by - dy;
-        const cx = bx + dx, cy = by + dy;
-
-        const vx2 = cx-ax, vy2 = cy-ay;
-        const wx = player.x-ax, wy = py-ay;
-        let tproj = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
-        tproj = clamp(tproj, 0, 1);
-        const px2 = ax + tproj*vx2, py2 = ay + tproj*vy2;
-
-        const d = dist2(player.x, py, px2, py2);
-        if(d < bestD) bestD = d;
-      }
-
-      const rad = player.r + (b.r||5) + 4;
-      if(bestD < rad*rad){
+    
+      const vy = b.vy || 0;
+      if(vy <= 1) continue;
+    
+      // 預估 beam 中心到達玩家 y 的時間
+      const tHit = clamp((py - b.y) / vy, 0, 1.10);
+    
+      // 預估到達時 beam 的中心位置
+      const bx = b.x + (b.vx||0) * tHit;
+      const by = b.y + (b.vy||0) * tHit;
+    
+      const ang = Math.atan2(vy, (b.vx||0));
+      const L = b.len || 28;
+      const R = b.r || 5;
+    
+      // 預估時刻的 capsule 端點
+      const dx = Math.cos(ang) * (L/2);
+      const dy = Math.sin(ang) * (L/2);
+      const ax = bx - dx, ay = by - dy;
+      const cx2 = bx + dx, cy2 = by + dy;
+    
+      // 玩家點到線段最短距離
+      const px = player.x, py2 = py;
+      const vx2 = cx2-ax, vy2 = cy2-ay;
+      const wx = px-ax, wy = py2-ay;
+      let tt = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
+      tt = clamp(tt, 0, 1);
+      const hx = ax + tt*vx2, hy = ay + tt*vy2;
+    
+      const rad = player.r + R + 2;
+      if(dist2(px, py2, hx, hy) < rad*rad){
         if(canUseSkill('invuln')) useInvuln();
       }
     }
