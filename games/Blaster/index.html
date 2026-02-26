@@ -193,7 +193,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 456456
+  BUILD: 956856
 </div>
 <div class="app">
   <div class="hud">
@@ -1501,16 +1501,19 @@ function bossTick(e,dt){
     return Math.round(((now/base)-1)*1000)/10;
   }
   function openStats(fromGameOver=false){
+    // ✅ 修正：addEventListener 會把 event 物件傳進來，不能拿來當 boolean
+    const _fromGameOver = (fromGameOver === true);
+  
     if(lockedLandscape) return;
     if(mode==='shop') return;
   
     // ✅ 記錄是否從 GameOver 進來
-    statsFromGameOver = !!fromGameOver || (mode === 'gameover');
+    statsFromGameOver = _fromGameOver || (mode === 'gameover');
   
     mode='stats';
     paused=true;
+    
     $toast.classList.remove('show');
-  
     overlay.classList.add('show');
     $panel.classList.add('isStats');
     opts.innerHTML='';
@@ -1590,10 +1593,10 @@ function bossTick(e,dt){
     lastT=performance.now();
   }
 
-  $btnStats.addEventListener('click', openStats);
-  $btnStats.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(); }
-  });
+    $btnStats.addEventListener('click', ()=>openStats(false));
+    $btnStats.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(false); }
+    });
 
   // ---------- Update ----------
   function update(dt){
