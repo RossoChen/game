@@ -10,19 +10,39 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
+/* =========================
+   TOKENS / GLOBAL
+========================= */
 :root{
   color-scheme:dark;
+
+  /* safe area */
   --appSafeTop:24px; --appSafeR:0px; --appSafeB:0px; --appSafeL:0px;
   --appExtraTop:10px; --appExtraBottom:10px;
+
+  /* spacing */
   --gap:8px;
+
+  /* glass system */
+  --ui-fg: #e7eefc;
+  --glass-bd: rgba(255,255,255,.14);
+  --glass-bd2: rgba(255,255,255,.12);
+  --glass-bg: rgba(255,255,255,.06);
+  --glass-bg2: rgba(255,255,255,.05);
+  --glass-shadow: 0 18px 70px rgba(0,0,0,.55);
+
+  /* interaction */
+  --tap: transparent;
 }
+
 html,body{
-  height:100%;margin:0;background:#0b1220;color:#e7eefc;
+  height:100%;margin:0;background:#0b1220;color:var(--ui-fg);
   font-family:system-ui,"Noto Sans TC",sans-serif;
   -webkit-user-select:none;user-select:none;
   touch-action:manipulation;overflow:hidden
 }
 body{position:fixed;inset:0}
+
 .app{
   height:100svh;
   padding:
@@ -33,6 +53,28 @@ body{position:fixed;inset:0}
   display:flex;flex-direction:column;gap:var(--gap);box-sizing:border-box;
 }
 
+/* =========================
+   SHARED "GLASS" BASE
+   (one place to tune visuals)
+========================= */
+.pill, button.pill, .sbtn, .opt{
+  color:var(--ui-fg);
+  border:1px solid var(--glass-bd);
+  background:var(--glass-bg);
+  -webkit-tap-highlight-color:var(--tap);
+  white-space:nowrap;
+}
+.pill:active, button.pill:active, .sbtn:active, .opt:active{ transform:scale(.99); }
+button.pill:disabled, .sbtn[disabled]{ opacity:.45; cursor:default; }
+
+.lvx, .hpbar, .boardWrap, .touchpad{
+  border:1px solid var(--glass-bd2);
+  background:var(--glass-bg2);
+}
+
+/* =========================
+   HUD / BUTTONS
+========================= */
 .hud{display:flex;flex-direction:column;gap:var(--gap);min-height:0}
 .hudRow{
   display:flex;align-items:center;gap:var(--gap);
@@ -43,18 +85,11 @@ body{position:fixed;inset:0}
 
 .pill,button.pill{
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#e7eefc;
   padding:8px 10px;
   font-size:13px;
   line-height:1;
-  white-space:nowrap;
-  -webkit-tap-highlight-color:transparent
 }
 button.pill{cursor:pointer}
-button.pill:active{transform:scale(.99)}
-button.pill:disabled{opacity:.45;cursor:default}
 
 #hudStage{min-width:56px;padding:8px 8px;text-align:center}
 
@@ -64,10 +99,7 @@ button.pill:disabled{opacity:.45;cursor:default}
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:10px;
   padding:8px 10px;border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.05);
   flex-wrap:nowrap;
-  white-space:nowrap;
   overflow:hidden;
 }
 .lvx .label{
@@ -77,9 +109,7 @@ button.pill:disabled{opacity:.45;cursor:default}
 }
 .lvx .num{
   opacity:.85;font-variant-numeric:tabular-nums;
-  min-width:0;
-  text-align:right;
-  white-space:nowrap;
+  min-width:0;text-align:right;white-space:nowrap;
 }
 /* clickable stats */
 #btnStats{cursor:pointer}
@@ -91,8 +121,6 @@ button.pill:disabled{opacity:.45;cursor:default}
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:8px;
   padding:8px 10px;border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.05);
 }
 .hpbar .label{opacity:.85;font-weight:800;letter-spacing:.2px}
 .hpbar .track{
@@ -104,76 +132,100 @@ button.pill:disabled{opacity:.45;cursor:default}
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
 .hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
 
+/* =========================
+   MAIN / CANVAS
+========================= */
 .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
 .boardWrap{
   flex:1;min-height:0;
-  border-radius:18px;border:1px solid rgba(255,255,255,.12);
-  background:radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),rgba(255,255,255,.03);
+  border-radius:18px;
+  background:
+    radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),
+    rgba(255,255,255,.03);
   overflow:hidden;position:relative
 }
 canvas{width:100%;height:100%;display:block}
 
+/* =========================
+   TOUCHPAD
+========================= */
 .touchpad{
   flex:0 0 auto;
   height:max(42px,5.5svh);
   border-radius:16px;
-  border:1px solid rgba(255,255,255,.12);
-  background:rgba(255,255,255,.04);
+  background:rgba(255,255,255,.04); /* slightly different */
   position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent
 }
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
 
+/* =========================
+   SKILLS
+========================= */
 .skills{
   flex:0 0 auto;
-  display:flex;
-  gap:8px;
-  align-items:center;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none;
+  display:flex;gap:8px;align-items:center;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   padding-bottom:max(env(safe-area-inset-bottom), 6px);
 }
 .skills::-webkit-scrollbar{display:none}
+
 .sbtn{
   flex:0 0 auto;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.06);
-  color:#e7eefc;
-  -webkit-tap-highlight-color:transparent;
-  white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:14px;
 }
-.sbtn:active{transform:scale(.99)}
-.sbtn[disabled]{opacity:.45;cursor:default}
 .sbtn .ico{font-size:16px;line-height:1}
 .sbtn .name{font-weight:900;letter-spacing:.2px}
 .sbtn .cd{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
 
+/* =========================
+   OVERLAY / PANEL
+========================= */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .overlay.show{display:flex}
-.panel{width:min(720px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.14);background:rgba(15,22,40,.92);padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55);max-height:calc(100svh - 32px);overflow:auto}
+.panel{
+  width:min(720px,92vw);
+  border-radius:18px;border:1px solid var(--glass-bd);
+  background:rgba(15,22,40,.92);
+  padding:16px;
+  box-shadow:var(--glass-shadow);
+  max-height:calc(100svh - 32px);
+  overflow:auto
+}
 .panel h2{margin:0 0 10px;font-size:18px;letter-spacing:.2px}
 .opts{display:grid;grid-template-columns:1fr;gap:10px}
 @media (min-width:720px){.opts{grid-template-columns:1fr 1fr 1fr}}
-.opt{border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);padding:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.opt:active{transform:scale(.99)}
-.opt .t{font-weight:900;margin-bottom:6px}.opt .d{opacity:.78;font-size:13px;line-height:1.4}
-.panel .sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+
+.opt{
+  border-radius:16px;
+  padding:14px;
+  cursor:pointer;
+}
+.opt .t{font-weight:900;margin-bottom:6px}
+.opt .d{opacity:.78;font-size:13px;line-height:1.4}
+
+.panel .sub{
+  opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px;
+  white-space:normal;overflow-wrap:anywhere;word-break:break-word
+}
 .panel .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .panel .row .pill{padding:10px 12px}
 .panel.isStats .sub{font-size:12px;line-height:1.35}
 .panel.isStats .opts{gap:8px}
 .panel.isStats .opt{padding:12px}
 
-.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none}
+.toast{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  padding:10px 12px;border-radius:999px;border:1px solid var(--glass-bd);
+  background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none
+}
 .toast.show{display:block}
 
+/* =========================
+   ORIENTATION LOCK
+========================= */
 .rotateLock{
   position:fixed;inset:0;z-index:200;
   display:none;align-items:center;justify-content:center;
@@ -182,9 +234,9 @@ canvas{width:100%;height:100%;display:block}
 }
 .rotateLock .card{
   width:min(520px,92vw);
-  border-radius:18px;border:1px solid rgba(255,255,255,.14);
+  border-radius:18px;border:1px solid var(--glass-bd);
   background:rgba(15,22,40,.92);
-  padding:16px;box-shadow:0 18px 70px rgba(0,0,0,.55)
+  padding:16px;box-shadow:var(--glass-shadow)
 }
 .rotateLock .title{font-weight:900;font-size:18px;margin-bottom:8px}
 .rotateLock .desc{opacity:.85;line-height:1.45}
@@ -193,8 +245,9 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 改回
+  BUILD: dedup-all
 </div>
+
 <div class="app">
   <div class="hud">
     <div class="hudRow">
@@ -237,8 +290,7 @@ canvas{width:100%;height:100%;display:block}
     <div class="skills" id="skills">
       <button class="sbtn" id="btnBurst"><span class="ico">🔥</span><span class="name">爆發</span><span class="cd" id="cdBurst">Ready</span></button>
       <button class="sbtn" id="btnInvuln"><span class="ico">✨</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
-    
-      <!-- AI toggle moved here -->
+
       <button class="sbtn" id="btnAI" title="自動遊玩（測試用，可拔掉）" aria-pressed="false">
         <span class="ico">🤖</span><span class="name">AI</span><span class="cd" id="aiState">OFF</span>
       </button>
@@ -273,14 +325,12 @@ canvas{width:100%;height:100%;display:block}
     const isLR = (side === 'left' || side === 'right');
     d.style.cssText =
       `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;` +
-      (isLR
-        ? `width:env(safe-area-inset-${side});height:0;`
-        : `height:env(safe-area-inset-${side});width:0;`);
+      (isLR ? `width:env(safe-area-inset-${side});height:0;`
+            : `height:env(safe-area-inset-${side});width:0;`);
     document.body.appendChild(d);
     const r = d.getBoundingClientRect();
     d.remove();
-    const px = isLR ? r.width : r.height;
-    return px || 0;
+    return (isLR ? r.width : r.height) || 0;
   }
   function isDynamicIslandSize(){
     const w=Math.min(screen.width, screen.height);
@@ -312,27 +362,17 @@ canvas{width:100%;height:100%;display:block}
     root.style.setProperty('--appExtraTop', `${extraTop}px`);
     root.style.setProperty('--appExtraBottom', `${extraBottom}px`);
   }
-  applySafeArea();
-  window.addEventListener('resize', applySafeArea, {passive:true});
-  window.addEventListener('orientationchange', applySafeArea, {passive:true});
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) applySafeArea(); }, {passive:true});
 
   // ---------- Canvas ----------
   const wrap=document.getElementById('boardWrap'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{alpha:true});
   let W=0,H=0;
   function resize(){
     const r=wrap.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
-    canvas.width=Math.floor(r.width*dpr);canvas.height=Math.floor(r.height*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);W=r.width;H=r.height;
+    canvas.width=Math.floor(r.width*dpr);
+    canvas.height=Math.floor(r.height*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=r.width; H=r.height;
   }
-  window.addEventListener('resize',resize);
-
-  if(window.visualViewport){
-    const vvSync = ()=>{ applySafeArea(); resize(); };
-    visualViewport.addEventListener('resize', vvSync, {passive:true});
-    visualViewport.addEventListener('scroll', vvSync, {passive:true});
-  }
-  resize();
 
   // ---------- HUD refs ----------
   const $stage=document.getElementById('hudStage');
@@ -374,6 +414,12 @@ canvas{width:100%;height:100%;display:block}
   const $rotateLock=document.getElementById('rotateLock');
   let lockedLandscape=false;
 
+  let paused=false;
+  let mode='play'; // play | levelup | shop | stats | gameover
+  let gameOverSummary = null;
+  let statsFromGameOver = false;
+  let lastT=performance.now();
+
   function isLandscape(){
     const w = (window.visualViewport?.width ?? window.innerWidth);
     const h = (window.visualViewport?.height ?? window.innerHeight);
@@ -390,10 +436,20 @@ canvas{width:100%;height:100%;display:block}
       lastT = performance.now();
     }
   }
-  window.addEventListener('resize', syncOrientationLock, {passive:true});
-  window.addEventListener('orientationchange', syncOrientationLock, {passive:true});
+
+  /* ✅ one entrypoint for layout (dedup resize/applySafeArea/orientation) */
+  function syncLayout(){
+    applySafeArea();
+    resize();
+    syncOrientationLock();
+  }
+  syncLayout();
+  window.addEventListener('resize', syncLayout, {passive:true});
+  window.addEventListener('orientationchange', syncLayout, {passive:true});
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncLayout(); }, {passive:true});
   if(window.visualViewport){
-    visualViewport.addEventListener('resize', syncOrientationLock, {passive:true});
+    visualViewport.addEventListener('resize', syncLayout, {passive:true});
+    visualViewport.addEventListener('scroll', syncLayout, {passive:true});
   }
 
   // ---------- Utils ----------
@@ -418,11 +474,7 @@ canvas{width:100%;height:100%;display:block}
 
   const ENEMY_BULLET_SPEED_MUL = 0.30;
 
-  // Spread Angle Tuning
-  const SPREAD_2 = 0.12;
-  const SPREAD_3 = 0.16;
-  const SPREAD_EVOL_3 = 0.15;
-  const SPREAD_EVOL_4 = 0.18;
+  // Spread Angle Tuning (keep for future tuning; not duplicated)
   const BOSS_SPREAD_P1 = 0.24;
   const BOSS_SPREAD_P2 = 0.26;
   const BOSS_SPREAD_P3 = 0.30;
@@ -446,6 +498,8 @@ canvas{width:100%;height:100%;display:block}
     if(stage <= 50) return 0.85;
     return 1.00;
   };
+
+  /* ✅ single source of truth (was duplicated IIFE before) */
   function healerCountByChain(){
     let n = 1;
     if(Math.random() < 0.50) n++;
@@ -454,9 +508,10 @@ canvas{width:100%;height:100%;display:block}
     if(n>=4 && Math.random() < 0.05) n++;
     return n;
   }
-  const HEALER_HEAL_PCT = 0.05;
+
+  const HEALER_HEAL_PCT = 0.05;   /* ✅ used everywhere */
   const HEALER_PERIOD = 3.0;
-  const HEALER_BOSS_MUL = 4.0;
+  const HEALER_BOSS_MUL = 4.0;   /* ✅ used everywhere */
 
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
@@ -576,7 +631,7 @@ canvas{width:100%;height:100%;display:block}
       hp,hpMax:hp,
       healCd: rand(1.0, 2.2),
       healPeriod: HEALER_PERIOD,
-      healPct: 0.05,
+      healPct: HEALER_HEAL_PCT,
       strafeAmp: rand(40,90),
       strafeSpd: rand(1.0,2.0),
       strafePhase: rand(0,Math.PI*2),
@@ -597,20 +652,14 @@ canvas{width:100%;height:100%;display:block}
 
     let healerLanes = new Set();
     if(hasHealer){
-      const want = (()=>{
-        let n = 1;
-        if(Math.random() < 0.50) n++;
-        if(n>=2 && Math.random() < 0.30) n++;
-        if(n>=3 && Math.random() < 0.10) n++;
-        if(n>=4 && Math.random() < 0.05) n++;
-        return n;
-      })();
+      const want = healerCountByChain(); /* ✅ dedup */
       const maxN = Math.min(want, Math.max(1, lanes-1));
       while(healerLanes.size < maxN){
         healerLanes.add(Math.floor(Math.random()*lanes));
         if(healerLanes.size >= lanes-1) break;
       }
     }
+
     for(let i=0;i<lanes;i++){
       const x = (i+1)*(W/(lanes+1));
 
@@ -661,113 +710,79 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-function spawnBoss(){
-  const holdY = enemyHoldY() - 12;
+  function spawnBoss(){
+    const holdY = enemyHoldY() - 12;
 
-  // ---------- Boss variant selector ----------
-  const isSniper   = (state.stage >= 31 && state.stage <= 50);
-  const isDefender = (state.stage >= 51 && state.stage <= 80);
+    // ---------- Boss variant selector ----------
+    const isSniper   = (state.stage >= 31 && state.stage <= 50);
+    const isDefender = (state.stage >= 51 && state.stage <= 80);
 
-  const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
+    const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
 
-  // ===== Defender Boss (51~80) =====
-  if(isDefender){
-    const hpD = hpBase * 7.5;
-    const boss = {
-      type:'boss',
-      kind:'defender',
-      x: W*0.5,
-      y: -100,
-      targetY: holdY,
-      r: 30,
-      hp: hpD, hpMax: hpD,
+    // ===== Defender Boss (51~80) =====
+    if(isDefender){
+      const hpD = hpBase * 7.5;
+      enemies.push({
+        type:'boss', kind:'defender',
+        x: W*0.5, y: -100, targetY: holdY, r: 30,
+        hp: hpD, hpMax: hpD,
 
-      // 固定不移動
-      strafeAmp: 0,
-      strafeSpd: 0,
-      strafePhase: 0,
+        strafeAmp:0, strafeSpd:0, strafePhase:0,
+        phase:1, hitFlash:0,
 
-      phase: 1,
-      hitFlash: 0,
-
-      // 丟球節奏
-      ballCd: 1.0,
-      ballPeriod: 4.0,
-    };
-    enemies.push(boss);
-    toastMsg('Boss（Defender）入場', 0.9);
-    return;
-  }
+        ballCd:1.0, ballPeriod:4.0,
+      });
+      toastMsg('Boss（Defender）入場', 0.9);
+      return;
+    }
 
     // ===== Sniper Boss (31~50) =====
     if(isSniper){
       const baseSpd = 520 + state.stage*10;
       const hp2 = hpBase * 1.85;
-      const boss = {
-        type:'boss',
-        kind:'sniper',
-        x: W*0.5,
-        y: -100,
-        targetY: holdY,
-        r: 30,
+      enemies.push({
+        type:'boss', kind:'sniper',
+        x: W*0.5, y: -100, targetY: holdY, r: 30,
         hp: hp2, hpMax: hp2,
         bulletSpeed: baseSpd,
         bulletDmg: 12 + state.stage*2.2,
-        strafeAmp: 0,
-        strafeSpd: 0,
-        strafePhase: 0,
-        phase: 1,
-        hitFlash: 0,
-    
-        // ✅ 單一計時器：瞄準玩家、快速連射（去掉 snipeCd / snipeGapCd 冗餘）
-        snipeT: 0.25,
-      };
-      enemies.push(boss);
+        strafeAmp:0, strafeSpd:0, strafePhase:0,
+        phase:1, hitFlash:0,
+        snipeT:0.25,
+      });
       toastMsg('Boss（Sniper）入場', 0.9);
       return;
     }
 
-  // ===== Default boss =====
-  const baseSpd=240+state.stage*12;
-  const boss={
-    type:'boss',x:W*.5,y:-100,targetY:holdY,r:30,hp:hpBase,hpMax:hpBase,
-    bulletSpeed:baseSpd,bulletDmg:12+state.stage*2.0,
-    strafeAmp:240,strafeSpd:1.05+state.stage*0.06,strafePhase:0,
-    phase:1,ringCd:1.0,spiralCd:0.35,summonCd:999,
-    burstCd:0.55,burstLeft:0,burstGap:0.10,burstGapCd:0,
-    spin:0,hitFlash:0,
-    medCd: (state.stage>=20)? (6.8+Math.random()*3.5) : 999
-  };
-  enemies.push(boss);
-  toastMsg('Boss 入場',0.9);
-}
+    // ===== Default boss =====
+    const baseSpd=240+state.stage*12;
+    enemies.push({
+      type:'boss', x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
+      bulletSpeed:baseSpd, bulletDmg:12+state.stage*2.0,
+      strafeAmp:240, strafeSpd:1.05+state.stage*0.06, strafePhase:0,
+      phase:1, ringCd:1.0, spiralCd:0.35, summonCd:999,
+      burstCd:0.55, burstLeft:0, burstGap:0.10, burstGapCd:0,
+      spin:0, hitFlash:0,
+      medCd: (state.stage>=20)? (6.8+Math.random()*3.5) : 999
+    });
+    toastMsg('Boss 入場',0.9);
+  }
+
   function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
   function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
   // ---------- Drops / Buffs ----------
-  const DROP_TYPES=[
-    {key:'heal',w:22},
-    {key:'shield',w:18},
-    {key:'spread',w:14},
-    {key:'magnet',w:10},
-  ];
+  const DROP_TYPES=[ {key:'heal',w:22},{key:'shield',w:18},{key:'spread',w:14},{key:'magnet',w:10} ];
 
   function spreadAtCap(){ return player.spread_perm >= player.spreadCap; }
-
   function pickDrop(){
-    const pool = spreadAtCap()
-      ? DROP_TYPES.filter(x=>x.key!=='spread')
-      : DROP_TYPES;
-
+    const pool = spreadAtCap() ? DROP_TYPES.filter(x=>x.key!=='spread') : DROP_TYPES;
     const total=pool.reduce((s,a)=>s+a.w,0) || 1;
     let r=Math.random()*total;
     for(const it of pool){r-=it.w;if(r<=0)return it.key}
     return pool[0]?.key || 'heal';
   }
-
-  function dropCoin(x,y,amt){
-    drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt});
-  }
+  function dropCoin(x,y,amt){ drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt}); }
 
   const shopState={spreadCapUp:0,burstCdDown:0,invulnCdDown:0,burstDurUp:0,invulnDurUp:0,magnetRun:0};
 
@@ -775,10 +790,7 @@ function spawnBoss(){
     const p = isBoss ? .92 : .22;
     if(Math.random() > p) return;
     const t = pickDrop();
-    if(shopState.magnetRun && t === 'magnet'){
-      dropCoin(x, y, 3);
-      return;
-    }
+    if(shopState.magnetRun && t === 'magnet'){ dropCoin(x, y, 3); return; }
     drops.push({x,y,r:10,vy:rand(70,140),type:t,life:12});
   }
 
@@ -793,91 +805,47 @@ function spawnBoss(){
     }else if(type==='magnet'){
       buffs.magnet=Math.max(buffs.magnet,9.0);
     }else if(type==='coin'){
-      const amt = Math.max(1, d?.amt ?? 1);
-      state.coins += amt;
+      state.coins += Math.max(1, d?.amt ?? 1);
     }
   }
 
   // ---------- Shop ----------
-  function price(base, lvl, growth=1.5){
-    return Math.floor(base * Math.pow(growth, lvl));
-  }
+  function price(base, lvl, growth=1.5){ return Math.floor(base * Math.pow(growth, lvl)); }
 
   function shopItems(){
     const burstDown = downtime(BURST_CD, BURST_DURATION);
     const invDown   = downtime(INVULN_CD, INVULN_DURATION);
 
     return [
-      {
-        id:'spreadCapUp',
-        name:'散射上限 +1',
-        desc:`提升散射上限（目前 ${player.spreadCap}）`,
+      { id:'spreadCapUp', name:'散射上限 +1', desc:`提升散射上限（目前 ${player.spreadCap}）`,
         cost:price(260, shopState.spreadCapUp, 1.5),
         canBuy:()=>true,
-        buy:()=>{
-          shopState.spreadCapUp++;
-          player.spreadCap++;
-        }
-      },
-      {
-        id:'burstCdDown',
-        name:'爆發 CD -1s',
-        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
+        buy:()=>{ shopState.spreadCapUp++; player.spreadCap++; } },
+
+      { id:'burstCdDown', name:'爆發 CD -1s', desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
         cost:price(240, shopState.burstCdDown, 1.5),
         canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
-        buy:()=>{
-          shopState.burstCdDown++;
-          BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1);
-          if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
-        }
-      },
-      {
-        id:'invulnCdDown',
-        name:'無敵 CD -1s',
-        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
+        buy:()=>{ shopState.burstCdDown++; BURST_CD=Math.max(BURST_DURATION+5, BURST_CD-1); if(skills.burst.cd>BURST_CD) skills.burst.cd=BURST_CD; } },
+
+      { id:'invulnCdDown', name:'無敵 CD -1s', desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
         cost:price(240, shopState.invulnCdDown, 1.5),
         canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
-        buy:()=>{
-          shopState.invulnCdDown++;
-          INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1);
-          if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
-        }
-      },
-      {
-        id:'burstDurUp',
-        name:'爆發持續 +1s',
-        desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
+        buy:()=>{ shopState.invulnCdDown++; INVULN_CD=Math.max(INVULN_DURATION+8, INVULN_CD-1); if(skills.invuln.cd>INVULN_CD) skills.invuln.cd=INVULN_CD; } },
+
+      { id:'burstDurUp', name:'爆發持續 +1s', desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
         cost:price(240, shopState.burstDurUp, 1.5),
         canBuy:()=>BURST_DURATION < 60,
-        buy:()=>{
-          shopState.burstDurUp++;
-          BURST_DURATION = Math.min(60, BURST_DURATION + 1);
-          if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION;
-        }
-      },
-      {
-        id:'invulnDurUp',
-        name:'無敵持續 +1s',
-        desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
+        buy:()=>{ shopState.burstDurUp++; BURST_DURATION=Math.min(60, BURST_DURATION+1); if(BURST_CD<BURST_DURATION) BURST_CD=BURST_DURATION; } },
+
+      { id:'invulnDurUp', name:'無敵持續 +1s', desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
         cost:price(240, shopState.invulnDurUp, 1.5),
         canBuy:()=>INVULN_DURATION < 40,
-        buy:()=>{
-          shopState.invulnDurUp++;
-          INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
-          if(INVULN_CD < INVULN_DURATION) INVULN_CD = INVULN_DURATION;
-        }
-      },
-      {
-        id:'magnetRun',
-        name:'強力磁鐵',
-        desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到 Game Over）',
+        buy:()=>{ shopState.invulnDurUp++; INVULN_DURATION=Math.min(40, INVULN_DURATION+1); if(INVULN_CD<INVULN_DURATION) INVULN_CD=INVULN_DURATION; } },
+
+      { id:'magnetRun', name:'強力磁鐵', desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到 Game Over）',
         cost:2000,
         canBuy:()=>shopState.magnetRun===0,
-        buy:()=>{
-          shopState.magnetRun = 1;
-          buffs.magnet = Math.max(buffs.magnet, 1e9);
-        }
-      },
+        buy:()=>{ shopState.magnetRun=1; buffs.magnet=Math.max(buffs.magnet, 1e9); } },
     ];
   }
 
@@ -928,466 +896,15 @@ function spawnBoss(){
     $panelRow.appendChild(btnClose);
   }
 
-    let paused=false;
-    let mode='play'; // play | levelup | shop | stats | gameover
-    let gameOverSummary = null;
-    let statsFromGameOver = false;
-
-  
-// === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
-const AI = {
-  enabled: false,
-  
-  sniperSweepX: 0,
-  sniperForceLeft: true,
-
-  // shop
-  autoShop: true,
-  nextShopAtMs: 0,
-  shopLock: false,
-
-  toggle(on){
-    this.enabled = (on==null) ? !this.enabled : !!on;
-    if($aiState) $aiState.textContent = this.enabled ? 'ON' : 'OFF';
-    if($btnAI) $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
-
-    padActive = false;
-
-    this.shopLock = false;
-    this.nextShopAtMs = 0;
-
-    // reset sniper SOP
-    this.sniperSweepX = player.x;
-    this.sniperForceLeft = true;
-  },
-
-  // ---------- 升級自動選 ----------
-  pickUpgrade(picks){
-    const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
-    const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
-
-    const scoreOf = (k)=>{
-      let s = 0;
-      if(k==='spread_perm')      s = 95;
-      else if(k==='pierce_perm') s = 78;
-      else if(k==='dmg')         s = 72;
-      else if(k==='firerate')    s = 68;
-      else if(k==='shield_cap')  s = 60;
-      else if(k==='hp')          s = 58;
-      else if(k==='regen')       s = 38;
-      else if(k==='bullet_size') s = 28;
-      else if(k==='xp_gain')     s = 18;
-
-      if(hpPct < 0.35){
-        if(k==='hp') s += 55;
-        if(k==='shield_cap') s += 45;
-        if(k==='regen') s += 18;
-      }
-      if(shieldPct < 0.20){
-        if(k==='shield_cap') s += 25;
-      }
-
-      if(k==='spread_perm' && player.spread_perm >= player.spreadCap) s = -1e9;
-      if(k==='pierce_perm' && player.pierce_perm >= PIERCE_CAP) s = -1e9;
-      if(k==='bullet_size' && player.bulletR >= BULLET_R_UPG_CAP) s = -1e9;
-
-      return s;
-    };
-
-    let best = picks[0], bestS = -1e18;
-    for(const u of picks){
-      const sc = scoreOf(u.key);
-      if(sc > bestS){ bestS = sc; best = u; }
-    }
-    return best;
-  },
-
-  // ---------- 商店自動選 ----------
-  pickShopItem(items, ctx){
-    const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
-    const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
-
-    const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01);
-    const wantSurvive = (hpPct < 0.45) || (shieldPct < 0.20) || ((ctx?.bulletPressure||0) >= 6);
-
-    const scoreId = (id)=>{
-      switch(id){
-        case 'magnetRun':   return shopState.magnetRun ? -1e9 : 900;
-        case 'spreadCapUp': return spreadBlocked ? 280 : 140;
-        case 'invulnCdDown':return (wantSurvive ? 360 : 220);
-        case 'invulnDurUp': return (wantSurvive ? 240 : 150);
-        case 'burstCdDown': return (ctx?.hasBoss ? 240 : 160);
-        case 'burstDurUp':  return (ctx?.hasBoss ? 200 : 130);
-        default: return 0;
-      }
-    };
-
-    let best=null, bestS=-1e18;
-    for(const it of items){
-      if(!it) continue;
-      const affordable = state.coins >= it.cost;
-      const allowed = it.canBuy ? it.canBuy() : true;
-      if(!affordable || !allowed) continue;
-
-      const pricePenalty = it.cost * 0.06;
-      const s = scoreId(it.id) - pricePenalty;
-
-      if(s > bestS){ bestS=s; best=it; }
-    }
-    return best;
-  },
-
-  // ---------- 自動開店 -> 買 -> 關店 ----------
-  shopTick(dt, ctx){
-    if(!this.autoShop || !this.enabled) return;
-    if(mode!=='play' || paused || lockedLandscape) return;
-
-    if(state.coins < 300) return;
-
-    const itemsNow = shopItems();
-    const hasAffordable = itemsNow.some(it => (state.coins >= it.cost) && (it.canBuy ? it.canBuy() : true));
-    if(!hasAffordable) return;
-
-    const now = performance.now();
-    if(this.shopLock) return;
-    if(now < (this.nextShopAtMs||0)) return;
-
-    this.shopLock = true;
-    this.nextShopAtMs = now + 6500;
-
-    openShop();
-    setTimeout(()=>{ this.autoBuyInShop(ctx); }, 60);
-  },
-
-  autoBuyInShop(ctx){
-    if(mode!=='shop' || !paused) { this.shopLock = false; return; }
-
-    const safeCtx = ctx || { hasBoss:false, bulletPressure:0, bestScore:0 };
-    const bought = [];
-
-    for(let loop=0; loop<6; loop++){
-      const items = shopItems();
-      const pick = this.pickShopItem(items, safeCtx);
-      if(!pick) break;
-      if(state.coins < pick.cost) break;
-      if(pick.canBuy && !pick.canBuy()) break;
-
-      state.coins -= pick.cost;
-      try{ pick.buy && pick.buy(); }catch(_){}
-      bought.push(pick.name);
-    }
-
-    try{ renderShop(); }catch(_){}
-
-    setTimeout(()=>{
-      closeShop();
-      if(bought.length){
-        toastMsg(`🛒 自動採購：${bought.slice(0,2).join(' / ')}${bought.length>2?'…':''}`, 0.55);
-      }
-      this.shopLock = false;
-    }, 80);
-  },
-
-  // ---------- 每幀決策：走位 + 技能 +（最後）商店 ----------
-  tick(dt){
-    if(!this.enabled) return;
-    if(mode!=='play' || paused || lockedLandscape) return;
-
-    const py = player.y;
-    const safeL = player.r + 10;
-    const safeR = W - player.r - 10;
-    const shotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT > 0 ? 1 : 0)));
-
-    let target = null;
-    if(enemies.length){
-      target = enemies.find(e=>e.type==='boss') || null;
-      if(!target){
-        for(const e of enemies){ if(!target || e.y > target.y) target = e; }
-      }
-    }
-
-    const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
-    const aimBaseX = target ? target.x : (W*0.5);
-
-    let aimTargets = [aimBaseX];
-    if(target && shotsLive === 2){
-      const dy = Math.max(140, player.y - target.y);
-      const bulletVx = 240; // shotVXPattern(2) 的 ±240
-      const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
-      aimTargets = [
-        clamp(aimBaseX - off, safeL, safeR),
-        clamp(aimBaseX + off, safeL, safeR),
-      ];
-    }
-
-    // ===== Sniper SOP：瞬到最左 -> 往右掃 -> 右側瞬回 =====
-    let sniperMode = false;
-    let sniperSweepTargetX = null;
-    let sniperWantTeleport = false;
-
-    if(sniperBoss){
-      sniperMode = true;
-      const leftX  = safeL + 2;
-      const rightX = safeR - 2;
-
-      // 第一次進 Sniper 場：先瞬移到最左
-      if(this.sniperForceLeft){
-        this.sniperSweepX = leftX;
-        setPadX(this.sniperSweepX / W);
-        this.sniperForceLeft = false;
-      }
-
-      // 慢慢往右掃
-      const baseSweep = 80;
-      this.sniperSweepX = clamp(this.sniperSweepX + baseSweep * dt, leftX, rightX);
-
-      sniperSweepTargetX = this.sniperSweepX;
-      sniperWantTeleport = (player.x >= rightX - 8);
-    }else{
-      // 離開 Sniper 戰：重置，下一次遇到 Sniper 再先瞬左
-      this.sniperForceLeft = true;
-      this.sniperSweepX = player.x;
-    }
-
-    // ---------- 危險區預測 ----------
-    const horizon = sniperBoss ? 1.65 : 1.25;
-    const margin  = 6;
-    const intervals = [];
-    let minBeamHit = 999;
-
-    for(const b of eBullets){
-      if(!b?.alive) continue;
-
-      if(b.ball){
-        const Rb = (b.r || 18);
-        const rad = Rb + player.r + 16;
-        const w = 14;
-
-        intervals.push([b.x - rad, b.x + rad, w * 10]);
-
-        const px1 = b.x + (b.vx||0) * 0.22;
-        intervals.push([px1 - rad, px1 + rad, w * 6]);
-        continue;
-      }
-    
-      const vy = b.vy || 0;
-      if(vy <= 1) continue;
-    
-      const tHit = (py - b.y) / vy;
-      if(tHit < 0 || tHit > horizon) continue;
-
-      const xHit = b.x + (b.vx||0) * tHit;
-
-      if(b.beam){
-        const ang = Math.atan2(vy, (b.vx||0));
-        const L = b.len || 28;
-        const R = b.r || 5;
-        const xHalf = Math.abs(Math.cos(ang)) * (L/2);
-
-        const rad = player.r + R + margin + 12 + xHalf;
-        const w = (9 / (0.05 + tHit));
-        intervals.push([xHit - rad, xHit + rad, w * 8]);
-
-        if(tHit < minBeamHit) minBeamHit = tHit;
-        continue;
-      }
-
-      const rad  = (b.r||4) + player.r + margin;
-      const w    = 1 / (0.15 + tHit);
-      intervals.push([xHit - rad, xHit + rad, w]);
-    }
-
-    for(const b of eBullets){
-      if(!b?.alive || !b.beam) continue;
-    
-      const vy = b.vy || 0;
-      if(vy <= 1) continue;
-    
-      const tHit = clamp((py - b.y) / vy, 0, 1.10);
-      const bx = b.x + (b.vx||0) * tHit;
-      const by = b.y + (b.vy||0) * tHit;
-    
-      const ang = Math.atan2(vy, (b.vx||0));
-      const L = b.len || 28;
-      const R = b.r || 5;
-    
-      const dx = Math.cos(ang) * (L/2);
-      const dy = Math.sin(ang) * (L/2);
-      const ax = bx - dx, ay = by - dy;
-      const cx2 = bx + dx, cy2 = by + dy;
-    
-      const px = player.x, py2 = py;
-      const vx2 = cx2-ax, vy2 = cy2-ay;
-      const wx = px-ax, wy = py2-ay;
-      let tt = (wx*vx2 + wy*vy2) / ((vx2*vx2 + vy2*vy2) || 1);
-      tt = clamp(tt, 0, 1);
-      const hx = ax + tt*vx2, hy = ay + tt*vy2;
-    
-      const rad = player.r + R + 2;
-      if(dist2(px, py2, hx, hy) < rad*rad){
-        if(canUseSkill('invuln')) useInvuln();
-      }
-    }
-    
-    {
-      let nearest = null;
-      let bestD = 1e18;
-      for(const b of eBullets){
-        if(!b?.alive || !b.ball) continue;
-        const d = dist2(b.x, b.y, player.x, player.y);
-        if(d < bestD){ bestD = d; nearest = b; }
-      }
-      if(nearest){
-        const rad = (nearest.r||18) + player.r + 10;
-        if(bestD < rad*rad){
-          const leftX  = safeL + 2;
-          const rightX = safeR - 2;
-          const goLeft = (Math.abs(nearest.x - leftX) > Math.abs(nearest.x - rightX));
-          const tx = goLeft ? leftX : rightX;
-          setPadX(tx / W);
-          return;
-        }
-      }
-    }
-      // ---------- 候選站位掃描：避彈(核彈級) + 對齊輸出 ----------
-    const candidates = sniperBoss ? 29 : 23;
-    let bestX = player.x;
-    let bestScore = -1e18;
-
-    for(let i=0;i<candidates;i++){
-      const x = safeL + (safeR-safeL)*(i/(candidates-1));
-      let score = 0;
-
-      // 避彈：權重極大
-      for(const [l,r,w] of intervals){
-        if(x>=l && x<=r){
-          score -= 1e6 * w;
-        }else{
-          const d = (x<l) ? (l-x) : (x-r);
-          score -= (1/(d+6)) * 3200 * w;
-        }
-      }
-
-      let aimW = sniperBoss ? 1.2 : 3.4;
-
-      if(shotsLive === 2) aimW = sniperBoss ? 0.9 : 2.4;
-
-      const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
-      score -= aimDist * aimW;
-
-      if(sniperMode && typeof sniperSweepTargetX === 'number'){
-        score += 5200 - Math.abs(x - sniperSweepTargetX) * 55;
-      }
-
-      const edge = Math.min(x-safeL, safeR-x);
-      score += edge * 0.05;
-
-      if(score > bestScore){ bestScore = score; bestX = x; }
-    }
-
-    if(sniperMode){
-      const leftX = safeL + 2;
-      const scoreBad = (bestScore < -3.6e5);
-      if(sniperWantTeleport || scoreBad){
-        setPadX(leftX / W);
-        this.sniperSweepX = leftX;
-      }
-    }
-    
-    let maxStep = player.moveSpeed * dt * 0.95;
-    
-    if(sniperBoss){
-      const sniperSlowPxPerSec = 80;   //「慢慢往右移速度」
-      maxStep = sniperSlowPxPerSec * dt;
-    }
-    
-      const nx = clamp(bestX, safeL, safeR);
-      let dx = nx - player.x;
-      
-      if(sniperBoss && dx < 0){
-        const leftX = safeL + 2;
-      
-        setPadX(leftX / W);
-        this.sniperSweepX = leftX;
-        dx = 0;
-      }
-      
-      const step = clamp(dx, -maxStep, maxStep);
-      setPadX((player.x + step) / W);
-
-    // ---------- 技能決策 ----------
-    const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
-    const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
-    const bulletPressure = intervals.length;
-    const boss = enemies.find(e=>e.type==='boss');
-
-    if(canUseSkill('invuln') && sniperBoss){
-      if(minBeamHit < 0.34 || bestScore < -3.2e5) useInvuln();
-    }
-
-    if(canUseSkill('invuln')){
-      const imminent = (bestScore < -5e5);
-      const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
-      const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
-      if(imminent || fragile || panic) useInvuln();
-    }
-
-    if(canUseSkill('burst')){
-      const manyEnemies = enemies.length >= 10;
-      const safeEnough  = (bestScore > -2e5) && (buffs.invulnT<=0);
-      if(safeEnough && (boss || manyEnemies)) useBurst();
-    }
-
-    // 最後：自動採購
-    this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
-  }
-};
-
-if($btnAI){
-  $btnAI.addEventListener('click', ()=>AI.toggle());
-  if($aiState) $aiState.textContent = 'OFF';
-  $btnAI.setAttribute('aria-pressed', 'false');
-}
-window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
-// === AUTOPLAY AI (EASY-REMOVE) END ===
-  
-  function openShop(){
-    if(mode!=='play') return;
-    if(lockedLandscape) return;
-    mode='shop';
-    paused=true;
-    $toast.classList.remove('show');
-    renderShop();
-  }
-  function closeShop(){
-    overlay.classList.remove('show');
-    $panel.classList.remove('isStats');
-    mode='play';
-    paused=false;
-    lastT=performance.now();
-  }
-
-  $btnShop.addEventListener('click',()=>{
-    if(mode==='play') openShop();
-    else if(mode==='shop') closeShop();
-  });
-
   // ---------- Skills ----------
   const SKILL_EPS = 1e-6;
 
-  function skillCdLeft(k){
-    return Math.max(0, (skills[k]?.cd || 0));
-  }
-  
+  function skillCdLeft(k){ return Math.max(0, (skills[k]?.cd || 0)); }
+
   function canUseSkill(k){
     if(mode!=='play' || paused) return false;
-  
-    if(k==='burst'){
-      return (buffs.burstT <= SKILL_EPS) && (skillCdLeft('burst') <= SKILL_EPS);
-    }
-    if(k==='invuln'){
-      return (buffs.invulnT <= SKILL_EPS) && (skillCdLeft('invuln') <= SKILL_EPS);
-    }
+    if(k==='burst')  return (buffs.burstT <= SKILL_EPS)  && (skillCdLeft('burst') <= SKILL_EPS);
+    if(k==='invuln') return (buffs.invulnT <= SKILL_EPS) && (skillCdLeft('invuln') <= SKILL_EPS);
     return (skillCdLeft(k) <= SKILL_EPS);
   }
   function useBurst(){
@@ -1404,6 +921,350 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
   }
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
+
+  function openShop(){
+    if(mode!=='play') return;
+    if(lockedLandscape) return;
+    mode='shop';
+    paused=true;
+    $toast.classList.remove('show');
+    renderShop();
+  }
+  function closeShop(){
+    overlay.classList.remove('show');
+    $panel.classList.remove('isStats');
+    mode='play';
+    paused=false;
+    lastT=performance.now();
+  }
+  $btnShop.addEventListener('click',()=>{
+    if(mode==='play') openShop();
+    else if(mode==='shop') closeShop();
+  });
+
+  // ---------- Combat core helpers (used by both game + AI) ----------
+  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
+  function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
+
+  // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
+  const AI = {
+    enabled:false,
+    sniperSweepX:0,
+    sniperForceLeft:true,
+
+    autoShop:true,
+    nextShopAtMs:0,
+    shopLock:false,
+
+    toggle(on){
+      this.enabled = (on==null) ? !this.enabled : !!on;
+      if($aiState) $aiState.textContent = this.enabled ? 'ON' : 'OFF';
+      if($btnAI) $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
+
+      padActive=false;
+      this.shopLock=false;
+      this.nextShopAtMs=0;
+      this.sniperSweepX=player.x;
+      this.sniperForceLeft=true;
+    },
+
+    pickUpgrade(picks){
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+      const scoreOf = (k)=>{
+        let s = 0;
+        if(k==='spread_perm')      s = 95;
+        else if(k==='pierce_perm') s = 78;
+        else if(k==='dmg')         s = 72;
+        else if(k==='firerate')    s = 68;
+        else if(k==='shield_cap')  s = 60;
+        else if(k==='hp')          s = 58;
+        else if(k==='regen')       s = 38;
+        else if(k==='bullet_size') s = 28;
+        else if(k==='xp_gain')     s = 18;
+
+        if(hpPct < 0.35){
+          if(k==='hp') s += 55;
+          if(k==='shield_cap') s += 45;
+          if(k==='regen') s += 18;
+        }
+        if(shieldPct < 0.20){
+          if(k==='shield_cap') s += 25;
+        }
+
+        if(k==='spread_perm' && player.spread_perm >= player.spreadCap) s = -1e9;
+        if(k==='pierce_perm' && player.pierce_perm >= PIERCE_CAP) s = -1e9;
+        if(k==='bullet_size' && player.bulletR >= BULLET_R_UPG_CAP) s = -1e9;
+        return s;
+      };
+
+      let best=picks[0], bestS=-1e18;
+      for(const u of picks){
+        const sc = scoreOf(u.key);
+        if(sc > bestS){ bestS=sc; best=u; }
+      }
+      return best;
+    },
+
+    pickShopItem(items, ctx){
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+      const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01);
+      const wantSurvive = (hpPct < 0.45) || (shieldPct < 0.20) || ((ctx?.bulletPressure||0) >= 6);
+
+      const scoreId = (id)=>{
+        switch(id){
+          case 'magnetRun':   return shopState.magnetRun ? -1e9 : 900;
+          case 'spreadCapUp': return spreadBlocked ? 280 : 140;
+          case 'invulnCdDown':return (wantSurvive ? 360 : 220);
+          case 'invulnDurUp': return (wantSurvive ? 240 : 150);
+          case 'burstCdDown': return (ctx?.hasBoss ? 240 : 160);
+          case 'burstDurUp':  return (ctx?.hasBoss ? 200 : 130);
+          default: return 0;
+        }
+      };
+
+      let best=null, bestS=-1e18;
+      for(const it of items){
+        const affordable = state.coins >= it.cost;
+        const allowed = it.canBuy ? it.canBuy() : true;
+        if(!affordable || !allowed) continue;
+
+        const pricePenalty = it.cost * 0.06;
+        const s = scoreId(it.id) - pricePenalty;
+        if(s > bestS){ bestS=s; best=it; }
+      }
+      return best;
+    },
+
+    shopTick(dt, ctx){
+      if(!this.autoShop || !this.enabled) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+      if(state.coins < 300) return;
+
+      const itemsNow = shopItems();
+      const hasAffordable = itemsNow.some(it => (state.coins >= it.cost) && (it.canBuy ? it.canBuy() : true));
+      if(!hasAffordable) return;
+
+      const now = performance.now();
+      if(this.shopLock) return;
+      if(now < (this.nextShopAtMs||0)) return;
+
+      this.shopLock = true;
+      this.nextShopAtMs = now + 6500;
+
+      openShop();
+      setTimeout(()=>{ this.autoBuyInShop(ctx); }, 60);
+    },
+
+    autoBuyInShop(ctx){
+      if(mode!=='shop' || !paused) { this.shopLock=false; return; }
+
+      const safeCtx = ctx || { hasBoss:false, bulletPressure:0, bestScore:0 };
+      const bought = [];
+
+      for(let loop=0; loop<6; loop++){
+        const items = shopItems();
+        const pick = this.pickShopItem(items, safeCtx);
+        if(!pick) break;
+        if(state.coins < pick.cost) break;
+        if(pick.canBuy && !pick.canBuy()) break;
+
+        state.coins -= pick.cost;
+        try{ pick.buy && pick.buy(); }catch(_){}
+        bought.push(pick.name);
+      }
+
+      try{ renderShop(); }catch(_){}
+
+      setTimeout(()=>{
+        closeShop();
+        if(bought.length){
+          toastMsg(`🛒 自動採購：${bought.slice(0,2).join(' / ')}${bought.length>2?'…':''}`, 0.55);
+        }
+        this.shopLock=false;
+      }, 80);
+    },
+
+    tick(dt){
+      if(!this.enabled) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+
+      const py = player.y;
+      const safeL = player.r + 10;
+      const safeR = W - player.r - 10;
+
+      /* ✅ dedup: same rule as core */
+      const shotsLive = shotsFromSpread(spreadTotal());
+
+      let target = null;
+      if(enemies.length){
+        target = enemies.find(e=>e.type==='boss') || null;
+        if(!target){
+          for(const e of enemies){ if(!target || e.y > target.y) target = e; }
+        }
+      }
+
+      const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+      const aimBaseX = target ? target.x : (W*0.5);
+
+      let aimTargets = [aimBaseX];
+      if(target && shotsLive === 2){
+        const dy = Math.max(140, player.y - target.y);
+        const bulletVx = 240;
+        const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
+        aimTargets = [ clamp(aimBaseX - off, safeL, safeR), clamp(aimBaseX + off, safeL, safeR) ];
+      }
+
+      // ===== Sniper SOP =====
+      let sniperMode=false, sniperSweepTargetX=null, sniperWantTeleport=false;
+
+      if(sniperBoss){
+        sniperMode=true;
+        const leftX  = safeL + 2;
+        const rightX = safeR - 2;
+
+        if(this.sniperForceLeft){
+          this.sniperSweepX = leftX;
+          setPadX(this.sniperSweepX / W);
+          this.sniperForceLeft = false;
+        }
+
+        this.sniperSweepX = clamp(this.sniperSweepX + 80 * dt, leftX, rightX);
+        sniperSweepTargetX = this.sniperSweepX;
+        sniperWantTeleport = (player.x >= rightX - 8);
+      }else{
+        this.sniperForceLeft = true;
+        this.sniperSweepX = player.x;
+      }
+
+      // ---------- danger intervals ----------
+      const horizon = sniperBoss ? 1.65 : 1.25;
+      const margin  = 6;
+      const intervals = [];
+      let minBeamHit = 999;
+
+      for(const b of eBullets){
+        if(!b?.alive) continue;
+
+        if(b.ball){
+          const rad = (b.r||18) + player.r + 16;
+          intervals.push([b.x - rad, b.x + rad, 14*10]);
+          const px1 = b.x + (b.vx||0) * 0.22;
+          intervals.push([px1 - rad, px1 + rad, 14*6]);
+          continue;
+        }
+
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > horizon) continue;
+
+        const xHit = b.x + (b.vx||0) * tHit;
+
+        if(b.beam){
+          const ang = Math.atan2(vy, (b.vx||0));
+          const L = b.len || 28;
+          const R = b.r || 5;
+          const xHalf = Math.abs(Math.cos(ang)) * (L/2);
+
+          const rad = player.r + R + margin + 12 + xHalf;
+          const w = (9 / (0.05 + tHit));
+          intervals.push([xHit - rad, xHit + rad, w * 8]);
+
+          if(tHit < minBeamHit) minBeamHit = tHit;
+          continue;
+        }
+
+        const rad  = (b.r||4) + player.r + margin;
+        const w    = 1 / (0.15 + tHit);
+        intervals.push([xHit - rad, xHit + rad, w]);
+      }
+
+      // ---------- candidates scan ----------
+      const candidates = sniperBoss ? 29 : 23;
+      let bestX = player.x;
+      let bestScore = -1e18;
+
+      for(let i=0;i<candidates;i++){
+        const x = safeL + (safeR-safeL)*(i/(candidates-1));
+        let score = 0;
+
+        for(const [l,r,w] of intervals){
+          if(x>=l && x<=r) score -= 1e6 * w;
+          else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * 3200 * w;
+          }
+        }
+
+        let aimW = sniperBoss ? 1.2 : 3.4;
+        if(shotsLive === 2) aimW = sniperBoss ? 0.9 : 2.4;
+
+        const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+        score -= aimDist * aimW;
+
+        if(sniperMode && typeof sniperSweepTargetX === 'number'){
+          score += 5200 - Math.abs(x - sniperSweepTargetX) * 55;
+        }
+
+        const edge = Math.min(x-safeL, safeR-x);
+        score += edge * 0.05;
+
+        if(score > bestScore){ bestScore=score; bestX=x; }
+      }
+
+      if(sniperMode){
+        const leftX = safeL + 2;
+        if(sniperWantTeleport || (bestScore < -3.6e5)){
+          setPadX(leftX / W);
+          this.sniperSweepX = leftX;
+        }
+      }
+
+      let maxStep = player.moveSpeed * dt * 0.95;
+      if(sniperBoss) maxStep = 80 * dt;
+
+      const nx = clamp(bestX, safeL, safeR);
+      const dx = clamp(nx - player.x, -maxStep, maxStep);
+      setPadX((player.x + dx) / W);
+
+      const bulletPressure = intervals.length;
+      const boss = enemies.find(e=>e.type==='boss');
+
+      if(canUseSkill('invuln') && sniperBoss){
+        if(minBeamHit < 0.34 || bestScore < -3.2e5) useInvuln();
+      }
+
+      if(canUseSkill('invuln')){
+        const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+        const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+        const imminent = (bestScore < -5e5);
+        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+        const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
+        if(imminent || fragile || panic) useInvuln();
+      }
+
+      if(canUseSkill('burst')){
+        const manyEnemies = enemies.length >= 10;
+        const safeEnough  = (bestScore > -2e5) && (buffs.invulnT<=0);
+        if(safeEnough && (boss || manyEnemies)) useBurst();
+      }
+
+      this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
+    }
+  };
+
+  if($btnAI){
+    $btnAI.addEventListener('click', ()=>AI.toggle());
+    if($aiState) $aiState.textContent = 'OFF';
+    $btnAI.setAttribute('aria-pressed', 'false');
+  }
+  window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
+  // === AUTOPLAY AI (EASY-REMOVE) END ===
 
   // ---------- Level-up ----------
   const UPGRADES=[
@@ -1451,7 +1312,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
       if(u && !picks.some(p=>p.key===u.key) && canPickUpgrade(u.key)) picks.push(u);
       else break;
     }
-    // AI 自動選升級（測試用）
+
     if(AI.enabled){
       const best = AI.pickUpgrade(picks);
       applyUpgrade(best.key);
@@ -1462,6 +1323,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
       lastT=performance.now();
       return;
     }
+
     for(const u of picks){
       const el=document.createElement('div');
       el.className='opt';
@@ -1508,42 +1370,34 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
 
   // ---------- Combat ----------
   function enemyBulletCap(){
-  const boss = enemies.find(e=>e.type==='boss');
-  if(!boss) return 140;
-  if(boss.kind === 'sniper')   return 420;
-  if(boss.kind === 'defender') return 30;
-  return 260;
+    const boss = enemies.find(e=>e.type==='boss');
+    if(!boss) return 140;
+    if(boss.kind === 'sniper')   return 420;
+    if(boss.kind === 'defender') return 30;
+    return 260;
   }
 
   let fireAcc=0;
-  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
   function pierceTotal(){ return player.pierce_perm; }
-
-  function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
 
   function spreadDmgMul(n){
     if(n<=1) return 1;
     return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
-
   function shotVXPattern(n){
     if(n<=1) return [0];
     const baseMax = 240;
     const extra = Math.max(0, n-5) * 26;
     const maxV = clamp(baseMax + extra, 240, 520);
-
     const arr=[];
     const step = (2*maxV)/(n-1);
     for(let i=0;i<n;i++) arr.push(-maxV + step*i);
     return arr;
   }
-
   function shoot(dt){
-    const rate=player.fireRate;
-    fireAcc+=dt*rate;
-    while(fireAcc>=1){fireAcc-=1;spawnPlayerShot()}
+    fireAcc+=dt*player.fireRate;
+    while(fireAcc>=1){ fireAcc-=1; spawnPlayerShot(); }
   }
-
   function spawnPlayerShot(){
     const s=spreadTotal();
     const n=shotsFromSpread(s);
@@ -1565,7 +1419,7 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
 
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-    let spd=(e.bulletSpeed??300)*sMul*ENEMY_BULLET_SPEED_MUL;
+    const spd=(e.bulletSpeed??300)*sMul*ENEMY_BULLET_SPEED_MUL;
 
     const isBeam = !!meta.beam;
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
@@ -1627,50 +1481,43 @@ window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
     }
   }
 
-function bossTick(e,dt){
-  // ---------- Defender boss ----------
-  if(e.kind === 'defender'){
-    const rr = e.hp/e.hpMax;
-    const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
-    if(newPhase!==e.phase){
-      e.phase=newPhase;
-      toastMsg(`Defender：Phase ${e.phase}`, 0.55);
+  function bossTick(e,dt){
+    // ---------- Defender boss ----------
+    if(e.kind === 'defender'){
+      const rr = e.hp/e.hpMax;
+      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
+      if(newPhase!==e.phase){
+        e.phase=newPhase;
+        toastMsg(`Defender：Phase ${e.phase}`, 0.55);
+      }
+
+      e.x = W*0.5;
+
+      const period =
+        (e.phase===1 ? e.ballPeriod : (e.phase===2 ? e.ballPeriod*0.90 : e.ballPeriod*0.80));
+
+      e.ballCd -= dt;
+      if(e.ballCd <= 0){
+        const aim = Math.atan2(player.y - e.y, player.x - e.x);
+        const jitter = rand(-0.50, 0.50);
+        const ang = aim + jitter;
+
+        const spd = 260 + state.stage*3.4;
+        const R = 18;
+        const dmg = 24 + Math.floor(state.stage*0.35);
+
+        eBullets.push({
+          ball:true, alive:true,
+          x:e.x, y:e.y+e.r+10, r:R,
+          vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+          dmg, hitCd:0,
+        });
+
+        addBurst(e.x, e.y+e.r+10, 10);
+        e.ballCd = period;
+      }
+      return;
     }
-
-    // stationary center-top
-    e.x = W*0.5;
-
-    const period =
-      (e.phase===1 ? e.ballPeriod : (e.phase===2 ? e.ballPeriod*0.90 : e.ballPeriod*0.80));
-
-    e.ballCd -= dt;
-    if(e.ballCd <= 0){
-      const aim = Math.atan2(player.y - e.y, player.x - e.x);
-      const jitter = rand(-0.50, 0.50);
-      const ang = aim + jitter;
-
-      const spd = 260 + state.stage*3.4; // 球速
-      const R = 18;                      // 球半徑
-      const dmg = 24 + Math.floor(state.stage*0.35);
-
-      // 這顆球：不離場、會反彈、會擋子彈
-      eBullets.push({
-        ball:true,
-        alive:true,
-        x:e.x, y:e.y+e.r+10,
-        r:R,
-        vx:Math.cos(ang)*spd,
-        vy:Math.sin(ang)*spd,
-        dmg,
-        hitCd: 0,
-      });
-
-      addBurst(e.x, e.y+e.r+10, 10);
-
-      e.ballCd = period;
-    }
-    return;
-  }
 
     // ---------- Sniper boss ----------
     if(e.kind === 'sniper'){
@@ -1680,33 +1527,24 @@ function bossTick(e,dt){
         e.phase=newPhase;
         toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
       }
-    
+
       e.x = W*0.5;
-    
+
       const baseInterval = (e.phase===1 ? 0.050 : (e.phase===2 ? 0.044 : 0.038));
       const stageBoost = Math.max(0, state.stage - 31) * 0.00025;
       const interval = clamp(baseInterval - stageBoost, 0.026, baseInterval);
-    
+
       e.snipeT = (e.snipeT ?? 0.20) - dt;
-    
+
       let guard = 0;
       while(e.snipeT <= 0 && guard++ < 4){
         const ang = Math.atan2(player.y - e.y, player.x - e.x);
-    
-        enemyShoot(
-          e,
-          ang,
-          1.55,
-          1.15,
-          {
-            beam:true,
-            len:(state.stage>=40?46:40),
-            r:(state.stage>=40?7:6),
-            pierce:0,
-            hp:1
-          }
-        );
-    
+
+        enemyShoot(e, ang, 1.55, 1.15, {
+          beam:true, len:(state.stage>=40?46:40),
+          r:(state.stage>=40?7:6), pierce:0, hp:1
+        });
+
         if(eBullets.length >= enemyBulletCap()){
           e.snipeT = interval;
           break;
@@ -1715,79 +1553,80 @@ function bossTick(e,dt){
       }
       return;
     }
-  // ---------- Default boss ----------
-  const r=e.hp/e.hpMax;
-  const newPhase=(r<=.40)?3:(r<=.70?2:1);
-  if(newPhase!==e.phase){
-    e.phase=newPhase;
-    if(e.phase===2){toastMsg('Boss：Phase 2',.7);e.ringCd=.90;e.spiralCd=.40}
-    else if(e.phase===3){toastMsg('Boss：Phase 3',.7);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
-  }
-  const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
-  const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
 
-  const brutal = state.stage>=20;
-  const bossEasy = state.stage < 10;
-  const densMul = bossEasy ? 0.72 : 1.0;
-  const cdMul   = bossEasy ? 1.18 : 1.0;
+    // ---------- Default boss ----------
+    const r=e.hp/e.hpMax;
+    const newPhase=(r<=.40)?3:(r<=.70?2:1);
+    if(newPhase!==e.phase){
+      e.phase=newPhase;
+      if(e.phase===2){toastMsg('Boss：Phase 2',.7);e.ringCd=.90;e.spiralCd=.40}
+      else if(e.phase===3){toastMsg('Boss：Phase 3',.7);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
+    }
+    const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
+    const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
 
-  const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
+    const brutal = state.stage>=20;
+    const bossEasy = state.stage < 10;
+    const densMul = bossEasy ? 0.72 : 1.0;
+    const cdMul   = bossEasy ? 1.18 : 1.0;
 
-  e.burstCd-=dt;
-  if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
-    e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
-    e.burstGapCd=0;
-    e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55)) * cdMul;
-  }
-  if(e.burstLeft>0){
-    e.burstGapCd-=dt;
-    if(e.burstGapCd<=0){
-      const ang=Math.atan2(player.y-e.y,player.x-e.x);
-      const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
-      const lanes = Math.max(3, Math.round(lanesBase * densMul));
-      const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
-      for(let i=0;i<lanes;i++){
-        const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
+
+    e.burstCd-=dt;
+    if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
+      e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
+      e.burstGapCd=0;
+      e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55)) * cdMul;
+    }
+    if(e.burstLeft>0){
+      e.burstGapCd-=dt;
+      if(e.burstGapCd<=0){
+        const ang=Math.atan2(player.y-e.y,player.x-e.x);
+        const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
+        const lanes = Math.max(3, Math.round(lanesBase * densMul));
+        const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
+        for(let i=0;i<lanes;i++){
+          const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+          enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
+        }
+        e.burstLeft-=1;
+        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
       }
-      e.burstLeft-=1;
-      e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
     }
-  }
 
-  e.ringCd-=dt;
-  if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
-    const nBase=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
-    const n=Math.max(10, Math.round(nBase * densMul));
-    const base=Math.random()*Math.PI*2;
-    for(let i=0;i<n;i++){
-      const a=base+(i/n)*Math.PI*2;
-      enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
+    e.ringCd-=dt;
+    if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
+      const nBase=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
+      const n=Math.max(10, Math.round(nBase * densMul));
+      const base=Math.random()*Math.PI*2;
+      for(let i=0;i<n;i++){
+        const a=base+(i/n)*Math.PI*2;
+        enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
+      }
+      e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0) * cdMul;
     }
-    e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0) * cdMul;
-  }
 
-  e.spiralCd-=dt;
-  e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
-  if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
-    const nBase=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
-    const n=Math.max(4, Math.round(nBase * densMul));
-    const base=e.spin;
-    for(let i=0;i<n;i++){
-      const a=base+(i/n)*Math.PI*2;
-      enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
+    e.spiralCd-=dt;
+    e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
+    if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
+      const nBase=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
+      const n=Math.max(4, Math.round(nBase * densMul));
+      const base=e.spin;
+      for(let i=0;i<n;i++){
+        const a=base+(i/n)*Math.PI*2;
+        enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
+      }
+      e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
     }
-    e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
-  }
 
-  if(e.phase===3){
-    e.summonCd-=dt;
-    if(e.summonCd<=0){
-      spawnAdds(4+(Math.random()<0.5?1:0),.92);
-      e.summonCd=5.2+(Math.random()*1.8-.7);
+    if(e.phase===3){
+      e.summonCd-=dt;
+      if(e.summonCd<=0){
+        spawnAdds(4+(Math.random()<0.5?1:0),.92);
+        e.summonCd=5.2+(Math.random()*1.8-.7);
+      }
     }
   }
-}
 
   // ---------- damage / gameover ----------
   function damagePlayer(dmg){
@@ -1799,6 +1638,7 @@ function bossTick(e,dt){
       player.shield-=use; dmg-=use;
     }
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
+
     const hitXp = clamp(Math.ceil(dmg*0.35), 1, 6);
     addXp(hitXp);
 
@@ -1806,73 +1646,104 @@ function bossTick(e,dt){
     if(player.hp<=0) gameOver();
   }
 
-    function renderGameOverPanel(){
-      $panel.classList.remove('isStats');
-      overlay.classList.add('show');
-      opts.innerHTML='';
-      $panelRow.innerHTML='';
-    
-      const s = gameOverSummary || {
-        score: state.score,
-        coins: state.coins,
-        best: Number(localStorage.getItem('blaster_best_score_v4')||0),
-        stage: state.stage,
-        wave: state.wave,
-        level: state.level
-      };
-    
-      $panelTitle.textContent='Game Over';
-      $panelSub.style.display='block';
-      $panelSub.innerHTML=
-        `本局分數：<b>${s.score}</b><br>`+
-        `本局金幣：<b>${s.coins}</b><br>`+
-        `最高分：<b>${s.best}</b><br>`+
-        `關卡 ${s.stage} / 波次 ${s.wave} / 等級 ${s.level}`;
-    
-      $panelRow.style.display='flex';
-    
-      // 重新開始
-      const btnRestart=document.createElement('button');
-      btnRestart.className='pill';
-      btnRestart.textContent='重新開始';
-      btnRestart.addEventListener('click',()=>{
-        overlay.classList.remove('show');
-        resetRun();
-        mode='play';
-        paused=false;
-        lastT=performance.now();
-      });
-      $panelRow.appendChild(btnRestart);
-    
-      const btnStats=document.createElement('button');
-      btnStats.className='pill';
-      btnStats.textContent='查看狀態';
-      btnStats.addEventListener('click',()=>{
-        openStats(true);
-      });
-      $panelRow.appendChild(btnStats);
+  function addBurst(x,y,n=10){
+    for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
+  }
+
+  let toastT=0, lastToastText='';
+  function toastMsg(text,sec=.75){
+    if(text===lastToastText && toastT>0.25) return;
+    lastToastText = text;
+    $toast.textContent=text;
+    $toast.classList.add('show');
+    toastT=sec;
+  }
+
+  // ---------- healer logic ----------
+  function healerTick(h,dt){
+    h.healCd -= dt;
+    if(h.healCd>0) return;
+    h.healCd = h.healPeriod;
+
+    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
+    if(!targets.length) return;
+
+    let totalAdd = 0;
+    for(const t of targets){
+      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1); /* ✅ dedup const */
+      const before = t.hp;
+      t.hp = Math.min(t.hpMax, t.hp + add);
+      totalAdd += Math.max(0, t.hp - before);
+      addBurst(t.x, t.y, 6);
     }
-    
-    function gameOver(){
-      mode='gameover';
-      paused=true;
-      $toast.classList.remove('show');
-    
-      const bestKey='blaster_best_score_v4';
-      const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
-      localStorage.setItem(bestKey,String(best));
-    
-      gameOverSummary = {
-        score: state.score,
-        coins: state.coins,
-        best,
-        stage: state.stage,
-        wave: state.wave,
-        level: state.level
-      };
-    
-      renderGameOverPanel();
-    }
+    toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
+  }
+
+  // ---------- GameOver / Stats ----------
+  function renderGameOverPanel(){
+    $panel.classList.remove('isStats');
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    const s = gameOverSummary || {
+      score: state.score,
+      coins: state.coins,
+      best: Number(localStorage.getItem('blaster_best_score_v4')||0),
+      stage: state.stage,
+      wave: state.wave,
+      level: state.level
+    };
+
+    $panelTitle.textContent='Game Over';
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=
+      `本局分數：<b>${s.score}</b><br>`+
+      `本局金幣：<b>${s.coins}</b><br>`+
+      `最高分：<b>${s.best}</b><br>`+
+      `關卡 ${s.stage} / 波次 ${s.wave} / 等級 ${s.level}`;
+
+    $panelRow.style.display='flex';
+
+    const btnRestart=document.createElement('button');
+    btnRestart.className='pill';
+    btnRestart.textContent='重新開始';
+    btnRestart.addEventListener('click',()=>{
+      overlay.classList.remove('show');
+      resetRun();
+      mode='play';
+      paused=false;
+      lastT=performance.now();
+    });
+    $panelRow.appendChild(btnRestart);
+
+    const btnStats=document.createElement('button');
+    btnStats.className='pill';
+    btnStats.textContent='查看狀態';
+    btnStats.addEventListener('click',()=>openStats(true));
+    $panelRow.appendChild(btnStats);
+  }
+
+  function gameOver(){
+    mode='gameover';
+    paused=true;
+    $toast.classList.remove('show');
+
+    const bestKey='blaster_best_score_v4';
+    const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
+    localStorage.setItem(bestKey,String(best));
+
+    gameOverSummary = {
+      score: state.score,
+      coins: state.coins,
+      best,
+      stage: state.stage,
+      wave: state.wave,
+      level: state.level
+    };
+
+    renderGameOverPanel();
+  }
 
   function resetRun(){
     state.stage=1;state.wave=1;state.score=0;state.coins=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
@@ -1899,75 +1770,37 @@ function bossTick(e,dt){
     spawnWave();
   }
 
-  function addBurst(x,y,n=10){
-    for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
-  }
-  let toastT=0, lastToastText='';
-  function toastMsg(text,sec=.75){
-    if(text===lastToastText && toastT>0.25) return;
-    lastToastText = text;
-    $toast.textContent=text;
-    $toast.classList.add('show');
-    toastT=sec;
-  }
-
-  // ---------- healer logic ----------
-  function healerTick(h,dt){
-    h.healCd -= dt;
-    if(h.healCd>0) return;
-    h.healCd = h.healPeriod;
-
-    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
-    if(!targets.length) return;
-
-    let totalAdd = 0;
-    for(const t of targets){
-      const add = t.hpMax * h.healPct * (t.type==='boss' ? 4.0 : 1);
-      const before = t.hp;
-      t.hp = Math.min(t.hpMax, t.hp + add);
-      totalAdd += Math.max(0, t.hp - before);
-      addBurst(t.x, t.y, 6);
-    }
-    toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
-  }
-
-  // ---------- Stats Panel ----------
   const BASE_PLAYER = { hpMax: BASE_HP, dmg: 26, fireRate: 6.2, bulletSpeed: 820, pierce_perm: 2, bulletR: BULLET_R_BASE, xpGainMul: 1.0 };
+  function pctMul(now, base){ if(!base) return 0; return Math.round(((now/base)-1)*1000)/10; }
 
-  function pctMul(now, base){
-    if(!base) return 0;
-    return Math.round(((now/base)-1)*1000)/10;
-  }
   function openStats(fromGameOver=false){
-    const _fromGameOver = (fromGameOver === true);
-  
     if(lockedLandscape) return;
     if(mode==='shop') return;
 
-    statsFromGameOver = _fromGameOver || (mode === 'gameover');
-  
+    statsFromGameOver = (fromGameOver === true) || (mode === 'gameover');
+
     mode='stats';
     paused=true;
-    
+
     $toast.classList.remove('show');
     overlay.classList.add('show');
     $panel.classList.add('isStats');
     opts.innerHTML='';
     $panelRow.innerHTML='';
-  
+
     $panelTitle.textContent='狀態一覽';
     $panelSub.style.display='block';
-  
+
     const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
-    const spreadShotsLive = Math.max(1, 1 + Math.floor(player.spread_perm + (buffs.spreadBonusT>0?1:0)));
-  
+    const spreadShotsLive = shotsFromSpread(spreadTotal());
+
     const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
     const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
     const xpPctM = pctMul(player.xpGainMul, 1.0);
-  
+
     const burstDown = downtime(BURST_CD, BURST_DURATION);
     const invDown   = downtime(INVULN_CD, INVULN_DURATION);
-  
+
     const lines = [
       `關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b>　等級：<b>${state.level}</b>`,
       `HP：<b>${Math.floor(player.hp)}/${Math.floor(player.hpMax)}</b>（上限 +${Math.floor(player.hpMax-BASE_PLAYER.hpMax)}）`,
@@ -1986,7 +1819,7 @@ function bossTick(e,dt){
       `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵永久 <b>${shopState.magnetRun?1:0}</b>`,
     ];
     $panelSub.innerHTML = lines.join('<br>');
-  
+
     const pills = [
       ['🪙 金幣', state.coins],
       ['🧠 XP', `${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`],
@@ -1995,6 +1828,7 @@ function bossTick(e,dt){
       ['✨ 無敵', buffs.invulnT>0 ? `${Math.ceil(buffs.invulnT)}s` : '—'],
       ['🧲 磁鐵', shopState.magnetRun ? 'ON' : (buffs.magnet>0 ? 'ON' : 'OFF')],
     ];
+
     for(const [k,v] of pills){
       const el=document.createElement('div');
       el.className='opt';
@@ -2002,7 +1836,7 @@ function bossTick(e,dt){
       el.innerHTML = `<div class="t">${k}</div><div class="d"><b>${v}</b></div>`;
       opts.appendChild(el);
     }
-  
+
     $panelRow.style.display='flex';
     const btnClose=document.createElement('button');
     btnClose.className='pill';
@@ -2010,7 +1844,7 @@ function bossTick(e,dt){
     btnClose.addEventListener('click',closeStats);
     $panelRow.appendChild(btnClose);
   }
-  
+
   function closeStats(){
     if(statsFromGameOver){
       mode='gameover';
@@ -2019,7 +1853,6 @@ function bossTick(e,dt){
       renderGameOverPanel();
       return;
     }
-  
     overlay.classList.remove('show');
     $panel.classList.remove('isStats');
     mode='play';
@@ -2027,10 +1860,10 @@ function bossTick(e,dt){
     lastT=performance.now();
   }
 
-    $btnStats.addEventListener('click', ()=>openStats(false));
-    $btnStats.addEventListener('keydown', (e)=>{
-      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(false); }
-    });
+  $btnStats.addEventListener('click', ()=>openStats(false));
+  $btnStats.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(false); }
+  });
 
   // ---------- Update ----------
   function update(dt){
@@ -2073,29 +1906,28 @@ function bossTick(e,dt){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
       if(b.y<-30||b.x<-40||b.x>W+40) b.alive=false;
     }
-for(const b of eBullets){
-  b.x+=b.vx*dt; b.y+=b.vy*dt;
 
-  // Defender 的球：反彈，不離場
-  if(b.ball){
-    if(b.hitCd>0) b.hitCd = Math.max(0, b.hitCd - dt);
+    for(const b of eBullets){
+      b.x+=b.vx*dt; b.y+=b.vy*dt;
 
-    const L = b.r + 6;
-    const R = W - b.r - 6;
-    const T = b.r + 6;
-    const B = H - b.r - 6;
+      if(b.ball){
+        if(b.hitCd>0) b.hitCd = Math.max(0, b.hitCd - dt);
 
-    if(b.x < L){ b.x = L; b.vx = Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
-    if(b.x > R){ b.x = R; b.vx = -Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
-    if(b.y < T){ b.y = T; b.vy = Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
-    if(b.y > B){ b.y = B; b.vy = -Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
+        const L = b.r + 6;
+        const R = W - b.r - 6;
+        const T = b.r + 6;
+        const B = H - b.r - 6;
 
-    continue;
-  }
+        if(b.x < L){ b.x = L; b.vx = Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
+        if(b.x > R){ b.x = R; b.vx = -Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
+        if(b.y < T){ b.y = T; b.vy = Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
+        if(b.y > B){ b.y = B; b.vy = -Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
 
-  // 一般子彈：照舊離場
-  if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
-}
+        continue;
+      }
+
+      if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
+    }
 
     // drops (coin included)
     for(const d of drops){
@@ -2125,8 +1957,7 @@ for(const b of eBullets){
 
       for(const eb of eBullets){
         if(!eb.alive) continue;
-        
-        // Defender 球：擋子彈，但自己不會死、也不給分
+
         if(eb.ball){
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
             b.alive = false;
@@ -2135,7 +1966,7 @@ for(const b of eBullets){
           }
           continue;
         }
-        
+
         if(eb.beam) continue;
 
         if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
@@ -2226,7 +2057,6 @@ for(const b of eBullets){
       }
 
       if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
-        // Defender 球：不消失，但有 hit cooldown
         if(eb.ball){
           if((eb.hitCd||0) <= 0){
             damagePlayer(eb.dmg);
@@ -2298,10 +2128,7 @@ for(const b of eBullets){
 
       if(d.type==='coin'){
         const a = Math.max(1, d.amt ?? 1);
-        icon =
-          (a>=30) ? '🎁' :
-          (a>=10) ? '💎' :
-          (a>=3)  ? '💰' : '🪙';
+        icon = (a>=30) ? '🎁' : (a>=10) ? '💎' : (a>=3) ? '💰' : '🪙';
       }
 
       ctx.fillText(icon,d.x,d.y+.5);
@@ -2317,24 +2144,23 @@ for(const b of eBullets){
       const isElite=e.type==='elite';
       const isHealer=e.type==='healer';
 
-    ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
-      : isDefenderBoss ? 'rgba(255,255,255,.10)'
-      : isSniperBoss ? 'rgba(120,220,255,.12)'
-      : isBoss ? 'rgba(255,120,120,.14)'
-      : isElite ? 'rgba(220,180,255,.14)'
-      : isHealer ? 'rgba(140,190,255,.14)'
-      : 'rgba(255,255,255,.10)';
-    
-    ctx.strokeStyle =
-      isDefenderBoss ? 'rgba(255,255,255,.45)'
-      : isSniperBoss ? 'rgba(120,220,255,.42)'
-      : isBoss ? 'rgba(255,120,120,.35)'
-      : isElite ? 'rgba(220,180,255,.45)'
-      : isHealer ? 'rgba(140,190,255,.40)'
-      : 'rgba(255,255,255,.20)';
+      ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
+        : isDefenderBoss ? 'rgba(255,255,255,.10)'
+        : isSniperBoss ? 'rgba(120,220,255,.12)'
+        : isBoss ? 'rgba(255,120,120,.14)'
+        : isElite ? 'rgba(220,180,255,.14)'
+        : isHealer ? 'rgba(140,190,255,.14)'
+        : 'rgba(255,255,255,.10)';
+
+      ctx.strokeStyle =
+        isDefenderBoss ? 'rgba(255,255,255,.45)'
+        : isSniperBoss ? 'rgba(120,220,255,.42)'
+        : isBoss ? 'rgba(255,120,120,.35)'
+        : isElite ? 'rgba(220,180,255,.45)'
+        : isHealer ? 'rgba(140,190,255,.40)'
+        : 'rgba(255,255,255,.20)';
 
       ctx.lineWidth = isBoss?2:(isElite?1.8:1);
-
       ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.stroke();
 
       const w=isBoss?96:(isElite?70:(isHealer?62:52)),h=6,x=e.x-w/2,y=e.y-e.r-14;
@@ -2372,13 +2198,9 @@ for(const b of eBullets){
       }else{
         const ang=Math.atan2(b.vy,b.vx);
         const L=b.len||28, R=b.r||5;
-        ctx.save();
-        ctx.translate(b.x,b.y);
-        ctx.rotate(ang);
+        ctx.save();ctx.translate(b.x,b.y);ctx.rotate(ang);
         if(ctx.roundRect){
-          ctx.beginPath();
-          ctx.roundRect(-L/2, -R, L, R*2, R);
-          ctx.fill();
+          ctx.beginPath();ctx.roundRect(-L/2, -R, L, R*2, R);ctx.fill();
         }else{
           ctx.beginPath();ctx.rect(-L/2, -R, L, R*2);ctx.fill();
           ctx.beginPath();ctx.arc(-L/2,0,R,0,Math.PI*2);ctx.fill();
@@ -2403,14 +2225,14 @@ for(const b of eBullets){
       ctx.globalAlpha = a;
       ctx.strokeStyle = 'rgba(255,140,140,.85)';
       ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0,0,player.r+18,0,Math.PI*2);
-      ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,player.r+18,0,Math.PI*2);ctx.stroke();
       ctx.restore();
     }
 
     ctx.fillStyle='rgba(255,255,255,.10)';ctx.strokeStyle='rgba(255,255,255,.22)';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0,-player.r-2);ctx.lineTo(player.r+2,player.r+4);ctx.lineTo(-player.r-2,player.r+4);
+    ctx.closePath();ctx.fill();ctx.stroke();
 
     if(player.shield>0){
       ctx.globalAlpha*=.85;ctx.strokeStyle='rgba(120,255,200,.45)';ctx.lineWidth=2;
@@ -2442,15 +2264,15 @@ for(const b of eBullets){
 
     const burstLeft  = skillCdLeft('burst');
     const invulnLeft = skillCdLeft('invuln');
-    
+
     if(buffs.burstT > SKILL_EPS) $cdBurst.textContent = `${Math.ceil(buffs.burstT)}s`;
     else if(burstLeft > SKILL_EPS) $cdBurst.textContent = `CD ${Math.ceil(burstLeft)}s`;
     else $cdBurst.textContent = 'Ready';
-    
+
     if(buffs.invulnT > SKILL_EPS) $cdInvuln.textContent = `${Math.ceil(buffs.invulnT)}s`;
     else if(invulnLeft > SKILL_EPS) $cdInvuln.textContent = `CD ${Math.ceil(invulnLeft)}s`;
     else $cdInvuln.textContent = 'Ready';
-    
+
     $btnBurst.disabled  = !(mode==='play' && !paused && buffs.burstT<=SKILL_EPS  && burstLeft<=SKILL_EPS);
     $btnInvuln.disabled = !(mode==='play' && !paused && buffs.invulnT<=SKILL_EPS && invulnLeft<=SKILL_EPS);
 
@@ -2458,7 +2280,6 @@ for(const b of eBullets){
   }
 
   // ---------- Frame ----------
-  let lastT=performance.now();
   function frame(t){
     const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
     if(mode==='play' && !paused) update(dt);
@@ -2466,14 +2287,15 @@ for(const b of eBullets){
     requestAnimationFrame(frame);
   }
 
-// === DEBUG: 一開始就開啟強力磁鐵（本局永久）===
-shopState.magnetRun = 1;
-buffs.magnet = Math.max(buffs.magnet, 1e9);
-// init
-setPadX(.5);
-spawnWave();
-syncOrientationLock();
-requestAnimationFrame(frame);
+  // === DEBUG: 一開始就開啟強力磁鐵（本局永久）===
+  shopState.magnetRun = 1;
+  buffs.magnet = Math.max(buffs.magnet, 1e9);
+
+  // init
+  setPadX(.5);
+  spawnWave();
+  syncOrientationLock();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
