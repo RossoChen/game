@@ -55,7 +55,6 @@ body{position:fixed;inset:0}
 
 /* =========================
    SHARED "GLASS" BASE
-   (one place to tune visuals)
 ========================= */
 .pill, button.pill, .sbtn, .opt{
   color:var(--ui-fg);
@@ -153,7 +152,7 @@ canvas{width:100%;height:100%;display:block}
   flex:0 0 auto;
   height:max(42px,5.5svh);
   border-radius:16px;
-  background:rgba(255,255,255,.04); /* slightly different */
+  background:rgba(255,255,255,.04);
   position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent
 }
 .touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
@@ -245,7 +244,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: dedup-all
+  BUILD: sniper-sweep + upgrade-weight + center-out-spread
 </div>
 
 <div class="app">
@@ -437,7 +436,7 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  /* ✅ one entrypoint for layout (dedup resize/applySafeArea/orientation) */
+  /* ✅ one entrypoint for layout */
   function syncLayout(){
     applySafeArea();
     resize();
@@ -474,7 +473,6 @@ canvas{width:100%;height:100%;display:block}
 
   const ENEMY_BULLET_SPEED_MUL = 0.30;
 
-  // Spread Angle Tuning (keep for future tuning; not duplicated)
   const BOSS_SPREAD_P1 = 0.24;
   const BOSS_SPREAD_P2 = 0.26;
   const BOSS_SPREAD_P3 = 0.30;
@@ -498,8 +496,6 @@ canvas{width:100%;height:100%;display:block}
     if(stage <= 50) return 0.85;
     return 1.00;
   };
-
-  /* ✅ single source of truth (was duplicated IIFE before) */
   function healerCountByChain(){
     let n = 1;
     if(Math.random() < 0.50) n++;
@@ -508,10 +504,9 @@ canvas{width:100%;height:100%;display:block}
     if(n>=4 && Math.random() < 0.05) n++;
     return n;
   }
-
-  const HEALER_HEAL_PCT = 0.05;   /* ✅ used everywhere */
+  const HEALER_HEAL_PCT = 0.05;
   const HEALER_PERIOD = 3.0;
-  const HEALER_BOSS_MUL = 4.0;   /* ✅ used everywhere */
+  const HEALER_BOSS_MUL = 4.0;
 
   function bulletSizeDmgMul(r){
     const dr = Math.max(0, r - BULLET_R_BASE);
@@ -652,7 +647,7 @@ canvas{width:100%;height:100%;display:block}
 
     let healerLanes = new Set();
     if(hasHealer){
-      const want = healerCountByChain(); /* ✅ dedup */
+      const want = healerCountByChain();
       const maxN = Math.min(want, Math.max(1, lanes-1));
       while(healerLanes.size < maxN){
         healerLanes.add(Math.floor(Math.random()*lanes));
@@ -713,30 +708,25 @@ canvas{width:100%;height:100%;display:block}
   function spawnBoss(){
     const holdY = enemyHoldY() - 12;
 
-    // ---------- Boss variant selector ----------
     const isSniper   = (state.stage >= 31 && state.stage <= 50);
     const isDefender = (state.stage >= 51 && state.stage <= 80);
 
     const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
 
-    // ===== Defender Boss (51~80) =====
     if(isDefender){
       const hpD = hpBase * 7.5;
       enemies.push({
         type:'boss', kind:'defender',
         x: W*0.5, y: -100, targetY: holdY, r: 30,
         hp: hpD, hpMax: hpD,
-
         strafeAmp:0, strafeSpd:0, strafePhase:0,
         phase:1, hitFlash:0,
-
         ballCd:1.0, ballPeriod:4.0,
       });
       toastMsg('Boss（Defender）入場', 0.9);
       return;
     }
 
-    // ===== Sniper Boss (31~50) =====
     if(isSniper){
       const baseSpd = 520 + state.stage*10;
       const hp2 = hpBase * 1.85;
@@ -754,7 +744,6 @@ canvas{width:100%;height:100%;display:block}
       return;
     }
 
-    // ===== Default boss =====
     const baseSpd=240+state.stage*12;
     enemies.push({
       type:'boss', x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
@@ -949,9 +938,12 @@ canvas{width:100%;height:100%;display:block}
   // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
   const AI = {
     enabled:false,
+
+    // sniper SOP state
     sniperSweepX:0,
     sniperForceLeft:true,
 
+    // shop
     autoShop:true,
     nextShopAtMs:0,
     shopLock:false,
@@ -964,38 +956,47 @@ canvas{width:100%;height:100%;display:block}
       padActive=false;
       this.shopLock=false;
       this.nextShopAtMs=0;
-      this.sniperSweepX=player.x;
+
+      // reset sniper SOP: next time sniper appears -> force start at left edge
       this.sniperForceLeft=true;
+      this.sniperSweepX=player.x;
     },
 
+    // ---------- 升級自動選（權重：散射>穿透>增傷>血量>護盾，其它隨意） ----------
     pickUpgrade(picks){
       const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
-      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+      const baseScore = (k)=>{
+        if(k==='spread_perm')      return 120;
+        if(k==='pierce_perm')     return 105;
+        if(k==='dmg')             return 90;
+        if(k==='hp')              return 70;
+        if(k==='shield_cap')      return 58;
+        if(k==='firerate')        return 28;
+        if(k==='regen')           return 18;
+        if(k==='bullet_size')     return 10;
+        if(k==='xp_gain')         return 6;
+        return 0;
+      };
 
       const scoreOf = (k)=>{
-        let s = 0;
-        if(k==='spread_perm')      s = 95;
-        else if(k==='pierce_perm') s = 78;
-        else if(k==='dmg')         s = 72;
-        else if(k==='firerate')    s = 68;
-        else if(k==='shield_cap')  s = 60;
-        else if(k==='hp')          s = 58;
-        else if(k==='regen')       s = 38;
-        else if(k==='bullet_size') s = 28;
-        else if(k==='xp_gain')     s = 18;
+        let s = baseScore(k);
 
+        // 生存保險（但不把主排序打亂）
         if(hpPct < 0.35){
-          if(k==='hp') s += 55;
-          if(k==='shield_cap') s += 45;
-          if(k==='regen') s += 18;
-        }
-        if(shieldPct < 0.20){
-          if(k==='shield_cap') s += 25;
+          if(k==='hp') s += 35;
+          if(k==='shield_cap') s += 20;
+          if(k==='regen') s += 10;
+        }else if(hpPct < 0.55){
+          if(k==='hp') s += 12;
+          if(k==='shield_cap') s += 8;
         }
 
+        // caps
         if(k==='spread_perm' && player.spread_perm >= player.spreadCap) s = -1e9;
         if(k==='pierce_perm' && player.pierce_perm >= PIERCE_CAP) s = -1e9;
         if(k==='bullet_size' && player.bulletR >= BULLET_R_UPG_CAP) s = -1e9;
+
         return s;
       };
 
@@ -1007,6 +1008,7 @@ canvas{width:100%;height:100%;display:block}
       return best;
     },
 
+    // ---------- 商店自動選 ----------
     pickShopItem(items, ctx){
       const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
       const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
@@ -1017,7 +1019,7 @@ canvas{width:100%;height:100%;display:block}
       const scoreId = (id)=>{
         switch(id){
           case 'magnetRun':   return shopState.magnetRun ? -1e9 : 900;
-          case 'spreadCapUp': return spreadBlocked ? 280 : 140;
+          case 'spreadCapUp': return spreadBlocked ? 320 : 160;
           case 'invulnCdDown':return (wantSurvive ? 360 : 220);
           case 'invulnDurUp': return (wantSurvive ? 240 : 150);
           case 'burstCdDown': return (ctx?.hasBoss ? 240 : 160);
@@ -1042,6 +1044,11 @@ canvas{width:100%;height:100%;display:block}
     shopTick(dt, ctx){
       if(!this.autoShop || !this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
+
+      // Sniper / Defender 戰不要開店（避免亂切模式）
+      const bossNow = enemies.find(e=>e.type==='boss');
+      if(bossNow && (bossNow.kind==='sniper' || bossNow.kind==='defender')) return;
+
       if(state.coins < 300) return;
 
       const itemsNow = shopItems();
@@ -1088,15 +1095,67 @@ canvas{width:100%;height:100%;display:block}
       }, 80);
     },
 
+    // ---------- 每幀決策 ----------
     tick(dt){
       if(!this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
 
-      const py = player.y;
       const safeL = player.r + 10;
       const safeR = W - player.r - 10;
+      const leftX  = safeL + 2;
+      const rightX = safeR - 2;
 
-      /* ✅ dedup: same rule as core */
+      const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+
+      // ✅ Sniper SOP：最左出發 -> 慢慢往右 -> 到最右「直接點最左」瞬回 -> 重複
+      // 不做候選點掃描、不做左右擺動，保證單調往右。
+      if(sniperBoss){
+        // 進場第一拍：強制到最左
+        if(this.sniperForceLeft){
+          this.sniperSweepX = leftX;
+          setPadX(leftX / W);
+          this.sniperForceLeft = false;
+          return;
+        }
+
+        // 慢慢往右
+        const sweepSpd = 80; // px/s
+        this.sniperSweepX = clamp(this.sniperSweepX + sweepSpd * dt, leftX, rightX);
+
+        // 到最右：直接點最左瞬回，重置 sweepX
+        if(this.sniperSweepX >= rightX - 0.5){
+          setPadX(leftX / W);
+          this.sniperSweepX = leftX;
+          return;
+        }
+
+        setPadX(this.sniperSweepX / W);
+
+        // Sniper 戰：只做保命技能（避免被 beam 秒）
+        if(canUseSkill('invuln')){
+          // 用 minBeamHit 近似：看場上 beam 是否有「快撞到」的
+          let minHit = 999;
+          const py = player.y;
+          for(const b of eBullets){
+            if(!b?.alive || !b.beam) continue;
+            const vy = b.vy || 0;
+            if(vy <= 1) continue;
+            const tHit = (py - b.y) / vy;
+            if(tHit > 0 && tHit < minHit) minHit = tHit;
+          }
+          if(minHit < 0.34) useInvuln();
+        }
+
+        // Sniper 戰不開 burst（你要也可以，但先保命）
+        return;
+      }else{
+        // 離開 sniper：下次再遇到先瞬左
+        this.sniperForceLeft = true;
+        this.sniperSweepX = player.x;
+      }
+
+      // ====== 非 Sniper boss：保留你原本的 AI 迴避/對齊（簡化版） ======
+      const py = player.y;
       const shotsLive = shotsFromSpread(spreadTotal());
 
       let target = null;
@@ -1106,8 +1165,6 @@ canvas{width:100%;height:100%;display:block}
           for(const e of enemies){ if(!target || e.y > target.y) target = e; }
         }
       }
-
-      const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
       const aimBaseX = target ? target.x : (W*0.5);
 
       let aimTargets = [aimBaseX];
@@ -1118,37 +1175,14 @@ canvas{width:100%;height:100%;display:block}
         aimTargets = [ clamp(aimBaseX - off, safeL, safeR), clamp(aimBaseX + off, safeL, safeR) ];
       }
 
-      // ===== Sniper SOP =====
-      let sniperMode=false, sniperSweepTargetX=null, sniperWantTeleport=false;
-
-      if(sniperBoss){
-        sniperMode=true;
-        const leftX  = safeL + 2;
-        const rightX = safeR - 2;
-
-        if(this.sniperForceLeft){
-          this.sniperSweepX = leftX;
-          setPadX(this.sniperSweepX / W);
-          this.sniperForceLeft = false;
-        }
-
-        this.sniperSweepX = clamp(this.sniperSweepX + 80 * dt, leftX, rightX);
-        sniperSweepTargetX = this.sniperSweepX;
-        sniperWantTeleport = (player.x >= rightX - 8);
-      }else{
-        this.sniperForceLeft = true;
-        this.sniperSweepX = player.x;
-      }
-
-      // ---------- danger intervals ----------
-      const horizon = sniperBoss ? 1.65 : 1.25;
+      // danger intervals (same as你原本，但略)
+      const horizon = 1.25;
       const margin  = 6;
       const intervals = [];
       let minBeamHit = 999;
 
       for(const b of eBullets){
         if(!b?.alive) continue;
-
         if(b.ball){
           const rad = (b.r||18) + player.r + 16;
           intervals.push([b.x - rad, b.x + rad, 14*10]);
@@ -1174,7 +1208,6 @@ canvas{width:100%;height:100%;display:block}
           const rad = player.r + R + margin + 12 + xHalf;
           const w = (9 / (0.05 + tHit));
           intervals.push([xHit - rad, xHit + rad, w * 8]);
-
           if(tHit < minBeamHit) minBeamHit = tHit;
           continue;
         }
@@ -1184,8 +1217,8 @@ canvas{width:100%;height:100%;display:block}
         intervals.push([xHit - rad, xHit + rad, w]);
       }
 
-      // ---------- candidates scan ----------
-      const candidates = sniperBoss ? 29 : 23;
+      // candidates scan
+      const candidates = 23;
       let bestX = player.x;
       let bestScore = -1e18;
 
@@ -1201,15 +1234,9 @@ canvas{width:100%;height:100%;display:block}
           }
         }
 
-        let aimW = sniperBoss ? 1.2 : 3.4;
-        if(shotsLive === 2) aimW = sniperBoss ? 0.9 : 2.4;
-
+        const aimW = (shotsLive===2) ? 2.4 : 3.4;
         const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
         score -= aimDist * aimW;
-
-        if(sniperMode && typeof sniperSweepTargetX === 'number'){
-          score += 5200 - Math.abs(x - sniperSweepTargetX) * 55;
-        }
 
         const edge = Math.min(x-safeL, safeR-x);
         score += edge * 0.05;
@@ -1217,17 +1244,7 @@ canvas{width:100%;height:100%;display:block}
         if(score > bestScore){ bestScore=score; bestX=x; }
       }
 
-      if(sniperMode){
-        const leftX = safeL + 2;
-        if(sniperWantTeleport || (bestScore < -3.6e5)){
-          setPadX(leftX / W);
-          this.sniperSweepX = leftX;
-        }
-      }
-
-      let maxStep = player.moveSpeed * dt * 0.95;
-      if(sniperBoss) maxStep = 80 * dt;
-
+      const maxStep = player.moveSpeed * dt * 0.95;
       const nx = clamp(bestX, safeL, safeR);
       const dx = clamp(nx - player.x, -maxStep, maxStep);
       setPadX((player.x + dx) / W);
@@ -1235,17 +1252,13 @@ canvas{width:100%;height:100%;display:block}
       const bulletPressure = intervals.length;
       const boss = enemies.find(e=>e.type==='boss');
 
-      if(canUseSkill('invuln') && sniperBoss){
-        if(minBeamHit < 0.34 || bestScore < -3.2e5) useInvuln();
-      }
-
       if(canUseSkill('invuln')){
         const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
         const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
         const imminent = (bestScore < -5e5);
         const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
         const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
-        if(imminent || fragile || panic) useInvuln();
+        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
       }
 
       if(canUseSkill('burst')){
@@ -1384,23 +1397,42 @@ canvas{width:100%;height:100%;display:block}
     if(n<=1) return 1;
     return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
+
+  // ✅ 由內往外散：先中心(若奇數)，再 ±小，再 ±大 …（同時縮小中心空隙）
   function shotVXPattern(n){
     if(n<=1) return [0];
+
     const baseMax = 240;
     const extra = Math.max(0, n-5) * 26;
     const maxV = clamp(baseMax + extra, 240, 520);
+
     const arr=[];
-    const step = (2*maxV)/(n-1);
-    for(let i=0;i<n;i++) arr.push(-maxV + step*i);
+    const hasCenter = (n % 2 === 1);
+    const pairs = Math.floor(n/2);
+
+    // 控制內外分布：gamma > 1 => 內側更靠近中心（中心空隙變小）
+    const gamma = 1.55;
+
+    if(hasCenter) arr.push(0);
+
+    for(let k=1;k<=pairs;k++){
+      const t = k / pairs;                 // 0..1
+      const mag = Math.pow(t, gamma) * maxV;
+      // 由內往外：先小再大（spawn 順序也是內->外）
+      arr.push(-mag, +mag);
+    }
+
+    // 若 hasCenter=false（偶數），arr 會從 ±最小開始，不會「最外側先出」
     return arr;
   }
+
   function shoot(dt){
     fireAcc+=dt*player.fireRate;
     while(fireAcc>=1){ fireAcc-=1; spawnPlayerShot(); }
   }
   function spawnPlayerShot(){
     const s=spreadTotal();
-    const n=shotsFromSpread(s);
+    const n=Math.max(1, 1 + Math.floor(s));
     const r = clamp(player.bulletR, BULLET_R_MIN, BULLET_R_CAP);
 
     const burstMul = (buffs.burstT>0)?2.0:1.0;
@@ -1670,7 +1702,7 @@ canvas{width:100%;height:100%;display:block}
 
     let totalAdd = 0;
     for(const t of targets){
-      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1); /* ✅ dedup const */
+      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1);
       const before = t.hp;
       t.hp = Math.min(t.hpMax, t.hp + add);
       totalAdd += Math.max(0, t.hp - before);
@@ -1792,7 +1824,7 @@ canvas{width:100%;height:100%;display:block}
     $panelSub.style.display='block';
 
     const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
-    const spreadShotsLive = shotsFromSpread(spreadTotal());
+    const spreadShotsLive = Math.max(1, 1 + Math.floor(spreadTotal()));
 
     const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
     const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
@@ -1929,7 +1961,7 @@ canvas{width:100%;height:100%;display:block}
       if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
     }
 
-    // drops (coin included)
+    // drops
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
       if(buffs.magnet>0){
@@ -2286,10 +2318,6 @@ canvas{width:100%;height:100%;display:block}
     draw(); syncHud();
     requestAnimationFrame(frame);
   }
-
-  // === DEBUG: 一開始就開啟強力磁鐵（本局永久）===
-  shopState.magnetRun = 1;
-  buffs.magnet = Math.max(buffs.magnet, 1e9);
 
   // init
   setPadX(.5);
