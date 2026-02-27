@@ -471,7 +471,7 @@ canvas{width:100%;height:100%;display:block}
   const player={
     x:W*.5,y:0,r:14,
     hp:BASE_HP,hpMax:BASE_HP,
-    moveSpeed:520,fireRate:6.2,dmg:26,bulletSpeed:820,
+    moveSpeed:520,fireRate:6.2,dmg:30,bulletSpeed:820,
     spread_perm:0, spreadCap:SPREAD_CAP_BASE,
     pierce_perm:2,
     shield:0,shieldMax:0,
@@ -1293,8 +1293,8 @@ canvas{width:100%;height:100%;display:block}
 
   // ---------- Level-up ----------
   const UPGRADES=[
-    {key:'dmg',t:'火力提升',d:'傷害 +10%'},
-    {key:'firerate',t:'射速提升',d:'射速 +18%'},
+    {key:'dmg',t:'火力提升',d:'傷害 +15%'},
+    {key:'firerate',t:'射速提升',d:'射速 +15%'},
     {key:'hp',t:'擴充裝甲',d:'HP 上限 +20，並回滿'},
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1'},
@@ -1366,8 +1366,8 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function applyUpgrade(key){
-    if(key==='dmg') player.dmg*=1.10;
-    else if(key==='firerate') player.fireRate*=1.18;
+    if(key==='dmg') player.dmg*=1.15;
+    else if(key==='firerate') player.fireRate*=1.15;
     else if(key==='hp'){player.hpMax+=20;player.hp=player.hpMax}
     else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
     else if(key==='spread_perm') player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
@@ -1415,7 +1415,7 @@ canvas{width:100%;height:100%;display:block}
   
     // === 1) 整體散射寬度（調小這裡就會變窄）===
     // 原本 baseMax=240, extra=26, clamp 到 520 太寬
-    const baseMax = 170;                 // ✅ 越小越窄（建議 150~190）
+    const baseMax = 240;                 // ✅ 越小越窄（建議 150~190）
     const extra   = Math.max(0, n-5) * 16; // ✅ 越小越窄（建議 12~20）
     const maxV    = clamp(baseMax + extra, 150, 320); // ✅ 上限壓低（建議 260~360）
   
@@ -1424,7 +1424,7 @@ canvas{width:100%;height:100%;display:block}
     const pairs = Math.floor(n/2);
   
     // === 2) 內外分佈曲線（越大越貼近中心，外圈更慢長大）===
-    const gamma = 2.15; // ✅ 原本 1.55 太快變外擴；建議 1.9~2.6
+    const gamma = 1.55; // ✅ 原本 1.55 太快變外擴；建議 1.9~2.6
   
     if(hasCenter) arr.push(0);
   
