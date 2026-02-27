@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 15%+30+1.55+240
+  BUILD: 26>30
 </div>
 
 <div class="app">
@@ -1793,7 +1793,7 @@ canvas{width:100%;height:100%;display:block}
     state.stage=1;state.wave=1;state.score=0;state.coins=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
 
     player.hpMax=BASE_HP; player.hp=BASE_HP;
-    player.moveSpeed=520;player.fireRate=6.2;player.dmg=26;player.bulletSpeed=820;
+    player.moveSpeed=520;player.fireRate=6.2;player.dmg=30;player.bulletSpeed=820;
     player.spread_perm=0;player.spreadCap=SPREAD_CAP_BASE;
     player.pierce_perm=2;
     player.shield=0;player.shieldMax=0;
@@ -1819,7 +1819,7 @@ canvas{width:100%;height:100%;display:block}
     spawnWave();
   }
 
-  const BASE_PLAYER = { hpMax: BASE_HP, dmg: 26, fireRate: 6.2, bulletSpeed: 820, pierce_perm: 2, bulletR: BULLET_R_BASE, xpGainMul: 1.0 };
+  const BASE_PLAYER = { hpMax: BASE_HP, dmg: 30, fireRate: 6.2, bulletSpeed: 820, pierce_perm: 2, bulletR: BULLET_R_BASE, xpGainMul: 1.0 };
   function pctMul(now, base){ if(!base) return 0; return Math.round(((now/base)-1)*1000)/10; }
 
   function openStats(fromGameOver=false){
