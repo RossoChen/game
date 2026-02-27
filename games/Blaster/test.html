@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: wingmen480
+  BUILD: wingmen+defender-ai-solver+speed480
 </div>
 
 <div class="app">
@@ -254,7 +254,6 @@ canvas{width:100%;height:100%;display:block}
 
 <script>
 (()=>{ // setup
-  // ---------- Safe-area / Dynamic Island ----------
   function isIOS(){
     return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
   }
@@ -301,7 +300,6 @@ canvas{width:100%;height:100%;display:block}
     root.style.setProperty('--appExtraBottom', `${extraBottom}px`);
   }
 
-  // ---------- Canvas ----------
   const wrap=document.getElementById('boardWrap'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{alpha:true});
   let W=0,H=0;
   function resize(){
@@ -312,7 +310,6 @@ canvas{width:100%;height:100%;display:block}
     W=r.width; H=r.height;
   }
 
-  // ---------- HUD refs ----------
   const $stage=document.getElementById('hudStage');
   const $lv=document.getElementById('hudLv');
   const $xpPct=document.getElementById('xpPct');
@@ -325,7 +322,6 @@ canvas{width:100%;height:100%;display:block}
         $btnShop=document.getElementById('btnShop'),
         $btnAI=document.getElementById('btnAI');
 
-  // overlay refs
   const overlay=document.getElementById('overlay');
   const opts=document.getElementById('opts');
   const $panelTitle=document.getElementById('panelTitle');
@@ -333,14 +329,12 @@ canvas{width:100%;height:100%;display:block}
   const $panelRow=document.getElementById('panelRow');
   const $panel=document.getElementById('panel');
 
-  // skills refs
   const $btnBurst=document.getElementById('btnBurst');
   const $btnInvuln=document.getElementById('btnInvuln');
   const $cdBurst=document.getElementById('cdBurst');
   const $cdInvuln=document.getElementById('cdInvuln');
   const $aiState=document.getElementById('aiState');
 
-  // Back -> /games/
   $btnBack.addEventListener('click',()=>{
     if(document.referrer){
       try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
@@ -348,12 +342,11 @@ canvas{width:100%;height:100%;display:block}
     location.href='../';
   });
 
-  // ---------- Orientation guard ----------
   const $rotateLock=document.getElementById('rotateLock');
   let lockedLandscape=false;
 
   let paused=false;
-  let mode='play'; // play | levelup | shop | stats | gameover
+  let mode='play';
   let gameOverSummary = null;
   let statsFromGameOver = false;
   let lastT=performance.now();
@@ -389,18 +382,14 @@ canvas{width:100%;height:100%;display:block}
     visualViewport.addEventListener('scroll', syncLayout, {passive:true});
   }
 
-  // ---------- Utils ----------
   const rand=(a,b)=>a+Math.random()*(b-a);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const lerp=(a,b,t)=>a+(b-a)*t;
   const dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
-  const hypot=Math.hypot;
 
-  // ---------- Touchpad ----------
   const pad=document.getElementById('touchpad'),thumb=document.getElementById('thumb');
   let padActive=false,padX=.5;
 
-  // ---------- Constants ----------
   const BASE_HP=300;
   const SPREAD_CAP_BASE=5;
   const PIERCE_CAP=5;
@@ -416,7 +405,6 @@ canvas{width:100%;height:100%;display:block}
   const BOSS_SPREAD_P2 = 0.26;
   const BOSS_SPREAD_P3 = 0.30;
 
-  // skills (shop adjustable)
   let BURST_DURATION = 20;
   let BURST_CD = 50;
   let INVULN_DURATION = 20;
@@ -424,7 +412,6 @@ canvas{width:100%;height:100%;display:block}
 
   function downtime(totalCd, dur){ return Math.max(0, Math.round((totalCd - dur)*10)/10); }
 
-  // healer
   const HEALER_CHANCE_BY_STAGE = (stage)=>{
     if(stage <= 4)  return 0.00;
     if(stage <= 7)  return 0.10;
@@ -463,7 +450,6 @@ canvas{width:100%;height:100%;display:block}
     return 22;
   }
 
-  // ---------- State ----------
   const state={
     stage:1,wave:1,score:0,coins:0,xp:0,level:1,nextXp:60,
     waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5
@@ -489,24 +475,14 @@ canvas{width:100%;height:100%;display:block}
 
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
-  // ---------- Wingmen ----------
-  // AI 模式自帶；手動需購買
+  // Wingmen
   let allyRockets=[];
-  let wingmanAcc=0; // fire accumulator
-  const WINGMAN_BASE_INTERVAL = 2.0; // seconds
+  let wingmanAcc=0;
+  const WINGMAN_BASE_INTERVAL = 2.0;
   const WINGMAN_MIN_INTERVAL = 0.5;
   const WINGMAN_INTERVAL_STEP = 0.3;
   const WINGMAN_MAX_UPG = 5;
 
-  function wingmanActive(){
-    return (shopState.wingmanBought === 1) || (AI?.enabled === true);
-  }
-  function wingmanInterval(){
-    const lvl = clamp(shopState.wingmanAtkDown || 0, 0, WINGMAN_MAX_UPG);
-    return Math.max(WINGMAN_MIN_INTERVAL, WINGMAN_BASE_INTERVAL - lvl * WINGMAN_INTERVAL_STEP);
-  }
-
-  // ---------- Input helpers ----------
   function setPadX(nx){
     padX=Math.max(0,Math.min(1,nx));
     thumb.style.left=`${padX*100}%`;
@@ -519,7 +495,6 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyHoldY(){return clamp(H*.18,110,190)}
 
-  // ---------- Balance ----------
   function stageDifficultyMul(stage){
     const early = 1 + Math.max(0, stage-1) * 0.035;
     const mid   = (stage>=12) ? (1 + (stage-12) * 0.025) : 1;
@@ -552,7 +527,6 @@ canvas{width:100%;height:100%;display:block}
     return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
   }
 
-  // ---------- Spawning ----------
   function spawnMob(x,y,targetY,cfg,meta={}){
     const isStrafe=Math.random()<(0.38+state.stage*0.03);
     const elite = !!meta.elite;
@@ -591,7 +565,6 @@ canvas{width:100%;height:100%;display:block}
     };
   }
 
-  // ---------- Drops / Buffs ----------
   const DROP_TYPES=[ {key:'heal',w:22},{key:'shield',w:18},{key:'spread',w:14},{key:'magnet',w:10} ];
 
   function spreadAtCap(){ return player.spread_perm >= player.spreadCap; }
@@ -604,7 +577,6 @@ canvas{width:100%;height:100%;display:block}
   }
   function dropCoin(x,y,amt){ drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt}); }
 
-  // ✅ 新增 wingmanBought / wingmanAtkDown
   const shopState={
     spreadCapUp:0,
     burstCdDown:0, invulnCdDown:0,
@@ -613,6 +585,14 @@ canvas{width:100%;height:100%;display:block}
     wingmanBought:0,
     wingmanAtkDown:0
   };
+
+  function wingmanActive(){
+    return (shopState.wingmanBought === 1) || (AI?.enabled === true);
+  }
+  function wingmanInterval(){
+    const lvl = clamp(shopState.wingmanAtkDown || 0, 0, WINGMAN_MAX_UPG);
+    return Math.max(WINGMAN_MIN_INTERVAL, WINGMAN_BASE_INTERVAL - lvl * WINGMAN_INTERVAL_STEP);
+  }
 
   function strongMagnetActive(){
     return (shopState.magnetRun === 1) || (AI?.enabled === true);
@@ -623,16 +603,13 @@ canvas{width:100%;height:100%;display:block}
     if(Math.random() > p) return;
 
     const t = pickDrop();
-
     if(strongMagnetActive() && t === 'magnet'){
       dropCoin(x, y, 3);
       return;
     }
-
     drops.push({x,y,r:10,vy:rand(70,140),type:t,life:12});
   }
 
-  // ✅ 掉落改：補血 +50，護盾 +30
   function applyDrop(type, d){
     if(type==='heal'){
       player.hp=clamp(player.hp+50,0,player.hpMax);
@@ -778,19 +755,16 @@ canvas{width:100%;height:100%;display:block}
   function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
   function nextStage(){state.stage+=1;state.wave=1;state.waveClearCooldown=.85;state.waveInProgress=false}
 
-  // ---------- Shop ----------
   function price(base, lvl, growth=1.5){ return Math.floor(base * Math.pow(growth, lvl)); }
 
   function shopItems(){
     const burstDown = downtime(BURST_CD, BURST_DURATION);
     const invDown   = downtime(INVULN_CD, INVULN_DURATION);
-
     const wingActive = wingmanActive();
     const wingInt = wingmanInterval();
 
     const items = [];
 
-    // ✅ 散射：起始 200，最多 10 次
     items.push({
       id:'spreadCapUp',
       name:'散射上限 +1',
@@ -800,7 +774,6 @@ canvas{width:100%;height:100%;display:block}
       buy:()=>{ shopState.spreadCapUp++; player.spreadCap++; }
     });
 
-    // ✅ 爆發 CD / 爆發時間：起始 100，最多 10 次
     items.push({
       id:'burstCdDown',
       name:'爆發 CD -1s',
@@ -827,7 +800,6 @@ canvas{width:100%;height:100%;display:block}
       }
     });
 
-    // ✅ 無敵 CD / 無敵時間：起始 100，最多 15 次
     items.push({
       id:'invulnCdDown',
       name:'無敵 CD -1s',
@@ -854,7 +826,6 @@ canvas{width:100%;height:100%;display:block}
       }
     });
 
-    // 強力磁鐵（維持原本）
     items.push({
       id:'magnetRun',
       name:'強力磁鐵',
@@ -867,7 +838,6 @@ canvas{width:100%;height:100%;display:block}
       }
     });
 
-    // ✅ 新增：僚機（一次性，3000）
     items.push({
       id:'wingmanBuy',
       name:'僚機編隊（左右各一）',
@@ -880,7 +850,6 @@ canvas{width:100%;height:100%;display:block}
       }
     });
 
-    // ✅ 僚機升級（只有啟用後才出現；AI 自帶也算啟用）
     if(wingActive){
       items.push({
         id:'wingmanAtkDown',
@@ -945,7 +914,6 @@ canvas{width:100%;height:100%;display:block}
     $panelRow.appendChild(btnClose);
   }
 
-  // ---------- Core mode state ----------
   function openShop(){
     if(mode!=='play') return;
     if(lockedLandscape) return;
@@ -966,7 +934,6 @@ canvas{width:100%;height:100%;display:block}
     else if(mode==='shop') closeShop();
   });
 
-  // ---------- Skills ----------
   const SKILL_EPS = 1e-6;
   function skillCdLeft(k){ return Math.max(0, (skills[k]?.cd || 0)); }
   function canUseSkill(k){
@@ -990,22 +957,18 @@ canvas{width:100%;height:100%;display:block}
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
 
-  // ---------- Combat core helpers ----------
   function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
   function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
   function pierceTotal(){ return player.pierce_perm; }
 
-  // === AUTOPLAY AI (EASY-REMOVE) BEGIN ===
+  // === AUTOPLAY AI BEGIN ===
   const AI = {
     enabled:false,
-
     sniperSweepX:0,
     sniperForceLeft:true,
-
     autoShop:true,
     nextShopAtMs:0,
     shopLock:false,
-
     _savedManualMagnet: 0,
 
     toggle(on){
@@ -1089,9 +1052,9 @@ canvas{width:100%;height:100%;display:block}
 
       const scoreId = (id)=>{
         switch(id){
-          case 'magnetRun':      return -1e9; // AI has
-          case 'wingmanBuy':     return -1e9; // AI has
-          case 'wingmanAtkDown': return 420;  // ✅ AI 會優先幫僚機加速（打Boss拖太久的問題）
+          case 'magnetRun':      return -1e9;
+          case 'wingmanBuy':     return -1e9;
+          case 'wingmanAtkDown': return 420;
           case 'spreadCapUp':    return spreadBlocked ? 320 : 160;
           case 'invulnCdDown':   return (wantSurvive ? 360 : 220);
           case 'invulnDurUp':    return (wantSurvive ? 240 : 150);
@@ -1169,6 +1132,54 @@ canvas{width:100%;height:100%;display:block}
       }, 80);
     },
 
+    // shared positioning solver
+    solvePosition({ bandL, bandR, centerX, aimTargets, intervals, dt, aimW=3.4, centerW=0, edgeW=0.05, avoidScale=3200 }){
+      const safeL = player.r + 10;
+      const safeR = W - player.r - 10;
+
+      const L = clamp(bandL ?? safeL, safeL, safeR);
+      const R = clamp(bandR ?? safeR, safeL, safeR);
+
+      const candidates = 23;
+      let bestX = clamp(player.x, L, R);
+      let bestScore = -1e18;
+
+      for(let i=0;i<candidates;i++){
+        const x = L + (R-L)*(i/(candidates-1));
+        let score = 0;
+
+        for(const [l,r,w] of (intervals||[])){
+          if(x>=l && x<=r){
+            score -= 1e6 * w;
+          }else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * avoidScale * w;
+          }
+        }
+
+        if(aimTargets && aimTargets.length){
+          const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+          score -= aimDist * aimW;
+        }
+
+        if(typeof centerX === 'number' && centerW > 0){
+          score -= Math.abs(x - centerX) * centerW;
+        }
+
+        const edge = Math.min(x-L, R-x);
+        score += edge * edgeW;
+
+        if(score > bestScore){ bestScore=score; bestX=x; }
+      }
+
+      const maxStep = player.moveSpeed * dt * 1.05;
+      const nx = clamp(bestX, L, R);
+      const dx = clamp(nx - player.x, -maxStep, maxStep);
+      setPadX((player.x + dx) / W);
+
+      return { bestX: nx, bestScore };
+    },
+
     tick(dt){
       if(!this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
@@ -1180,7 +1191,6 @@ canvas{width:100%;height:100%;display:block}
 
       const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
 
-      // Sniper SOP：你說正常就不動
       if(sniperBoss){
         if(this.sniperForceLeft){
           this.sniperSweepX = leftX;
@@ -1218,13 +1228,16 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
-      // 非 Sniper：原本邏輯（略微保守）
       const py = player.y;
+
+      const boss = enemies.find(e=>e.type==='boss');
+      const defenderBoss = boss && boss.kind==='defender';
+
       const shotsLive = shotsFromSpread(spreadTotal());
 
       let target = null;
       if(enemies.length){
-        target = enemies.find(e=>e.type==='boss') || null;
+        target = boss || null;
         if(!target){
           for(const e of enemies){ if(!target || e.y > target.y) target = e; }
         }
@@ -1232,7 +1245,7 @@ canvas{width:100%;height:100%;display:block}
       const aimBaseX = target ? target.x : (W*0.5);
 
       let aimTargets = [aimBaseX];
-      if(target && shotsLive === 2){
+      if(!defenderBoss && target && shotsLive === 2){
         const dy = Math.max(140, player.y - target.y);
         const bulletVx = 240;
         const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
@@ -1246,15 +1259,16 @@ canvas{width:100%;height:100%;display:block}
       const margin  = 6;
       const intervals = [];
       let minBeamHit = 999;
+      let nearestBallD = 1e18;
 
       for(const b of eBullets){
         if(!b?.alive) continue;
 
         if(b.ball){
-          const rad = (b.r||18) + player.r + 16;
-          intervals.push([b.x - rad, b.x + rad, 14*10]);
-          const px1 = b.x + (b.vx||0) * 0.22;
-          intervals.push([px1 - rad, px1 + rad, 14*6]);
+          const rad = (b.r||18) + player.r + 18;
+          intervals.push([b.x - rad, b.x + rad, 14]);
+          const d = dist2(b.x,b.y,player.x,player.y);
+          if(d < nearestBallD) nearestBallD = d;
           continue;
         }
 
@@ -1285,46 +1299,35 @@ canvas{width:100%;height:100%;display:block}
         intervals.push([xHit - rad, xHit + rad, w]);
       }
 
-      const candidates = 23;
-      let bestX = player.x;
-      let bestScore = -1e18;
+      const centerX = W * 0.5;
 
-      for(let i=0;i<candidates;i++){
-        const x = safeL + (safeR-safeL)*(i/(candidates-1));
-        let score = 0;
+      const bandL = defenderBoss ? (W * 0.34) : undefined;
+      const bandR = defenderBoss ? (W * 0.66) : undefined;
 
-        for(const [l,r,w] of intervals){
-          if(x>=l && x<=r){
-            score -= 1e6 * w;
-          }else{
-            const d = (x<l) ? (l-x) : (x-r);
-            score -= (1/(d+6)) * 3200 * w;
-          }
-        }
+      const centerW = defenderBoss ? 22 : 0;
+      const aimW    = defenderBoss ? 0 : (shotsLive===2 ? 2.4 : 3.4);
+      const avoidScale = defenderBoss ? 2600 : 3200;
+      const edgeW   = defenderBoss ? 2.2 : 0.05;
 
-        let aimW = 3.4;
-        if(shotsLive === 2) aimW = 2.4;
-
-        const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
-        score -= aimDist * aimW;
-
-        const edge = Math.min(x-safeL, safeR-x);
-        score += edge * 0.05;
-
-        if(score > bestScore){ bestScore=score; bestX=x; }
-      }
-
-      const maxStep = player.moveSpeed * dt * 0.95;
-      const nx = clamp(bestX, safeL, safeR);
-      const dx = clamp(nx - player.x, -maxStep, maxStep);
-      setPadX((player.x + dx) / W);
+      const { bestScore } = this.solvePosition({
+        bandL, bandR, centerX,
+        aimTargets: defenderBoss ? null : aimTargets,
+        intervals, dt,
+        aimW, centerW, edgeW,
+        avoidScale
+      });
 
       const bulletPressure = intervals.length;
-      const boss = enemies.find(e=>e.type==='boss');
 
       if(canUseSkill('invuln')){
         const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
         const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+        if(defenderBoss){
+          const hitRad = (18 + player.r + 10);
+          if(nearestBallD < hitRad*hitRad) useInvuln();
+        }
+
         const imminent = (bestScore < -5e5);
         const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
         const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
@@ -1349,11 +1352,9 @@ canvas{width:100%;height:100%;display:block}
   window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
   // === AUTOPLAY AI END ===
 
-  // ---------- Level-up ----------
   const UPGRADES=[
     {key:'dmg',t:'火力提升',d:'傷害 +15%'},
     {key:'firerate',t:'射速提升',d:'射速 +15%'},
-    // ✅ HP / Shield +30 並補滿
     {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，並回滿'},
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1'},
@@ -1452,7 +1453,6 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // ---------- Combat ----------
   function enemyBulletCap(){
     const boss = enemies.find(e=>e.type==='boss');
     if(!boss) return 140;
@@ -1468,7 +1468,6 @@ canvas{width:100%;height:100%;display:block}
     return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
 
-  // 你原本那段（內往外 + 較窄）保留
   function shotVXPattern(n){
     if(n<=1) return [0];
 
@@ -1724,7 +1723,7 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // ---------- Wingmen rockets ----------
+  // Wingmen rockets
   function pickRocketTarget(){
     if(!enemies.length) return null;
     let best=null, bestScore=-1e18;
@@ -1746,10 +1745,10 @@ canvas{width:100%;height:100%;display:block}
     allyRockets.push({
       x:fromX, y:fromY,
       vx:0, vy:-260,
-      speed: 480,
-      turn: 14.0,      // rad/s - turning aggressiveness
+      speed: 480,       // ✅ 你要的：改成 480
+      turn: 14.0,
       r: 6,
-      dmg: player.dmg * 1.25 * burstMul, // ✅ 隨玩家攻擊力一起成長
+      dmg: player.dmg * 1.25 * burstMul,
       target: t,
       life: 6.0
     });
@@ -1783,21 +1782,18 @@ canvas{width:100%;height:100%;display:block}
 
       const tx=r.target.x, ty=r.target.y;
       const dx=tx - r.x, dy=ty - r.y;
-      const dist = hypot(dx,dy) || 1;
+      const dist = Math.hypot(dx,dy) || 1;
 
-      // desired direction
       const ux = dx / dist, uy = dy / dist;
 
-      // current velocity dir
-      const vlen = hypot(r.vx, r.vy) || 1;
+      const vlen = Math.hypot(r.vx, r.vy) || 1;
       let vx = r.vx / vlen, vy = r.vy / vlen;
 
-      // rotate toward desired (simple lerp in vector space)
       const turnT = clamp(r.turn * dt, 0, 1);
       vx = (1-turnT)*vx + turnT*ux;
       vy = (1-turnT)*vy + turnT*uy;
 
-      const nv = hypot(vx,vy) || 1;
+      const nv = Math.hypot(vx,vy) || 1;
       vx/=nv; vy/=nv;
 
       r.vx = vx * r.speed;
@@ -1806,7 +1802,6 @@ canvas{width:100%;height:100%;display:block}
       r.x += r.vx * dt;
       r.y += r.vy * dt;
 
-      // guarantee hit: if close enough OR passed target, force hit
       const hitRad = (r.r + (r.target.r||15) + 4);
       if(dist2(r.x, r.y, tx, ty) <= hitRad*hitRad){
         r.dead = true;
@@ -1815,8 +1810,6 @@ canvas{width:100%;height:100%;display:block}
         addBurst(r.x, r.y, 10);
 
         if(r.target.hp <= 0){
-          // reward as normal kill will be handled in bullet loop; but rocket can finish it here.
-          // We mimic the same kill logic block quickly to avoid "stuck alive".
           const e = r.target;
 
           let coinAmt = 1;
@@ -1838,7 +1831,6 @@ canvas{width:100%;height:100%;display:block}
             state.score+=18; addXp(10* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
             addBurst(e.x,e.y,10);
           }
-          // mark enemy dead
           e.hp = 0;
         }
       }
@@ -1848,7 +1840,6 @@ canvas{width:100%;height:100%;display:block}
     allyRockets = allyRockets.filter(x=>!x.dead);
   }
 
-  // ---------- damage / gameover ----------
   function damagePlayer(dmg){
     if(buffs.invulnT>0) return;
     if(hitIFrameT > 0) return;
@@ -1879,7 +1870,6 @@ canvas{width:100%;height:100%;display:block}
     toastT=sec;
   }
 
-  // ---------- healer logic ----------
   function healerTick(h,dt){
     h.healCd -= dt;
     if(h.healCd>0) return;
@@ -1899,7 +1889,6 @@ canvas{width:100%;height:100%;display:block}
     toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
   }
 
-  // ---------- GameOver / Stats ----------
   function renderGameOverPanel(){
     $panel.classList.remove('isStats');
     overlay.classList.add('show');
@@ -1989,7 +1978,6 @@ canvas{width:100%;height:100%;display:block}
     allyRockets=[];
     wingmanAcc=0;
 
-    // AI 模式：磁鐵自帶（沿用你的策略）
     if(AI.enabled){
       buffs.magnet = Math.max(buffs.magnet, 1e9);
     }
@@ -2107,7 +2095,6 @@ canvas{width:100%;height:100%;display:block}
     if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(false); }
   });
 
-  // ---------- Update ----------
   function update(dt){
     for(const k of ['magnet','spreadBonusT','invulnT','burstT']){
       if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
@@ -2125,7 +2112,6 @@ canvas{width:100%;height:100%;display:block}
 
     player.x=clamp(player.x,player.r+8,W-player.r-8);
 
-    // ✅ wingmen rockets
     wingmanTick(dt);
     updateRockets(dt);
 
@@ -2178,7 +2164,6 @@ canvas{width:100%;height:100%;display:block}
       if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
     }
 
-    // drops
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
 
@@ -2205,7 +2190,6 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // bullets clash
     for(const b of pBullets){
       if(!b.alive) continue;
       if((b.clashLeft??0)<=0) continue;
@@ -2248,7 +2232,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // player bullets vs enemies
     for(const b of pBullets){
       if(!b.alive) continue;
       for(const e of enemies){
@@ -2284,7 +2267,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -2326,14 +2308,12 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // cleanup
     pBullets=pBullets.filter(b=>b.alive);
     eBullets=eBullets.filter(b=>b.alive);
     enemies=enemies.filter(e=>e.hp>0);
     drops=drops.filter(d=>!d.dead);
     particles=particles.filter(p=>!p.dead);
 
-    // wave progression
     if(!state.waveInProgress){
       state.waveClearCooldown-=dt;
       if(state.waveClearCooldown<=0){
@@ -2353,7 +2333,6 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // ---------- Draw ----------
   function draw(){
     ctx.clearRect(0,0,W,H);
 
@@ -2367,7 +2346,6 @@ canvas{width:100%;height:100%;display:block}
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
@@ -2390,14 +2368,12 @@ canvas{width:100%;height:100%;display:block}
       ctx.restore();
     }
 
-    // rockets
     ctx.save();
     ctx.fillStyle='rgba(255,220,140,.95)';
     for(const r of allyRockets){
       ctx.beginPath();
       ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
       ctx.fill();
-      // tail
       ctx.globalAlpha=.45;
       ctx.beginPath();
       ctx.arc(r.x - (r.vx*0.012), r.y - (r.vy*0.012), r.r*0.65, 0, Math.PI*2);
@@ -2406,7 +2382,6 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
-    // enemies
     for(const e of enemies){
       ctx.save();
       const isBoss=e.type==='boss', flash=e.hitFlash>0;
@@ -2456,12 +2431,10 @@ canvas{width:100%;height:100%;display:block}
       ctx.restore();
     }
 
-    // player bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
     for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // enemy bullets
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){
       if(!b.beam){
@@ -2482,7 +2455,6 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
-    // player
     ctx.save();
     ctx.translate(player.x,player.y);
 
@@ -2517,7 +2489,6 @@ canvas{width:100%;height:100%;display:block}
     }
     ctx.restore();
 
-    // wingmen (visual only)
     if(wingmanActive()){
       const offX = 34;
       const wy = player.y - 18;
@@ -2540,12 +2511,10 @@ canvas{width:100%;height:100%;display:block}
         ctx.fillText('🛰', x, wy+0.5);
         ctx.globalAlpha=1;
       }
-
       ctx.restore();
     }
   }
 
-  // ---------- HUD sync ----------
   function syncHud(){
     $stage.textContent=`關卡 ${state.stage}`;
 
@@ -2577,7 +2546,6 @@ canvas{width:100%;height:100%;display:block}
     $btnShop.disabled = lockedLandscape || !(mode==='play' || mode==='shop');
   }
 
-  // ---------- Frame ----------
   function frame(t){
     const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
     if(mode==='play' && !paused) update(dt);
@@ -2585,7 +2553,6 @@ canvas{width:100%;height:100%;display:block}
     requestAnimationFrame(frame);
   }
 
-  // init
   setPadX(.5);
   spawnWave();
   syncOrientationLock();
