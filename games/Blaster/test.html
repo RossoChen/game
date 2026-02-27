@@ -1409,22 +1409,28 @@ canvas{width:100%;height:100%;display:block}
     return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
 
-  // ✅ 由內往外散：中心 -> 內圈 -> 外圈（避免中間空隙大）
+  // ✅ 由內往外散 + 整體更窄（maxV 變小）
   function shotVXPattern(n){
     if(n<=1) return [0];
-
-    const baseMax = 240;
-    const extra = Math.max(0, n-5) * 26;
-    const maxV = clamp(baseMax + extra, 240, 520);
-
+  
+    // === 1) 整體散射寬度（調小這裡就會變窄）===
+    // 原本 baseMax=240, extra=26, clamp 到 520 太寬
+    const baseMax = 170;                 // ✅ 越小越窄（建議 150~190）
+    const extra   = Math.max(0, n-5) * 16; // ✅ 越小越窄（建議 12~20）
+    const maxV    = clamp(baseMax + extra, 150, 320); // ✅ 上限壓低（建議 260~360）
+  
     const arr=[];
     const hasCenter = (n % 2 === 1);
     const pairs = Math.floor(n/2);
-    const gamma = 1.55;
-
+  
+    // === 2) 內外分佈曲線（越大越貼近中心，外圈更慢長大）===
+    const gamma = 2.15; // ✅ 原本 1.55 太快變外擴；建議 1.9~2.6
+  
     if(hasCenter) arr.push(0);
+  
+    // 內 -> 外：先小再大
     for(let k=1;k<=pairs;k++){
-      const t = k / pairs;
+      const t = k / pairs;                 // 0..1
       const mag = Math.pow(t, gamma) * maxV;
       arr.push(-mag, +mag);
     }
