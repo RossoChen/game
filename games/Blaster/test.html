@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 26>30
+  BUILD: wingmen+shop-rebalance+drop+upgrade
 </div>
 
 <div class="app">
@@ -394,6 +394,7 @@ canvas{width:100%;height:100%;display:block}
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const lerp=(a,b,t)=>a+(b-a)*t;
   const dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
+  const hypot=Math.hypot;
 
   // ---------- Touchpad ----------
   const pad=document.getElementById('touchpad'),thumb=document.getElementById('thumb');
@@ -488,6 +489,24 @@ canvas{width:100%;height:100%;display:block}
 
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
+  // ---------- Wingmen ----------
+  // AI 模式自帶；手動需購買
+  let allyRockets=[];
+  let wingmanAcc=0; // fire accumulator
+  const WINGMAN_BASE_INTERVAL = 2.0; // seconds
+  const WINGMAN_MIN_INTERVAL = 0.5;
+  const WINGMAN_INTERVAL_STEP = 0.3;
+  const WINGMAN_MAX_UPG = 5;
+
+  function wingmanActive(){
+    return (shopState.wingmanBought === 1) || (AI?.enabled === true);
+  }
+  function wingmanInterval(){
+    const lvl = clamp(shopState.wingmanAtkDown || 0, 0, WINGMAN_MAX_UPG);
+    return Math.max(WINGMAN_MIN_INTERVAL, WINGMAN_BASE_INTERVAL - lvl * WINGMAN_INTERVAL_STEP);
+  }
+
+  // ---------- Input helpers ----------
   function setPadX(nx){
     padX=Math.max(0,Math.min(1,nx));
     thumb.style.left=`${padX*100}%`;
@@ -585,7 +604,15 @@ canvas{width:100%;height:100%;display:block}
   }
   function dropCoin(x,y,amt){ drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt}); }
 
-  const shopState={spreadCapUp:0,burstCdDown:0,invulnCdDown:0,burstDurUp:0,invulnDurUp:0,magnetRun:0};
+  // ✅ 新增 wingmanBought / wingmanAtkDown
+  const shopState={
+    spreadCapUp:0,
+    burstCdDown:0, invulnCdDown:0,
+    burstDurUp:0,  invulnDurUp:0,
+    magnetRun:0,
+    wingmanBought:0,
+    wingmanAtkDown:0
+  };
 
   function strongMagnetActive(){
     return (shopState.magnetRun === 1) || (AI?.enabled === true);
@@ -597,7 +624,6 @@ canvas{width:100%;height:100%;display:block}
 
     const t = pickDrop();
 
-    // AI 或已購買強力磁鐵：磁鐵掉落直接轉金幣（避免垃圾掉落）
     if(strongMagnetActive() && t === 'magnet'){
       dropCoin(x, y, 3);
       return;
@@ -606,16 +632,16 @@ canvas{width:100%;height:100%;display:block}
     drops.push({x,y,r:10,vy:rand(70,140),type:t,life:12});
   }
 
+  // ✅ 掉落改：補血 +50，護盾 +30
   function applyDrop(type, d){
     if(type==='heal'){
-      player.hp=clamp(player.hp+35,0,player.hpMax);
+      player.hp=clamp(player.hp+50,0,player.hpMax);
     }else if(type==='shield'){
       player.shieldMax=Math.max(player.shieldMax,30);
       player.shield=clamp(player.shield+30,0,player.shieldMax);
     }else if(type==='spread'){
       buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);
     }else if(type==='magnet'){
-      // AI 模式：已自帶強力磁鐵 => 不給效果，轉點小獎勵
       if(strongMagnetActive()){
         dropCoin(d?.x ?? player.x, d?.y ?? player.y, 1);
       }else{
@@ -759,75 +785,117 @@ canvas{width:100%;height:100%;display:block}
     const burstDown = downtime(BURST_CD, BURST_DURATION);
     const invDown   = downtime(INVULN_CD, INVULN_DURATION);
 
-    return [
-      {
-        id:'spreadCapUp',
-        name:'散射上限 +1',
-        desc:`提升散射上限（目前 ${player.spreadCap}）`,
-        cost:price(260, shopState.spreadCapUp, 1.5),
-        canBuy:()=>true,
-        buy:()=>{ shopState.spreadCapUp++; player.spreadCap++; }
-      },
-      {
-        id:'burstCdDown',
-        name:'爆發 CD -1s',
-        desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
-        cost:price(240, shopState.burstCdDown, 1.5),
-        canBuy:()=>downtime(BURST_CD, BURST_DURATION) > 5,
+    const wingActive = wingmanActive();
+    const wingInt = wingmanInterval();
+
+    const items = [];
+
+    // ✅ 散射：起始 200，最多 10 次
+    items.push({
+      id:'spreadCapUp',
+      name:'散射上限 +1',
+      desc:`提升散射上限（目前 ${player.spreadCap}）`,
+      cost:price(200, shopState.spreadCapUp, 1.5),
+      canBuy:()=> shopState.spreadCapUp < 10,
+      buy:()=>{ shopState.spreadCapUp++; player.spreadCap++; }
+    });
+
+    // ✅ 爆發 CD / 爆發時間：起始 100，最多 10 次
+    items.push({
+      id:'burstCdDown',
+      name:'爆發 CD -1s',
+      desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
+      cost:price(100, shopState.burstCdDown, 1.5),
+      canBuy:()=> (shopState.burstCdDown < 10) && (downtime(BURST_CD, BURST_DURATION) > 5),
+      buy:()=>{
+        shopState.burstCdDown++;
+        BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1);
+        if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
+      }
+    });
+
+    items.push({
+      id:'burstDurUp',
+      name:'爆發持續 +1s',
+      desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
+      cost:price(100, shopState.burstDurUp, 1.5),
+      canBuy:()=> (shopState.burstDurUp < 10) && (BURST_DURATION < 60),
+      buy:()=>{
+        shopState.burstDurUp++;
+        BURST_DURATION = Math.min(60, BURST_DURATION + 1);
+        if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION;
+      }
+    });
+
+    // ✅ 無敵 CD / 無敵時間：起始 100，最多 15 次
+    items.push({
+      id:'invulnCdDown',
+      name:'無敵 CD -1s',
+      desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
+      cost:price(100, shopState.invulnCdDown, 1.5),
+      canBuy:()=> (shopState.invulnCdDown < 15) && (downtime(INVULN_CD, INVULN_DURATION) > 8),
+      buy:()=>{
+        shopState.invulnCdDown++;
+        INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1);
+        if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
+      }
+    });
+
+    items.push({
+      id:'invulnDurUp',
+      name:'無敵持續 +1s',
+      desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
+      cost:price(100, shopState.invulnDurUp, 1.5),
+      canBuy:()=> (shopState.invulnDurUp < 15) && (INVULN_DURATION < 60),
+      buy:()=>{
+        shopState.invulnDurUp++;
+        INVULN_DURATION = Math.min(60, INVULN_DURATION + 1);
+        if(INVULN_CD < INVULN_DURATION) INVULN_CD = INVULN_DURATION;
+      }
+    });
+
+    // 強力磁鐵（維持原本）
+    items.push({
+      id:'magnetRun',
+      name:'強力磁鐵',
+      desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到 Game Over）',
+      cost:2000,
+      canBuy:()=> shopState.magnetRun===0 && !(AI?.enabled === true),
+      buy:()=>{
+        shopState.magnetRun = 1;
+        buffs.magnet = Math.max(buffs.magnet, 1e9);
+      }
+    });
+
+    // ✅ 新增：僚機（一次性，3000）
+    items.push({
+      id:'wingmanBuy',
+      name:'僚機編隊（左右各一）',
+      desc:`購買後：左右各一個僚機，<b>每 ${wingInt.toFixed(1)}s</b> 發射追蹤火箭（100% 命中）`,
+      cost:3000,
+      canBuy:()=> (shopState.wingmanBought===0) && !(AI?.enabled === true),
+      buy:()=>{
+        shopState.wingmanBought = 1;
+        toastMsg('🛰️ 僚機就位', 0.7);
+      }
+    });
+
+    // ✅ 僚機升級（只有啟用後才出現；AI 自帶也算啟用）
+    if(wingActive){
+      items.push({
+        id:'wingmanAtkDown',
+        name:'僚機攻擊間隔 -0.3s',
+        desc:`降低僚機火箭間隔：目前 <b>${wingInt.toFixed(1)}s</b>（最多 5 次）`,
+        cost:price(200, shopState.wingmanAtkDown, 1.5),
+        canBuy:()=> (shopState.wingmanAtkDown < WINGMAN_MAX_UPG),
         buy:()=>{
-          shopState.burstCdDown++;
-          BURST_CD = Math.max(BURST_DURATION + 5, BURST_CD - 1);
-          if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
+          shopState.wingmanAtkDown++;
+          toastMsg(`🛰️ 僚機加速：${wingmanInterval().toFixed(1)}s`, 0.55);
         }
-      },
-      {
-        id:'invulnCdDown',
-        name:'無敵 CD -1s',
-        desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
-        cost:price(240, shopState.invulnCdDown, 1.5),
-        canBuy:()=>downtime(INVULN_CD, INVULN_DURATION) > 8,
-        buy:()=>{
-          shopState.invulnCdDown++;
-          INVULN_CD = Math.max(INVULN_DURATION + 8, INVULN_CD - 1);
-          if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
-        }
-      },
-      {
-        id:'burstDurUp',
-        name:'爆發持續 +1s',
-        desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
-        cost:price(240, shopState.burstDurUp, 1.5),
-        canBuy:()=>BURST_DURATION < 60,
-        buy:()=>{
-          shopState.burstDurUp++;
-          BURST_DURATION = Math.min(60, BURST_DURATION + 1);
-          if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION;
-        }
-      },
-      {
-        id:'invulnDurUp',
-        name:'無敵持續 +1s',
-        desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
-        cost:price(240, shopState.invulnDurUp, 1.5),
-        canBuy:()=>INVULN_DURATION < 40,
-        buy:()=>{
-          shopState.invulnDurUp++;
-          INVULN_DURATION = Math.min(40, INVULN_DURATION + 1);
-          if(INVULN_CD < INVULN_DURATION) INVULN_CD = INVULN_DURATION;
-        }
-      },
-      {
-        id:'magnetRun',
-        name:'強力磁鐵',
-        desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到 Game Over）',
-        cost:2000,
-        canBuy:()=> shopState.magnetRun===0 && !(AI?.enabled === true), // AI 模式：不需要買
-        buy:()=>{
-          shopState.magnetRun = 1;
-          buffs.magnet = Math.max(buffs.magnet, 1e9);
-        }
-      },
-    ];
+      });
+    }
+
+    return items;
   }
 
   function renderShop(){
@@ -931,23 +999,19 @@ canvas{width:100%;height:100%;display:block}
   const AI = {
     enabled:false,
 
-    // sniper SOP state
     sniperSweepX:0,
     sniperForceLeft:true,
 
-    // shop
     autoShop:true,
     nextShopAtMs:0,
     shopLock:false,
 
-    // restore manual timed magnet on AI-off
     _savedManualMagnet: 0,
 
     toggle(on){
       const newEnabled = (on==null) ? !this.enabled : !!on;
       if(newEnabled === this.enabled) return;
 
-      // leaving AI -> restore manual magnet timer (unless purchased permanent)
       if(this.enabled && !newEnabled){
         if(shopState.magnetRun === 0){
           buffs.magnet = Math.max(0, this._savedManualMagnet || 0);
@@ -956,10 +1020,9 @@ canvas{width:100%;height:100%;display:block}
         }
       }
 
-      // entering AI -> grant strong magnet for free
       if(!this.enabled && newEnabled){
         this._savedManualMagnet = buffs.magnet;
-        buffs.magnet = Math.max(buffs.magnet, 1e9); // AI 自帶強力磁鐵（本局）
+        buffs.magnet = Math.max(buffs.magnet, 1e9);
       }
 
       this.enabled = newEnabled;
@@ -974,7 +1037,6 @@ canvas{width:100%;height:100%;display:block}
       this.sniperSweepX=player.x;
     },
 
-    // ---------- 升級自動選（散射>穿透>增傷>血量>護盾，其它隨意） ----------
     pickUpgrade(picks){
       const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
 
@@ -994,7 +1056,6 @@ canvas{width:100%;height:100%;display:block}
       const scoreOf = (k)=>{
         let s = baseScore(k);
 
-        // 生存保險（但不把主排序打亂）
         if(hpPct < 0.35){
           if(k==='hp') s += 35;
           if(k==='shield_cap') s += 20;
@@ -1019,7 +1080,6 @@ canvas{width:100%;height:100%;display:block}
       return best;
     },
 
-    // ---------- 商店自動選 ----------
     pickShopItem(items, ctx){
       const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
       const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
@@ -1029,12 +1089,14 @@ canvas{width:100%;height:100%;display:block}
 
       const scoreId = (id)=>{
         switch(id){
-          case 'magnetRun':   return -1e9; // AI already has it
-          case 'spreadCapUp': return spreadBlocked ? 320 : 160;
-          case 'invulnCdDown':return (wantSurvive ? 360 : 220);
-          case 'invulnDurUp': return (wantSurvive ? 240 : 150);
-          case 'burstCdDown': return (ctx?.hasBoss ? 240 : 160);
-          case 'burstDurUp':  return (ctx?.hasBoss ? 200 : 130);
+          case 'magnetRun':      return -1e9; // AI has
+          case 'wingmanBuy':     return -1e9; // AI has
+          case 'wingmanAtkDown': return 420;  // ✅ AI 會優先幫僚機加速（打Boss拖太久的問題）
+          case 'spreadCapUp':    return spreadBlocked ? 320 : 160;
+          case 'invulnCdDown':   return (wantSurvive ? 360 : 220);
+          case 'invulnDurUp':    return (wantSurvive ? 240 : 150);
+          case 'burstCdDown':    return (ctx?.hasBoss ? 260 : 160);
+          case 'burstDurUp':     return (ctx?.hasBoss ? 220 : 130);
           default: return 0;
         }
       };
@@ -1107,7 +1169,6 @@ canvas{width:100%;height:100%;display:block}
       }, 80);
     },
 
-    // ---------- 每幀決策 ----------
     tick(dt){
       if(!this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
@@ -1119,7 +1180,7 @@ canvas{width:100%;height:100%;display:block}
 
       const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
 
-      // ✅ Sniper SOP：最左出發 -> 慢慢往右 -> 到最右瞬回最左 -> 重複（不擺動）
+      // Sniper SOP：你說正常就不動
       if(sniperBoss){
         if(this.sniperForceLeft){
           this.sniperSweepX = leftX;
@@ -1128,7 +1189,7 @@ canvas{width:100%;height:100%;display:block}
           return;
         }
 
-        const sweepSpd = 80; // px/s
+        const sweepSpd = 80;
         this.sniperSweepX = clamp(this.sniperSweepX + sweepSpd * dt, leftX, rightX);
 
         if(this.sniperSweepX >= rightX - 0.5){
@@ -1139,7 +1200,6 @@ canvas{width:100%;height:100%;display:block}
 
         setPadX(this.sniperSweepX / W);
 
-        // Sniper 保命：快撞到就開無敵
         if(canUseSkill('invuln')){
           let minHit = 999;
           const py = player.y;
@@ -1158,7 +1218,7 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
-      // ====== 非 Sniper：避彈 + 對齊輸出（保留） ======
+      // 非 Sniper：原本邏輯（略微保守）
       const py = player.y;
       const shotsLive = shotsFromSpread(spreadTotal());
 
@@ -1182,7 +1242,6 @@ canvas{width:100%;height:100%;display:block}
         ];
       }
 
-      // ---------- danger intervals ----------
       const horizon = 1.25;
       const margin  = 6;
       const intervals = [];
@@ -1226,7 +1285,6 @@ canvas{width:100%;height:100%;display:block}
         intervals.push([xHit - rad, xHit + rad, w]);
       }
 
-      // ---------- candidates scan ----------
       const candidates = 23;
       let bestX = player.x;
       let bestScore = -1e18;
@@ -1289,16 +1347,17 @@ canvas{width:100%;height:100%;display:block}
     $btnAI.setAttribute('aria-pressed', 'false');
   }
   window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
-  // === AUTOPLAY AI (EASY-REMOVE) END ===
+  // === AUTOPLAY AI END ===
 
   // ---------- Level-up ----------
   const UPGRADES=[
     {key:'dmg',t:'火力提升',d:'傷害 +15%'},
     {key:'firerate',t:'射速提升',d:'射速 +15%'},
-    {key:'hp',t:'擴充裝甲',d:'HP 上限 +20，並回滿'},
+    // ✅ HP / Shield +30 並補滿
+    {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，並回滿'},
     {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
     {key:'spread_perm',t:'永久散射',d:'散射 +1'},
-    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +20，並回滿'},
+    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
     {key:'regen',t:'自動修復',d:'每秒回復 +2'},
     {key:'xp_gain',t:'學習加速',d:'獲得 XP +10%'},
     {key:'bullet_size',t:'彈體增強',d:'子彈更大'},
@@ -1368,10 +1427,10 @@ canvas{width:100%;height:100%;display:block}
   function applyUpgrade(key){
     if(key==='dmg') player.dmg*=1.15;
     else if(key==='firerate') player.fireRate*=1.15;
-    else if(key==='hp'){player.hpMax+=20;player.hp=player.hpMax}
+    else if(key==='hp'){player.hpMax+=30;player.hp=player.hpMax}
     else if(key==='pierce_perm') player.pierce_perm=Math.min(PIERCE_CAP, player.pierce_perm+1);
     else if(key==='spread_perm') player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
-    else if(key==='shield_cap'){player.shieldMax+=20;player.shield=player.shieldMax}
+    else if(key==='shield_cap'){player.shieldMax+=30;player.shield=player.shieldMax}
     else if(key==='regen') player.regen+=2;
     else if(key==='xp_gain') player.xpGainMul*=1.10;
     else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, BULLET_R_CAP);
@@ -1409,28 +1468,24 @@ canvas{width:100%;height:100%;display:block}
     return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
   }
 
-  // ✅ 由內往外散 + 整體更窄（maxV 變小）
+  // 你原本那段（內往外 + 較窄）保留
   function shotVXPattern(n){
     if(n<=1) return [0];
-  
-    // === 1) 整體散射寬度（調小這裡就會變窄）===
-    // 原本 baseMax=240, extra=26, clamp 到 520 太寬
-    const baseMax = 240;                 // ✅ 越小越窄（建議 150~190）
-    const extra   = Math.max(0, n-5) * 16; // ✅ 越小越窄（建議 12~20）
-    const maxV    = clamp(baseMax + extra, 150, 320); // ✅ 上限壓低（建議 260~360）
-  
+
+    const baseMax = 240;
+    const extra   = Math.max(0, n-5) * 16;
+    const maxV    = clamp(baseMax + extra, 150, 320);
+
     const arr=[];
     const hasCenter = (n % 2 === 1);
     const pairs = Math.floor(n/2);
-  
-    // === 2) 內外分佈曲線（越大越貼近中心，外圈更慢長大）===
-    const gamma = 1.55; // ✅ 原本 1.55 太快變外擴；建議 1.9~2.6
-  
+
+    const gamma = 1.55;
+
     if(hasCenter) arr.push(0);
-  
-    // 內 -> 外：先小再大
+
     for(let k=1;k<=pairs;k++){
-      const t = k / pairs;                 // 0..1
+      const t = k / pairs;
       const mag = Math.pow(t, gamma) * maxV;
       arr.push(-mag, +mag);
     }
@@ -1526,7 +1581,6 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function bossTick(e,dt){
-    // ---------- Defender boss ----------
     if(e.kind === 'defender'){
       const rr = e.hp/e.hpMax;
       const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
@@ -1563,7 +1617,6 @@ canvas{width:100%;height:100%;display:block}
       return;
     }
 
-    // ---------- Sniper boss ----------
     if(e.kind === 'sniper'){
       const rr = e.hp/e.hpMax;
       const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
@@ -1598,7 +1651,6 @@ canvas{width:100%;height:100%;display:block}
       return;
     }
 
-    // ---------- Default boss ----------
     const r=e.hp/e.hpMax;
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
@@ -1670,6 +1722,130 @@ canvas{width:100%;height:100%;display:block}
         e.summonCd=5.2+(Math.random()*1.8-.7);
       }
     }
+  }
+
+  // ---------- Wingmen rockets ----------
+  function pickRocketTarget(){
+    if(!enemies.length) return null;
+    let best=null, bestScore=-1e18;
+    for(const e of enemies){
+      if(!e || e.hp<=0) continue;
+      const isBoss = (e.type==='boss');
+      const score = (isBoss? 1e6:0) + e.y*2 - Math.abs(e.x - player.x)*0.15;
+      if(score > bestScore){ bestScore=score; best=e; }
+    }
+    return best;
+  }
+
+  function spawnRocket(fromX, fromY){
+    const t = pickRocketTarget();
+    if(!t) return;
+
+    const burstMul = (buffs.burstT>0)?2.0:1.0;
+
+    allyRockets.push({
+      x:fromX, y:fromY,
+      vx:0, vy:-260,
+      speed: 980,
+      turn: 14.0,      // rad/s - turning aggressiveness
+      r: 6,
+      dmg: player.dmg * 1.25 * burstMul, // ✅ 隨玩家攻擊力一起成長
+      target: t,
+      life: 6.0
+    });
+  }
+
+  function wingmanTick(dt){
+    if(!wingmanActive()) return;
+    const interval = wingmanInterval();
+
+    wingmanAcc += dt;
+    while(wingmanAcc >= interval){
+      wingmanAcc -= interval;
+
+      const offX = 34;
+      const baseY = player.y - 18;
+
+      spawnRocket(clamp(player.x - offX, 10, W-10), baseY);
+      spawnRocket(clamp(player.x + offX, 10, W-10), baseY);
+    }
+  }
+
+  function updateRockets(dt){
+    for(const r of allyRockets){
+      r.life -= dt;
+      if(r.life <= 0){ r.dead=true; continue; }
+
+      if(!r.target || r.target.hp<=0){
+        r.target = pickRocketTarget();
+        if(!r.target){ r.dead=true; continue; }
+      }
+
+      const tx=r.target.x, ty=r.target.y;
+      const dx=tx - r.x, dy=ty - r.y;
+      const dist = hypot(dx,dy) || 1;
+
+      // desired direction
+      const ux = dx / dist, uy = dy / dist;
+
+      // current velocity dir
+      const vlen = hypot(r.vx, r.vy) || 1;
+      let vx = r.vx / vlen, vy = r.vy / vlen;
+
+      // rotate toward desired (simple lerp in vector space)
+      const turnT = clamp(r.turn * dt, 0, 1);
+      vx = (1-turnT)*vx + turnT*ux;
+      vy = (1-turnT)*vy + turnT*uy;
+
+      const nv = hypot(vx,vy) || 1;
+      vx/=nv; vy/=nv;
+
+      r.vx = vx * r.speed;
+      r.vy = vy * r.speed;
+
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
+
+      // guarantee hit: if close enough OR passed target, force hit
+      const hitRad = (r.r + (r.target.r||15) + 4);
+      if(dist2(r.x, r.y, tx, ty) <= hitRad*hitRad){
+        r.dead = true;
+        r.target.hp -= r.dmg;
+        r.target.hitFlash = 0.12;
+        addBurst(r.x, r.y, 10);
+
+        if(r.target.hp <= 0){
+          // reward as normal kill will be handled in bullet loop; but rocket can finish it here.
+          // We mimic the same kill logic block quickly to avoid "stuck alive".
+          const e = r.target;
+
+          let coinAmt = 1;
+          if(e.type === 'boss')  coinAmt = 30;
+          if(e.type === 'elite') coinAmt = 3;
+          if(e.type === 'healer') coinAmt = 10;
+          dropCoin(e.x, e.y, coinAmt);
+
+          if(e.type==='boss'){
+            state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
+            addBurst(e.x,e.y,26);
+          }else if(e.type==='elite'){
+            state.score+=38; addXp(20* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,12);
+          }else if(e.type==='healer'){
+            state.score+=30; addXp(15* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,14);
+          }else{
+            state.score+=18; addXp(10* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,10);
+          }
+          // mark enemy dead
+          e.hp = 0;
+        }
+      }
+
+      if(r.x<-80||r.x>W+80||r.y<-120||r.y>H+120) r.dead=true;
+    }
+    allyRockets = allyRockets.filter(x=>!x.dead);
   }
 
   // ---------- damage / gameover ----------
@@ -1810,7 +1986,10 @@ canvas{width:100%;height:100%;display:block}
     skills.burst.cd=0;
     skills.invuln.cd=0;
 
-    // AI 模式：開局自帶強力磁鐵；手動：不給
+    allyRockets=[];
+    wingmanAcc=0;
+
+    // AI 模式：磁鐵自帶（沿用你的策略）
     if(AI.enabled){
       buffs.magnet = Math.max(buffs.magnet, 1e9);
     }
@@ -1855,6 +2034,11 @@ canvas{width:100%;height:100%;display:block}
         : (AI.enabled ? 'AI 自帶（本局）'
           : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')));
 
+    const wingTxt =
+      (shopState.wingmanBought ? `已購買｜${wingmanInterval().toFixed(1)}s`
+        : (AI.enabled ? `AI 自帶｜${wingmanInterval().toFixed(1)}s`
+          : '無'));
+
     const lines = [
       `關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b>　等級：<b>${state.level}</b>`,
       `HP：<b>${Math.floor(player.hp)}/${Math.floor(player.hpMax)}</b>（上限 +${Math.floor(player.hpMax-BASE_PLAYER.hpMax)}）`,
@@ -1867,10 +2051,13 @@ canvas{width:100%;height:100%;display:block}
       `回復：<b>${player.regen}</b>/s`,
       `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
       `磁鐵：<b>${magnetTxt}</b>`,
+      `僚機：<b>${wingTxt}</b>（升級 ${shopState.wingmanAtkDown||0}/${WINGMAN_MAX_UPG}）`,
       `爆發 CD：<b>${burstDown.toFixed(0)}s</b>`,
       `無敵 CD：<b>${invDown.toFixed(0)}s</b>`,
-      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>｜爆發CD↓ <b>${shopState.burstCdDown}</b>｜無敵CD↓ <b>${shopState.invulnCdDown}</b>`,
-      `商店：爆發時間↑ <b>${shopState.burstDurUp}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>｜磁鐵購買 <b>${shopState.magnetRun?1:0}</b>`,
+      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>`,
+      `商店：爆發CD↓ <b>${shopState.burstCdDown}</b>｜爆發時間↑ <b>${shopState.burstDurUp}</b>`,
+      `商店：無敵CD↓ <b>${shopState.invulnCdDown}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>`,
+      `商店：磁鐵購買 <b>${shopState.magnetRun?1:0}</b>｜僚機購買 <b>${shopState.wingmanBought?1:0}</b>`,
     ];
     $panelSub.innerHTML = lines.join('<br>');
 
@@ -1881,6 +2068,7 @@ canvas{width:100%;height:100%;display:block}
       ['🔥 爆發', buffs.burstT>0 ? `${Math.ceil(buffs.burstT)}s` : '—'],
       ['✨ 無敵', buffs.invulnT>0 ? `${Math.ceil(buffs.invulnT)}s` : '—'],
       ['🧲 磁鐵', strongMagnetActive() ? 'ON' : (buffs.magnet>0 ? 'ON' : 'OFF')],
+      ['🛰️ 僚機', wingmanActive() ? `ON (${wingmanInterval().toFixed(1)}s)` : 'OFF'],
     ];
 
     for(const [k,v] of pills){
@@ -1932,8 +2120,15 @@ canvas{width:100%;height:100%;display:block}
     if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
 
     player.y=H-42;
+
     AI.tick(dt);
+
     player.x=clamp(player.x,player.r+8,W-player.r-8);
+
+    // ✅ wingmen rockets
+    wingmanTick(dt);
+    updateRockets(dt);
+
     shoot(dt);
 
     for(const e of enemies){
@@ -1987,7 +2182,6 @@ canvas{width:100%;height:100%;display:block}
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
 
-      // ✅ AI 模式 or 已買強力磁鐵：永遠強吸；否則沿用限時磁鐵
       if(strongMagnetActive()){
         const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
         const spd = 820;
@@ -2011,7 +2205,7 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // bullets clash (beams cannot be cancelled)
+    // bullets clash
     for(const b of pBullets){
       if(!b.alive) continue;
       if((b.clashLeft??0)<=0) continue;
@@ -2090,7 +2284,7 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player (beam capsule + normal)
+    // enemy bullets vs player
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -2173,7 +2367,7 @@ canvas{width:100%;height:100%;display:block}
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // drops (coin icon by value)
+    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
@@ -2195,6 +2389,22 @@ canvas{width:100%;height:100%;display:block}
       ctx.fillText(icon,d.x,d.y+.5);
       ctx.restore();
     }
+
+    // rockets
+    ctx.save();
+    ctx.fillStyle='rgba(255,220,140,.95)';
+    for(const r of allyRockets){
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+      ctx.fill();
+      // tail
+      ctx.globalAlpha=.45;
+      ctx.beginPath();
+      ctx.arc(r.x - (r.vx*0.012), r.y - (r.vy*0.012), r.r*0.65, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    ctx.restore();
 
     // enemies
     for(const e of enemies){
@@ -2306,6 +2516,33 @@ canvas{width:100%;height:100%;display:block}
       ctx.beginPath();ctx.arc(0,0,player.r+15,0,Math.PI*2);ctx.stroke();
     }
     ctx.restore();
+
+    // wingmen (visual only)
+    if(wingmanActive()){
+      const offX = 34;
+      const wy = player.y - 18;
+
+      ctx.save();
+      ctx.fillStyle='rgba(160,220,255,.30)';
+      ctx.strokeStyle='rgba(160,220,255,.60)';
+      ctx.lineWidth=1.5;
+
+      for(const sx of [player.x-offX, player.x+offX]){
+        const x = clamp(sx, 10, W-10);
+        ctx.beginPath();
+        ctx.arc(x, wy, 8, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.globalAlpha=.85;
+        ctx.fillStyle='rgba(160,220,255,.65)';
+        ctx.font='10px system-ui,"Noto Sans TC"';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('🛰', x, wy+0.5);
+        ctx.globalAlpha=1;
+      }
+
+      ctx.restore();
+    }
   }
 
   // ---------- HUD sync ----------
