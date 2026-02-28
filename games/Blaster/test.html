@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: fixAIM-2026-02-28
+  BUILD: xpfix
 </div>
 
 <div class="app">
@@ -1479,17 +1479,27 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function xpStageMul(stage){
-    if(stage <= 10) return 1 + (stage-1)*0.05;
-    if(stage <= 20) return 1.45 + (stage-10)*0.06;
-    return 2.05 + (stage-20)*0.04;
+    if(stage <= 10) return 1 + (stage-1)*0.05;          // 1.00 ~ 1.45
+    if(stage <= 20) return 1.45 + (stage-10)*0.06;      // 1.45 ~ 2.05
+    if(stage <= 40) return 2.05 + (stage-20)*0.06;      // 2.05 ~ 3.25
+    return Math.min(8.0, 3.25 + (stage-40)*0.08);       // 40+ 變快，封頂 8x
   }
   function addXp(xp){
-    xp*=player.xpGainMul;
-    state.xp+=xp;
-    while(state.xp>=state.nextXp){
-      state.xp-=state.nextXp;
-      state.level+=1;
-      state.nextXp=Math.floor(state.nextXp*1.15+14);
+    xp *= player.xpGainMul;
+    state.xp += xp;
+  
+    while(state.xp >= state.nextXp){
+      state.xp -= state.nextXp;
+      state.level += 1;
+  
+      // 後期門檻成長放緩：越高等增幅越小
+      const g =
+        (state.level < 20) ? 1.15 :
+        (state.level < 35) ? 1.13 :
+        (state.level < 50) ? 1.11 : 1.09;
+  
+      state.nextXp = Math.floor(state.nextXp * g + 14);
+  
       openLevelUp();
     }
   }
