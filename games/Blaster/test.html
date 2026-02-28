@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: xpfix
+  BUILD: xpfix_2
 </div>
 
 <div class="app">
@@ -1484,6 +1484,19 @@ canvas{width:100%;height:100%;display:block}
     if(stage <= 40) return 2.05 + (stage-20)*0.06;      // 2.05 ~ 3.25
     return Math.min(8.0, 3.25 + (stage-40)*0.08);       // 40+ 變快，封頂 8x
   }
+  function nextXpForLevel(lv){
+    // lv 1 開始：前期好升級，中後期穩定變難但不失控
+    // LV 57 約落在 ~18k 左右（不會再是 111k 那種金融商品）
+    if(lv <= 20){
+      // 保留你原本前期節奏（接近舊手感）
+      let x = 60;
+      for(let i=1;i<lv;i++) x = Math.floor(x*1.15 + 14);
+      return x;
+    }
+    // 中後期：二次成長（可控、可調）
+    return Math.floor(300 + lv*80 + lv*lv*4);
+  }
+  
   function addXp(xp){
     xp *= player.xpGainMul;
     state.xp += xp;
@@ -1492,14 +1505,7 @@ canvas{width:100%;height:100%;display:block}
       state.xp -= state.nextXp;
       state.level += 1;
   
-      // 後期門檻成長放緩：越高等增幅越小
-      const g =
-        (state.level < 20) ? 1.15 :
-        (state.level < 35) ? 1.13 :
-        (state.level < 50) ? 1.11 : 1.09;
-  
-      state.nextXp = Math.floor(state.nextXp * g + 14);
-  
+      state.nextXp = nextXpForLevel(state.level);
       openLevelUp();
     }
   }
