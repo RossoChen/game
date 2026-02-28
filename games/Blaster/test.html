@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: wingmen+defender-ai-solver+speed480
+  BUILD: fix1231-1343
 </div>
 
 <div class="app">
@@ -1228,119 +1228,160 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
-      const py = player.y;
+const py = player.y;
 
-      const boss = enemies.find(e=>e.type==='boss');
-      const defenderBoss = boss && boss.kind==='defender';
+const boss = enemies.find(e=>e.type==='boss');
+const defenderBoss = boss && boss.kind==='defender';
 
-      const shotsLive = shotsFromSpread(spreadTotal());
+const safeL = player.r + 10;
+const safeR = W - player.r - 10;
 
-      let target = null;
-      if(enemies.length){
-        target = boss || null;
-        if(!target){
-          for(const e of enemies){ if(!target || e.y > target.y) target = e; }
-        }
-      }
-      const aimBaseX = target ? target.x : (W*0.5);
+const shotsLive = shotsFromSpread(spreadTotal());
 
-      let aimTargets = [aimBaseX];
-      if(!defenderBoss && target && shotsLive === 2){
-        const dy = Math.max(140, player.y - target.y);
-        const bulletVx = 240;
-        const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
-        aimTargets = [
-          clamp(aimBaseX - off, safeL, safeR),
-          clamp(aimBaseX + off, safeL, safeR),
-        ];
-      }
+// 1) 近身避彈（panic dodge）：避免 AI “走進來不及的子彈”
+let nearest = null;
+let nearestD = 1e18;
+let nearestBallD = 1e18;
 
-      const horizon = 1.25;
-      const margin  = 6;
-      const intervals = [];
-      let minBeamHit = 999;
-      let nearestBallD = 1e18;
+for(const b of eBullets){
+  if(!b?.alive) continue;
 
-      for(const b of eBullets){
-        if(!b?.alive) continue;
+  // Defender 球
+  if(b.ball){
+    const d = dist2(b.x,b.y,player.x,player.y);
+    if(d < nearestBallD) nearestBallD = d;
+    continue;
+  }
 
-        if(b.ball){
-          const rad = (b.r||18) + player.r + 18;
-          intervals.push([b.x - rad, b.x + rad, 14]);
-          const d = dist2(b.x,b.y,player.x,player.y);
-          if(d < nearestBallD) nearestBallD = d;
-          continue;
-        }
+  // beam 不做近身 dodge，用 invuln 來處理
+  if(b.beam) continue;
 
-        const vy = b.vy || 0;
-        if(vy <= 1) continue;
+  // 只看接近玩家的彈（貼臉彈最容易撞）
+  if(b.y < py - 120 || b.y > py + 40) continue;
 
-        const tHit = (py - b.y) / vy;
-        if(tHit < 0 || tHit > horizon) continue;
+  const d = dist2(b.x,b.y,player.x,player.y);
+  if(d < nearestD){ nearestD = d; nearest = b; }
+}
 
-        const xHit = b.x + (b.vx||0) * tHit;
+if(nearest){
+  const rad = (nearest.r||4) + player.r + 10;
+  if(nearestD < rad*rad){
+    const goLeft = (player.x > nearest.x);
+    const tx = goLeft ? (safeL+2) : (safeR-2);
+    setPadX(tx / W);
+    if(canUseSkill('invuln')) useInvuln();
+    return;
+  }
+}
 
-        if(b.beam){
-          const ang = Math.atan2(vy, (b.vx||0));
-          const L = b.len || 28;
-          const R = b.r || 5;
-          const xHalf = Math.abs(Math.cos(ang)) * (L/2);
+// 2) 目標對齊（Defender 不需要 aimTargets，因為王在中間）
+let target = null;
+if(enemies.length){
+  target = boss || null;
+  if(!target){
+    for(const e of enemies){ if(!target || e.y > target.y) target = e; }
+  }
+}
+const aimBaseX = target ? target.x : (W*0.5);
 
-          const rad = player.r + R + margin + 12 + xHalf;
-          const w = (9 / (0.05 + tHit));
-          intervals.push([xHit - rad, xHit + rad, w * 8]);
+let aimTargets = [aimBaseX];
+if(!defenderBoss && target && shotsLive === 2){
+  const dy = Math.max(140, player.y - target.y);
+  const bulletVx = 240;
+  const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
+  aimTargets = [
+    clamp(aimBaseX - off, safeL, safeR),
+    clamp(aimBaseX + off, safeL, safeR),
+  ];
+}
 
-          if(tHit < minBeamHit) minBeamHit = tHit;
-          continue;
-        }
+// 3) 建 intervals（全局避彈）
+const horizon = 1.35;
+const margin  = 7;
+const intervals = [];
+let minBeamHit = 999;
 
-        const rad  = (b.r||4) + player.r + margin;
-        const w    = 1 / (0.15 + tHit);
-        intervals.push([xHit - rad, xHit + rad, w]);
-      }
+for(const b of eBullets){
+  if(!b?.alive) continue;
 
-      const centerX = W * 0.5;
+  if(b.ball){
+    const rad = (b.r||18) + player.r + 18;
+    intervals.push([b.x - rad, b.x + rad, 18]);
+    continue;
+  }
 
-      const bandL = defenderBoss ? (W * 0.34) : undefined;
-      const bandR = defenderBoss ? (W * 0.66) : undefined;
+  const vy = b.vy || 0;
+  if(vy <= 1) continue;
 
-      const centerW = defenderBoss ? 22 : 0;
-      const aimW    = defenderBoss ? 0 : (shotsLive===2 ? 2.4 : 3.4);
-      const avoidScale = defenderBoss ? 2600 : 3200;
-      const edgeW   = defenderBoss ? 2.2 : 0.05;
+  const tHit = (py - b.y) / vy;
+  if(tHit < 0 || tHit > horizon) continue;
 
-      const { bestScore } = this.solvePosition({
-        bandL, bandR, centerX,
-        aimTargets: defenderBoss ? null : aimTargets,
-        intervals, dt,
-        aimW, centerW, edgeW,
-        avoidScale
-      });
+  const xHit = b.x + (b.vx||0) * tHit;
 
-      const bulletPressure = intervals.length;
+  if(b.beam){
+    const ang = Math.atan2(vy, (b.vx||0));
+    const L = b.len || 28;
+    const R = b.r || 5;
+    const xHalf = Math.abs(Math.cos(ang)) * (L/2);
 
-      if(canUseSkill('invuln')){
-        const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
-        const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+    const rad = player.r + R + margin + 12 + xHalf;
+    const w = (9 / (0.05 + tHit));
+    intervals.push([xHit - rad, xHit + rad, w * 9]);
 
-        if(defenderBoss){
-          const hitRad = (18 + player.r + 10);
-          if(nearestBallD < hitRad*hitRad) useInvuln();
-        }
+    if(tHit < minBeamHit) minBeamHit = tHit;
+    continue;
+  }
 
-        const imminent = (bestScore < -5e5);
-        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
-        const panic    = (bulletPressure >= 6 && hpPct < 0.55 && shieldPct < 0.20);
-        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
-      }
+  const rad  = (b.r||4) + player.r + margin;
+  const w    = 1 / (0.12 + tHit);
+  intervals.push([xHit - rad, xHit + rad, w]);
+}
 
-      if(canUseSkill('burst')){
-        const manyEnemies = enemies.length >= 10;
-        const safeEnough  = (bestScore > -2e5) && (buffs.invulnT<=0);
-        if(safeEnough && (boss || manyEnemies)) useBurst();
-      }
+// 4) 用共用 solver 選站位：Defender 用中線 band，其它偏保命
+const centerX = W * 0.5;
 
-      this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
+const bandL = defenderBoss ? (W * 0.36) : undefined;
+const bandR = defenderBoss ? (W * 0.64) : undefined;
+
+const centerW    = defenderBoss ? 18 : 0;
+const aimW       = defenderBoss ? 0  : (shotsLive===2 ? 2.4 : 3.4);
+const avoidScale = defenderBoss ? 3300 : 5200;
+const edgeW      = defenderBoss ? 1.6 : 0.05;
+
+const { bestScore } = this.solvePosition({
+  bandL, bandR, centerX,
+  aimTargets: defenderBoss ? null : aimTargets,
+  intervals, dt,
+  aimW, centerW, edgeW,
+  avoidScale
+});
+
+// 5) 技能決策
+const bulletPressure = intervals.length;
+
+if(canUseSkill('invuln')){
+  const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+  const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+  if(defenderBoss){
+    const hitRad = (18 + player.r + 10);
+    if(nearestBallD < hitRad*hitRad) useInvuln();
+  }
+
+  const imminent = (bestScore < -6e5);
+  const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+  const panic    = (bulletPressure >= 6 && hpPct < 0.60 && shieldPct < 0.22);
+  if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
+}
+
+if(canUseSkill('burst')){
+  const manyEnemies = enemies.length >= 10;
+  const safeEnough  = (bestScore > -2.2e5) && (buffs.invulnT<=0);
+  if(safeEnough && (boss || manyEnemies)) useBurst();
+}
+
+// 最後：商店
+this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
     }
   };
 
