@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: fix1231-1343-ai-fixed
+  BUILD: fixAIM-2026-02-28
 </div>
 
 <div class="app">
@@ -971,6 +971,10 @@ canvas{width:100%;height:100%;display:block}
     shopLock:false,
     _savedManualMagnet: 0,
 
+    // ✅ 穩定輸出：黏性鎖定（避免左右瞬移）
+    aimHoldX: null,
+    aimHoldT: 0,
+
     toggle(on){
       const newEnabled = (on==null) ? !this.enabled : !!on;
       if(newEnabled === this.enabled) return;
@@ -998,6 +1002,9 @@ canvas{width:100%;height:100%;display:block}
 
       this.sniperForceLeft=true;
       this.sniperSweepX=player.x;
+
+      this.aimHoldX=null;
+      this.aimHoldT=0;
     },
 
     pickUpgrade(picks){
@@ -1132,63 +1139,6 @@ canvas{width:100%;height:100%;display:block}
       }, 80);
     },
 
-    solvePosition({ bandL, bandR, centerX, aimTargets, intervals, dt, aimW=3.4, centerW=0, edgeW=0.05, avoidScale=3200 }){
-      const safeL = player.r + 10;
-      const safeR = W - player.r - 10;
-
-      const L = clamp(bandL ?? safeL, safeL, safeR);
-      const R = clamp(bandR ?? safeR, safeL, safeR);
-
-      const candidates = 23;
-      let bestX = clamp(player.x, L, R);
-      let bestScore = -1e18;
-
-      for(let i=0;i<candidates;i++){
-        const x = L + (R-L)*(i/(candidates-1));
-        let score = 0;
-
-        for(const [l,r,w] of (intervals||[])){
-          if(x>=l && x<=r){
-            score -= 1e6 * w;
-          }else{
-            const d = (x<l) ? (l-x) : (x-r);
-            score -= (1/(d+6)) * avoidScale * w;
-          }
-        }
-
-        if(aimTargets && aimTargets.length){
-          const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
-          score -= aimDist * aimW;
-        }
-
-        if(typeof centerX === 'number' && centerW > 0){
-          score -= Math.abs(x - centerX) * centerW;
-        }
-
-        const edge = Math.min(x-L, R-x);
-        score += edge * edgeW;
-
-        if(score > bestScore){ bestScore=score; bestX=x; }
-      }
-
-      const maxStep = player.moveSpeed * dt * 1.05;
-      const nx = clamp(bestX, L, R);
-      const dx = clamp(nx - player.x, -maxStep, maxStep);
-      setPadX((player.x + dx) / W);
-
-      return { bestX: nx, bestScore };
-    },
-
-    // ✅ 新增：預測一般子彈「多久會到玩家 y」並取 xHit
-    _predictHit(b, py){
-      const vy = b.vy || 0;
-      if(vy <= 1) return null;
-      const t = (py - b.y) / vy;
-      if(t < 0 || t > 0.55) return null; // 只管 0.55s 內的貼臉彈
-      const x = b.x + (b.vx||0) * t;
-      return {t, x};
-    },
-
     tick(dt){
       if(!this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
@@ -1200,7 +1150,7 @@ canvas{width:100%;height:100%;display:block}
 
       const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
 
-      // Sniper SOP 保留
+      // Sniper：保持你原本 SOP
       if(sniperBoss){
         if(this.sniperForceLeft){
           this.sniperSweepX = leftX;
@@ -1238,51 +1188,15 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
+      // ===== 非 Sniper：穩定對齊輸出 + 必要才閃 =====
       const py = player.y;
 
-      const boss = enemies.find(e=>e.type==='boss');
+      const boss = enemies.find(e=>e.type==='boss') || null;
       const defenderBoss = boss && boss.kind==='defender';
 
       const shotsLive = shotsFromSpread(spreadTotal());
 
-      // 1) 近身避彈（改成「預測命中」）
-      let dangerHit = null; // {t,x,rad}
-      let nearestBallD = 1e18;
-
-      for(const b of eBullets){
-        if(!b?.alive) continue;
-
-        if(b.ball){
-          const d = dist2(b.x,b.y,player.x,player.y);
-          if(d < nearestBallD) nearestBallD = d;
-          continue;
-        }
-        if(b.beam) continue;
-
-        const ph = this._predictHit(b, py);
-        if(!ph) continue;
-
-        const rad = (b.r||4) + player.r + 10;
-        const dx = ph.x - player.x;
-        if(Math.abs(dx) <= rad){
-          // 越快命中越危險
-          const score = (0.6 - ph.t) * 1000 + (rad - Math.abs(dx))*10;
-          if(!dangerHit || score > dangerHit.score){
-            dangerHit = { t:ph.t, x:ph.x, rad, score };
-          }
-        }
-      }
-
-      if(dangerHit){
-        // 直接往反方向閃，必要時開無敵
-        const goLeft = (player.x > dangerHit.x);
-        const tx = goLeft ? leftX : rightX;
-        setPadX(tx / W);
-        if(canUseSkill('invuln') && dangerHit.t < 0.22) useInvuln();
-        return;
-      }
-
-      // 2) 目標對齊
+      // 1) 選目標（優先 Boss，否則選最靠下）
       let target = null;
       if(enemies.length){
         target = boss || null;
@@ -1292,6 +1206,7 @@ canvas{width:100%;height:100%;display:block}
       }
       const aimBaseX = target ? target.x : (W*0.5);
 
+      // 2) aimTargets（兩發時左右對齊；Defender 不用雙點）
       let aimTargets = [aimBaseX];
       if(!defenderBoss && target && shotsLive === 2){
         const dy = Math.max(140, player.y - target.y);
@@ -1303,16 +1218,20 @@ canvas{width:100%;height:100%;display:block}
         ];
       }
 
-      // 3) intervals
-      const horizon = 1.35;
+      // 3) intervals（預測危險）
+      const horizon = 1.25;
       const margin  = 7;
       const intervals = [];
       let minBeamHit = 999;
+      let nearestBallD = 1e18;
 
       for(const b of eBullets){
         if(!b?.alive) continue;
 
         if(b.ball){
+          const d = dist2(b.x,b.y,player.x,player.y);
+          if(d < nearestBallD) nearestBallD = d;
+
           const rad = (b.r||18) + player.r + 18;
           intervals.push([b.x - rad, b.x + rad, 18]);
           continue;
@@ -1341,45 +1260,119 @@ canvas{width:100%;height:100%;display:block}
         }
 
         const rad  = (b.r||4) + player.r + margin;
-        const w    = 1 / (0.12 + tHit);
+        const w    = 1 / (0.14 + tHit);
         intervals.push([xHit - rad, xHit + rad, w]);
       }
 
-      // 4) solve（Defender：中心帶 + 中心偏好，避免龜角落）
+      // 4) 近身必撞才大閃（避免每幀抖動）
+      let imminentHit = false;
+      for(const b of eBullets){
+        if(!b?.alive || b.beam || b.ball) continue;
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > 0.28) continue;
+        const xHit = b.x + (b.vx||0) * tHit;
+        const rad = (b.r||4) + player.r + 10;
+        if(Math.abs(xHit - player.x) <= rad){
+          imminentHit = true;
+          break;
+        }
+      }
+      if(imminentHit){
+        const goLeft = (player.x > W*0.5);
+        const tx = goLeft ? leftX : rightX;
+        setPadX(tx / W);
+        if(canUseSkill('invuln')) useInvuln();
+        return;
+      }
+
+      // 5) Defender：限制中線帶，避免龜角
+      const bandL = defenderBoss ? (W * 0.33) : safeL;
+      const bandR = defenderBoss ? (W * 0.67) : safeR;
       const centerX = W * 0.5;
 
-      const bandL = defenderBoss ? (W * 0.34) : undefined;
-      const bandR = defenderBoss ? (W * 0.66) : undefined;
+      // 6) 掃描：避彈 + 對齊輸出（輸出權重提高）
+      const candidates = 23;
+      let bestX = clamp(player.x, bandL, bandR);
+      let bestScore = -1e18;
 
-      const centerW    = defenderBoss ? 26 : 0;
-      const aimW       = defenderBoss ? 0  : (shotsLive===2 ? 2.4 : 3.4);
-      const avoidScale = defenderBoss ? 3600 : 5200;
-      const edgeW      = defenderBoss ? 2.2 : 0.05;
+      for(let i=0;i<candidates;i++){
+        const x = bandL + (bandR-bandL)*(i/(candidates-1));
+        let score = 0;
 
-      const { bestScore } = this.solvePosition({
-        bandL, bandR, centerX,
-        aimTargets: defenderBoss ? null : aimTargets,
-        intervals, dt,
-        aimW, centerW, edgeW,
-        avoidScale
-      });
+        for(const [l,r,w] of intervals){
+          if(x>=l && x<=r){
+            score -= 1e6 * w;
+          }else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * 4200 * w;
+          }
+        }
 
-      // 5) skills
-      const bulletPressure = intervals.length;
+        // ✅ 對齊輸出（讓子彈可以抵銷敵彈）
+        if(!defenderBoss && aimTargets && aimTargets.length){
+          const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+          score -= aimDist * (shotsLive===2 ? 3.0 : 3.8);
+        }
 
+        // Defender：偏中線
+        if(defenderBoss){
+          score -= Math.abs(x - centerX) * 22;
+        }
+
+        // 輕微避免貼邊
+        const edge = Math.min(x-bandL, bandR-x);
+        score += edge * (defenderBoss ? 1.8 : 0.06);
+
+        if(score > bestScore){ bestScore=score; bestX=x; }
+      }
+
+      // 7) ✅ 瞄準黏性（安全時不亂換點）
+      const dangerLevel = intervals.length;
+      const safeEnoughForAimLock = (bestScore > -2.0e5) && (dangerLevel <= 5) && (buffs.invulnT<=0);
+
+      if(safeEnoughForAimLock){
+        if(this.aimHoldT <= 0 || this.aimHoldX == null){
+          this.aimHoldX = bestX;
+          this.aimHoldT = 0.25;
+        }else{
+          if(Math.abs(bestX - this.aimHoldX) > 70){
+            this.aimHoldX = bestX;
+            this.aimHoldT = 0.25;
+          }
+        }
+      }else{
+        this.aimHoldX = null;
+        this.aimHoldT = 0;
+      }
+
+      if(this.aimHoldT > 0){
+        this.aimHoldT = Math.max(0, this.aimHoldT - dt);
+        if(this.aimHoldX != null) bestX = this.aimHoldX;
+      }
+
+      // 8) 漸進移動（避免瞬移）
+      const maxStep = player.moveSpeed * dt * (defenderBoss ? 0.92 : 0.98);
+      const nx = clamp(bestX, bandL, bandR);
+      const dx = clamp(nx - player.x, -maxStep, maxStep);
+      setPadX((player.x + dx) / W);
+
+      // 9) 技能
       if(canUseSkill('invuln')){
         const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
         const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+        const imminent = (bestScore < -6e5);
+        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+        const panic    = (dangerLevel >= 6 && hpPct < 0.60 && shieldPct < 0.22);
+
+        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
 
         if(defenderBoss){
           const hitRad = (18 + player.r + 10);
           if(nearestBallD < hitRad*hitRad) useInvuln();
         }
-
-        const imminent = (bestScore < -6e5);
-        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
-        const panic    = (bulletPressure >= 6 && hpPct < 0.60 && shieldPct < 0.22);
-        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
       }
 
       if(canUseSkill('burst')){
@@ -1388,7 +1381,7 @@ canvas{width:100%;height:100%;display:block}
         if(safeEnough && (boss || manyEnemies)) useBurst();
       }
 
-      this.shopTick(dt, { bulletPressure, bestScore, hasBoss: !!boss });
+      this.shopTick(dt, { bulletPressure: dangerLevel, bestScore, hasBoss: !!boss });
     }
   };
 
@@ -1793,8 +1786,8 @@ canvas{width:100%;height:100%;display:block}
     allyRockets.push({
       x:fromX, y:fromY,
       vx:0, vy:-260,
-      speed: 480,       // ✅ 火箭飛行速度（要改就改這裡）
-      turn: 20.0,
+      speed: 480,
+      turn: 14.0,
       r: 6,
       dmg: player.dmg * 1.25 * burstMul,
       target: t,
@@ -2238,7 +2231,6 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // bullets clash (beams cannot be cancelled)
     for(const b of pBullets){
       if(!b.alive) continue;
       if((b.clashLeft??0)<=0) continue;
@@ -2281,7 +2273,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // player bullets vs enemies
     for(const b of pBullets){
       if(!b.alive) continue;
       for(const e of enemies){
@@ -2317,7 +2308,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // enemy bullets vs player (beam capsule + normal)
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -2359,14 +2349,12 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // cleanup
     pBullets=pBullets.filter(b=>b.alive);
     eBullets=eBullets.filter(b=>b.alive);
     enemies=enemies.filter(e=>e.hp>0);
     drops=drops.filter(d=>!d.dead);
     particles=particles.filter(p=>!p.dead);
 
-    // wave progression
     if(!state.waveInProgress){
       state.waveClearCooldown-=dt;
       if(state.waveClearCooldown<=0){
