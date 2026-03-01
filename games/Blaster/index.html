@@ -3,20 +3,31 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
-<title>Blaster v2 (100 stages)</title>
+<title>Blaster</title>
 <meta name="theme-color" content="#0b1220"/>
+<link rel="manifest" href="/games/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
 :root{
   color-scheme:dark;
+
+  --appSafeTop:24px; --appSafeR:0px; --appSafeB:0px; --appSafeL:0px;
+  --appExtraTop:10px; --appExtraBottom:10px;
+
   --gap:8px;
+
   --ui-fg:#e7eefc;
   --glass-bd: rgba(255,255,255,.14);
   --glass-bd2: rgba(255,255,255,.12);
   --glass-bg: rgba(255,255,255,.06);
   --glass-bg2: rgba(255,255,255,.05);
   --glass-shadow: 0 18px 70px rgba(0,0,0,.55);
+
   --tap: transparent;
 }
+
 html,body{
   height:100%;margin:0;background:#0b1220;color:var(--ui-fg);
   font-family:system-ui,"Noto Sans TC",sans-serif;
@@ -24,11 +35,17 @@ html,body{
   touch-action:manipulation;overflow:hidden
 }
 body{position:fixed;inset:0}
+
 .app{
   height:100svh;
-  padding:18px 10px 16px 10px;
+  padding:
+    calc(var(--appSafeTop) + var(--appExtraTop))
+    calc(var(--appSafeR) + 10px)
+    calc(var(--appSafeB) + var(--appExtraBottom))
+    calc(var(--appSafeL) + 10px);
   display:flex;flex-direction:column;gap:var(--gap);box-sizing:border-box;
 }
+
 .pill, button.pill, .sbtn, .opt{
   color:var(--ui-fg);
   border:1px solid var(--glass-bd);
@@ -39,57 +56,81 @@ body{position:fixed;inset:0}
 .pill:active, button.pill:active, .sbtn:active, .opt:active{ transform:scale(.99); }
 button.pill:disabled, .sbtn[disabled]{ opacity:.45; cursor:default; }
 
+.lvx, .hpbar, .boardWrap, .touchpad{
+  border:1px solid var(--glass-bd2);
+  background:var(--glass-bg2);
+}
+
 .hud{display:flex;flex-direction:column;gap:var(--gap);min-height:0}
-.hudRow{display:flex;align-items:center;gap:var(--gap);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.hudRow{
+  display:flex;align-items:center;gap:var(--gap);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
 .hudRow::-webkit-scrollbar{display:none}
 .hudRow2{justify-content:space-between}
-.pill,button.pill{border-radius:999px;padding:8px 10px;font-size:13px;line-height:1}
-#hudStage{min-width:86px;text-align:center}
-#hudChapter{min-width:96px;text-align:center}
 
+.pill,button.pill{border-radius:999px;padding:8px 10px;font-size:13px;line-height:1}
+button.pill{cursor:pointer}
+#hudStage{min-width:56px;padding:8px 8px;text-align:center}
+
+.lvxTop{flex:1 1 auto;min-width:0;max-width:none;}
+.lvx{
+  flex:1 1 auto; min-width:0;
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:16px;
+  flex-wrap:nowrap;overflow:hidden;
+}
+.lvx .label{opacity:.85;font-weight:900;letter-spacing:.2px;min-width:0;white-space:nowrap;}
+.lvx .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:0;text-align:right;white-space:nowrap;}
+#btnStats{cursor:pointer}
+#btnStats:active{transform:scale(.995)}
+
+.hpRowRight{display:flex;align-items:center;gap:var(--gap);flex:0 0 auto}
 .hpbar{
   flex:1 1 auto; min-width:0;
   display:flex;align-items:center;gap:8px;
   padding:8px 10px;border-radius:16px;
-  border:1px solid var(--glass-bd2);
-  background:var(--glass-bg2);
 }
 .hpbar .label{opacity:.85;font-weight:800;letter-spacing:.2px}
-.hpbar .track{flex:1 1 auto; min-width:90px; max-width:240px;height:12px;border-radius:999px;background:rgba(255,255,255,.10);overflow:hidden;border:1px solid rgba(255,255,255,.10)}
+.hpbar .track{
+  flex:1 1 auto; min-width:90px; max-width:240px;
+  height:12px;border-radius:999px;
+  background:rgba(255,255,255,.10);
+  overflow:hidden;border:1px solid rgba(255,255,255,.10)
+}
 .hpbar .fill{height:100%;width:50%;background:rgba(120,255,200,.95)}
 .hpbar .num{opacity:.85;font-variant-numeric:tabular-nums;min-width:86px;text-align:right}
-.rightRow{display:flex;align-items:center;gap:var(--gap);flex:0 0 auto}
 
 .main{flex:1;min-height:0;display:flex;flex-direction:column;gap:var(--gap)}
 .boardWrap{
   flex:1;min-height:0;border-radius:18px;
-  border:1px solid var(--glass-bd2);
   background:
     radial-gradient(1200px 800px at 50% 0%, rgba(90,120,255,.10), transparent 60%),
     rgba(255,255,255,.03);
   overflow:hidden;position:relative
 }
 canvas{width:100%;height:100%;display:block}
-.toast{
-  position:absolute;left:50%;top:14px;transform:translateX(-50%);
-  padding:10px 12px;border-radius:999px;border:1px solid var(--glass-bd);
-  background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none
-}
-.toast.show{display:block}
 
 .touchpad{
   flex:0 0 auto;height:max(42px,5.5svh);
   border-radius:16px;background:rgba(255,255,255,.04);
-  border:1px solid var(--glass-bd2);
   position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent
 }
+.touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 .touchpad .bar{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:14px;border:1px dashed rgba(255,255,255,.18);opacity:.7}
 .touchpad .thumb{position:absolute;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);box-shadow:0 8px 30px rgba(0,0,0,.35);pointer-events:none}
-.touchpad .hint{position:absolute;inset:auto 0 10px 0;text-align:center;font-size:14px;opacity:.75;pointer-events:none}
 
-.skills{flex:0 0 auto;display:flex;gap:8px;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:6px}
+.skills{
+  flex:0 0 auto;
+  display:flex;gap:8px;align-items:center;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  padding-bottom:max(env(safe-area-inset-bottom), 6px);
+}
 .skills::-webkit-scrollbar{display:none}
-.sbtn{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:14px}
+.sbtn{
+  flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:14px;
+}
 .sbtn .ico{font-size:16px;line-height:1}
 .sbtn .name{font-weight:900;letter-spacing:.2px}
 .sbtn .cd{margin-left:6px;opacity:.9;font-variant-numeric:tabular-nums}
@@ -104,34 +145,70 @@ canvas{width:100%;height:100%;display:block}
   max-height:calc(100svh - 32px);overflow:auto
 }
 .panel h2{margin:0 0 10px;font-size:18px;letter-spacing:.2px}
-.sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 .opts{display:grid;grid-template-columns:1fr;gap:10px}
 @media (min-width:720px){.opts{grid-template-columns:1fr 1fr 1fr}}
 .opt{border-radius:16px;padding:14px;cursor:pointer}
 .opt .t{font-weight:900;margin-bottom:6px}
 .opt .d{opacity:.78;font-size:13px;line-height:1.4}
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.panel .sub{opacity:.82;font-size:13px;line-height:1.35;margin:8px 0 14px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.panel .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.panel .row .pill{padding:10px 12px}
+.panel.isStats .sub{font-size:12px;line-height:1.35}
+.panel.isStats .opts{gap:8px}
+.panel.isStats .opt{padding:12px}
+
+.toast{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  padding:10px 12px;border-radius:999px;border:1px solid var(--glass-bd);
+  background:rgba(0,0,0,.35);font-size:13px;opacity:.9;display:none;pointer-events:none
+}
+.toast.show{display:block}
+
+.rotateLock{
+  position:fixed;inset:0;z-index:200;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.78);
+  padding:18px;text-align:center;
+}
+.rotateLock .card{
+  width:min(520px,92vw);
+  border-radius:18px;border:1px solid var(--glass-bd);
+  background:rgba(15,22,40,.92);
+  padding:16px;box-shadow:var(--glass-shadow)
+}
+.rotateLock .title{font-weight:900;font-size:18px;margin-bottom:8px}
+.rotateLock .desc{opacity:.85;line-height:1.45}
 </style>
 </head>
+
 <body>
+<div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
+  BUILD: campaign100-2026-03-01
+</div>
+
 <div class="app">
   <div class="hud">
     <div class="hudRow">
-      <span class="pill" id="hudChapter">CH 1-1</span>
+      <button class="pill" id="btnBack">← Back</button>
       <span class="pill" id="hudStage">關卡 1</span>
-      <span class="pill" id="hudWave">波次 1/5</span>
       <span class="pill" id="hudCoins">🪙 0</span>
-      <span class="pill" id="hudShield">🛡 +0</span>
+
+      <div class="lvx lvxTop" id="btnStats" role="button" tabindex="0" aria-label="查看狀態一覽">
+        <span class="label" id="hudLv">LV 1</span>
+        <span class="num" id="xpPct">0%</span>
+      </div>
     </div>
+
     <div class="hudRow hudRow2">
       <div class="hpbar">
         <span class="label">HP</span>
         <div class="track"><div class="fill" id="hpFill"></div></div>
         <span class="num" id="hpNum">300/300</span>
       </div>
-      <div class="rightRow">
+
+      <div class="hpRowRight">
+        <span class="pill" id="hudShield">🛡 +0</span>
         <button class="pill" id="btnShop">商店</button>
-        <button class="pill" id="btnPause">Pause</button>
       </div>
     </div>
   </div>
@@ -142,51 +219,108 @@ canvas{width:100%;height:100%;display:block}
       <div class="toast" id="toast">Paused</div>
     </div>
 
-    <div class="touchpad" id="touchpad">
+    <div class="touchpad" id="touchpad" aria-label="touchpad">
       <div class="bar"></div>
       <div class="thumb" id="thumb" style="left:50%"></div>
       <div class="hint">左右拖曳移動</div>
     </div>
 
-    <div class="skills">
+    <div class="skills" id="skills">
       <button class="sbtn" id="btnBurst"><span class="ico">🔥</span><span class="name">爆發</span><span class="cd" id="cdBurst">Ready</span></button>
       <button class="sbtn" id="btnInvuln"><span class="ico">✨</span><span class="name">無敵</span><span class="cd" id="cdInvuln">Ready</span></button>
-      <button class="sbtn" id="btnAI" aria-pressed="false" title="自動遊玩（測試用）"><span class="ico">🤖</span><span class="name">AI</span><span class="cd" id="aiState">OFF</span></button>
+
+      <button class="sbtn" id="btnAI" title="自動遊玩（測試用，可拔掉）" aria-pressed="false">
+        <span class="ico">🤖</span><span class="name">AI</span><span class="cd" id="aiState">OFF</span>
+      </button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="overlay">
   <div class="panel" id="panel">
-    <h2 id="panelTitle">商店</h2>
-    <div class="sub" id="panelSub"></div>
+    <h2 id="panelTitle">升級：選一個</h2>
+    <div class="sub" id="panelSub" style="display:none"></div>
     <div class="opts" id="opts"></div>
-    <div class="row" id="panelRow"></div>
+    <div class="row" id="panelRow" style="display:none"></div>
+  </div>
+</div>
+
+<div class="rotateLock" id="rotateLock">
+  <div class="card">
+    <div class="title">請切回直向</div>
+    <div class="desc">這個遊戲只支援直向。<br>轉回直向後會自動恢復。</div>
   </div>
 </div>
 
 <script>
-(()=>{ // Blaster v2 — run-based campaign 1..100
-  const wrap=document.getElementById('boardWrap'), canvas=document.getElementById('c');
-  const ctx=canvas.getContext('2d',{alpha:true});
+(()=>{ // setup
+  function isIOS(){
+    return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+  }
+  function readEnvInsetPx(side){
+    const d=document.createElement('div');
+    const isLR = (side === 'left' || side === 'right');
+    d.style.cssText =
+      `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;` +
+      (isLR ? `width:env(safe-area-inset-${side});height:0;`
+            : `height:env(safe-area-inset-${side});width:0;`);
+    document.body.appendChild(d);
+    const r = d.getBoundingClientRect();
+    d.remove();
+    return (isLR ? r.width : r.height) || 0;
+  }
+  function isDynamicIslandSize(){
+    const w=Math.min(screen.width, screen.height);
+    const h=Math.max(screen.width, screen.height);
+    const key=`${w}x${h}`;
+    return new Set(['393x852','430x932','402x874','440x956']).has(key);
+  }
+  function applySafeArea(){
+    const root=document.documentElement;
+    let top=readEnvInsetPx('top');
+    let right=readEnvInsetPx('right');
+    let bottom=readEnvInsetPx('bottom');
+    let left=readEnvInsetPx('left');
+
+    const standalone =
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      (navigator.standalone === true);
+
+    if(isIOS() && top < 10) top = isDynamicIslandSize() ? 54 : 44;
+    else top = Math.max(top, 24);
+
+    const extraTop = standalone ? 14 : 10;
+    const extraBottom = standalone ? 4 : 8;
+
+    root.style.setProperty('--appSafeTop', `${top}px`);
+    root.style.setProperty('--appSafeR', `${right}px`);
+    root.style.setProperty('--appSafeB', `${bottom}px`);
+    root.style.setProperty('--appSafeL', `${left}px`);
+    root.style.setProperty('--appExtraTop', `${extraTop}px`);
+    root.style.setProperty('--appExtraBottom', `${extraBottom}px`);
+  }
+
+  const wrap=document.getElementById('boardWrap'),canvas=document.getElementById('c'),ctx=canvas.getContext('2d',{alpha:true});
   let W=0,H=0;
   function resize(){
-    const r=wrap.getBoundingClientRect();
-    const dpr=Math.min(2,window.devicePixelRatio||1);
+    const r=wrap.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
     canvas.width=Math.floor(r.width*dpr);
     canvas.height=Math.floor(r.height*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
     W=r.width; H=r.height;
   }
 
-  const $hudChapter=document.getElementById('hudChapter');
-  const $hudStage=document.getElementById('hudStage');
-  const $hudWave=document.getElementById('hudWave');
+  const $stage=document.getElementById('hudStage');
+  const $lv=document.getElementById('hudLv');
+  const $xpPct=document.getElementById('xpPct');
   const $hudCoins=document.getElementById('hudCoins');
   const $hudShield=document.getElementById('hudShield');
-  const $hpFill=document.getElementById('hpFill');
-  const $hpNum=document.getElementById('hpNum');
-  const $toast=document.getElementById('toast');
+  const $btnStats=document.getElementById('btnStats');
+
+  const $hpFill=document.getElementById('hpFill'),$hpNum=document.getElementById('hpNum'),
+        $toast=document.getElementById('toast'),$btnBack=document.getElementById('btnBack'),
+        $btnShop=document.getElementById('btnShop'),
+        $btnAI=document.getElementById('btnAI');
 
   const overlay=document.getElementById('overlay');
   const opts=document.getElementById('opts');
@@ -195,27 +329,183 @@ canvas{width:100%;height:100%;display:block}
   const $panelRow=document.getElementById('panelRow');
   const $panel=document.getElementById('panel');
 
-  const $btnShop=document.getElementById('btnShop');
-  const $btnPause=document.getElementById('btnPause');
-
   const $btnBurst=document.getElementById('btnBurst');
   const $btnInvuln=document.getElementById('btnInvuln');
   const $cdBurst=document.getElementById('cdBurst');
   const $cdInvuln=document.getElementById('cdInvuln');
-
-  const $btnAI=document.getElementById('btnAI');
   const $aiState=document.getElementById('aiState');
+
+  $btnBack.addEventListener('click',()=>{
+    if(document.referrer){
+      try{const ref=new URL(document.referrer);if(ref.origin===location.origin){history.back();return}}catch(_){}
+    }
+    location.href='../';
+  });
+
+  const $rotateLock=document.getElementById('rotateLock');
+  let lockedLandscape=false;
+
+  let paused=false;
+  let mode='play';
+  let gameOverSummary = null;
+  let statsFromGameOver = false;
+  let lastT=performance.now();
+
+  function isLandscape(){
+    const w = (window.visualViewport?.width ?? window.innerWidth);
+    const h = (window.visualViewport?.height ?? window.innerHeight);
+    return w > h;
+  }
+  function syncOrientationLock(){
+    lockedLandscape = isLandscape();
+    $rotateLock.style.display = lockedLandscape ? 'flex' : 'none';
+    if(lockedLandscape){
+      paused = true;
+      $toast.classList.remove('show');
+    }else{
+      if(mode === 'play') paused = false;
+      lastT = performance.now();
+    }
+  }
+
+  function syncLayout(){
+    applySafeArea();
+    resize();
+    syncOrientationLock();
+  }
+  syncLayout();
+  window.addEventListener('resize', syncLayout, {passive:true});
+  window.addEventListener('orientationchange', syncLayout, {passive:true});
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncLayout(); }, {passive:true});
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize', syncLayout, {passive:true});
+    visualViewport.addEventListener('scroll', syncLayout, {passive:true});
+  }
 
   const rand=(a,b)=>a+Math.random()*(b-a);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const lerp=(a,b,t)=>a+(b-a)*t;
   const dist2=(ax,ay,bx,by)=>{const dx=ax-bx,dy=ay-by;return dx*dx+dy*dy};
 
-  // Touchpad
-  const pad=document.getElementById('touchpad'), thumb=document.getElementById('thumb');
-  let padActive=false, padX=.5;
+  const pad=document.getElementById('touchpad'),thumb=document.getElementById('thumb');
+  let padActive=false,padX=.5;
+
+  const BASE_HP=300;
+  const SPREAD_CAP_BASE=5;
+  const PIERCE_CAP=5;
+
+  // ===== Campaign boundary =====
+  const FINAL_STAGE = 100;
+
+  // ===== Player hard caps (prevents runaway god-mode within 1..100) =====
+  const CAP = {
+    dmg: 6500,
+    fireRate: 14.5,
+    bulletSpeed: 1300,
+    spreadCap: 15,
+    pierce: 7,
+    shieldMax: 360,
+    regen: 16,
+    bulletR: 8
+  };
+
+  const BULLET_R_MIN=3;
+  const BULLET_R_BASE=4;
+  const BULLET_R_CAP=8;
+  const BULLET_R_UPG_CAP=7;
+
+  const ENEMY_BULLET_SPEED_MUL = 0.30;
+
+  const BOSS_SPREAD_P1 = 0.24;
+  const BOSS_SPREAD_P2 = 0.26;
+  const BOSS_SPREAD_P3 = 0.30;
+
+  let BURST_DURATION = 20;
+  let BURST_CD = 50;
+  let INVULN_DURATION = 20;
+  let INVULN_CD = 80;
+
+  function downtime(totalCd, dur){ return Math.max(0, Math.round((totalCd - dur)*10)/10); }
+
+  const HEALER_CHANCE_BY_STAGE = (stage)=>{
+    if(stage <= 4)  return 0.00;
+    if(stage <= 7)  return 0.10;
+    if(stage <= 12) return 0.20;
+    if(stage <= 19) return 0.30;
+    if(stage <= 30) return 0.50;
+    if(stage <= 40) return 0.70;
+    if(stage <= 50) return 0.85;
+    return 1.00;
+  };
+  function healerCountByChain(){
+    let n = 1;
+    if(Math.random() < 0.50) n++;
+    if(n>=2 && Math.random() < 0.30) n++;
+    if(n>=3 && Math.random() < 0.10) n++;
+    if(n>=4 && Math.random() < 0.05) n++;
+    return n;
+  }
+  const HEALER_HEAL_PCT = 0.05;
+  const HEALER_PERIOD = 3.0;
+  const HEALER_BOSS_MUL = 4.0;
+
+  function bulletSizeDmgMul(r){
+    const dr = Math.max(0, r - BULLET_R_BASE);
+    return clamp(1 - dr*0.06, 0.70, 1.00);
+  }
+  function bulletClearMul(r){
+    const dr = Math.max(0, r - BULLET_R_BASE);
+    return clamp(1 + dr*0.05, 1.00, 1.25);
+  }
+  function enemyBulletHpByStage(stage){
+    if(stage < 6)  return 8;
+    if(stage < 14) return 10;
+    if(stage < 20) return 14;
+    if(stage < 26) return 18;
+    return 22;
+  }
+
+  const state={
+    stage:1,wave:1,score:0,coins:0,xp:0,level:1,nextXp:60,
+    waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5,
+    // per-stage shop throttle (prevents "buy everything" even with AI)
+    shopBuysThisStage: 0,
+    shopBuysCapThisStage: 6, // player manual can still buy more by exiting/entering; AI obeys strict cap below
+  };
+
+  function chapterOfStage(stage){ return Math.ceil(stage/10); }
+  function subOfStage(stage){ return ((stage-1)%10)+1; }
+
+  const player={
+    x:W*.5,y:0,r:14,
+    hp:BASE_HP,hpMax:BASE_HP,
+    moveSpeed:520,fireRate:6.2,dmg:30,bulletSpeed:820,
+    spread_perm:0, spreadCap:SPREAD_CAP_BASE,
+    pierce_perm:2,
+    shield:0,shieldMax:0,
+    regen:0, xpGainMul:1.0, bulletR:BULLET_R_BASE
+  };
+
+  const buffs={
+    magnet:0, spreadBonusT:0,
+    invulnT:0, burstT:0
+  };
+
+  let hitIFrameT = 0;
+  const skills={ burst:{cd:0}, invuln:{cd:0} };
+
+  let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
+
+  // Wingmen
+  let allyRockets=[];
+  let wingmanAcc=0;
+  const WINGMAN_BASE_INTERVAL = 2.0;
+  const WINGMAN_MIN_INTERVAL = 0.5;
+  const WINGMAN_INTERVAL_STEP = 0.3;
+  const WINGMAN_MAX_UPG = 5;
+
   function setPadX(nx){
-    padX=clamp(nx,0,1);
+    padX=Math.max(0,Math.min(1,nx));
     thumb.style.left=`${padX*100}%`;
     player.x=lerp(player.x,padX*W,1);
   }
@@ -224,294 +514,478 @@ canvas{width:100%;height:100%;display:block}
   pad.addEventListener('pointermove',e=>{if(!padActive)return;e.preventDefault();setPadX(pointerToPadX(e))});
   pad.addEventListener('pointerup',e=>{padActive=false;try{pad.releasePointerCapture(e.pointerId)}catch(_){}});pad.addEventListener('pointercancel',()=>padActive=false);
 
-  // ===== Core tuning (bounded growth) =====
-  const BASE_HP=300;
-
-  // player caps (prevents "573 stage god mode")
-  const CAP = {
-    dmg: 2500,
-    fireRate: 14.0,
-    bulletSpeed: 1200,
-    spreadCap: 12,
-    pierce: 6,
-    shieldMax: 240,
-    regen: 10
-  };
-
-  const state = {
-    stage: 1, // 1..100
-    wave: 1,  // 1..5
-    wavesPerStage: 5,
-    coins: 0,
-    score: 0,
-    // per-stage shop purchase throttles
-    shopBuysThisStage: 0,
-    shopBuysCap: 3, // <= this, avoids infinite compounding
-  };
-
-  const player={
-    x:0,y:0,r:14,
-    hp:BASE_HP,hpMax:BASE_HP,
-    dmg:30, fireRate:6.2, bulletSpeed:820,
-    spread_perm:0, spreadCap:5,
-    pierce_perm:2,
-    shield:0, shieldMax:0,
-    regen:0,
-  };
-
-  const buffs={ invulnT:0, burstT:0 };
-  const skills={ burst:{cd:0}, invuln:{cd:0} };
-  let hitIFrameT = 0;
-
-  // entities
-  let pBullets=[], eBullets=[], enemies=[], particles=[], drops=[];
-  let fireAcc=0;
-
-  // boss/elite templates
-  function chapterOf(stage){ return Math.ceil(stage/10); }
-  function subOf(stage){ return ((stage-1)%10)+1; }
-
-  // Chapter modifiers (keeps variety without "new game" rewrite)
-  function chapterMod(ch){
-    // ch 1..10
-    // Return: bulletSpeedMul, enemyHpMul, coinBonus, affix flags
-    const mods = [
-      {name:'開局暖身',  hp:0.90, bs:0.95, coin:1.00, jam:0, split:0},
-      {name:'散射壓力',  hp:1.00, bs:1.00, coin:1.00, jam:0, split:0},
-      {name:'狙擊壓力',  hp:1.05, bs:1.05, coin:1.05, jam:0, split:0},
-      {name:'精英潮',    hp:1.08, bs:1.08, coin:1.10, jam:0, split:0},
-      {name:'干擾章',    hp:1.10, bs:1.10, coin:1.10, jam:1, split:0},
-      {name:'碎裂章',    hp:1.12, bs:1.12, coin:1.12, jam:0, split:1},
-      {name:'混合壓力',  hp:1.15, bs:1.15, coin:1.15, jam:1, split:1},
-      {name:'高風險高報酬',hp:1.18, bs:1.18, coin:1.25, jam:1, split:0},
-      {name:'最終前哨',  hp:1.22, bs:1.22, coin:1.20, jam:0, split:1},
-      {name:'Final',     hp:1.28, bs:1.28, coin:1.30, jam:1, split:1},
-    ];
-    return mods[clamp(ch,1,10)-1];
-  }
+  function enemyHoldY(){return clamp(H*.18,110,190)}
 
   function stageDifficultyMul(stage){
-    // bounded: 1..100, smooth but not runaway
-    const t = clamp((stage-1)/99, 0, 1);
-    // 1.0 -> ~2.2
-    return 1 + 1.2*t + 0.25*t*t;
+    // bounded within 1..100
+    const t = clamp((stage-1)/(FINAL_STAGE-1), 0, 1);
+    const early = 1 + (stage-1) * 0.028;
+    const curve = 1 + 0.85*t + 0.45*t*t;
+    return Math.min(2.6, early * curve * 0.62);
   }
-
-  // ===== Shooting & collisions =====
-  function spreadTotal(){ return player.spread_perm; }
-  function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
-
-  function spreadDmgMul(n){
-    if(n<=1) return 1;
-    return clamp(1 / (1 + 0.22*(n-1)), 0.30, 1.0);
-  }
-  function shotVXPattern(n){
-    if(n<=1) return [0];
-    const pairs = Math.floor(n/2);
-    const hasCenter = (n%2===1);
-    const maxV = 260;
-    const gamma = 1.6;
-    const arr=[];
-    if(hasCenter) arr.push(0);
-    for(let k=1;k<=pairs;k++){
-      const t=k/pairs;
-      const mag=Math.pow(t,gamma)*maxV;
-      arr.push(-mag,+mag);
-    }
-    return arr;
-  }
-
-  function shoot(dt){
-    fireAcc += dt * player.fireRate;
-    while(fireAcc >= 1){
-      fireAcc -= 1;
-      spawnPlayerShot();
-    }
-  }
-  function spawnPlayerShot(){
-    const n = shotsFromSpread(spreadTotal());
-    const burstMul = (buffs.burstT>0)? 2.0 : 1.0;
-    const dmg = player.dmg * spreadDmgMul(n) * burstMul;
-
-    const vxArr = shotVXPattern(n);
-    const baseY = player.y - player.r - 6;
-    for(const vx of vxArr){
-      pBullets.push({x:player.x,y:baseY,r:4,vx,vy:-player.bulletSpeed,dmg,pierce:player.pierce_perm,alive:true});
-    }
-  }
-
-  function enemyShoot(e, ang, meta={}){
-    const spd = (e.bulletSpeed||300) * (meta.spdMul||1);
-    const r = meta.r ?? 4;
-    eBullets.push({x:e.x,y:e.y+e.r+4,r,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg||8)*(meta.dmgMul||1),alive:true, beam:!!meta.beam, len:meta.len||0});
-  }
-
-  // ===== Spawns =====
-  function enemyHoldY(){return clamp(H*.18,110,190)}
   function waveConfig(stage,wave){
-    const ch = chapterOf(stage);
-    const mod = chapterMod(ch);
-    const mul = stageDifficultyMul(stage) * mod.hp;
+    const mul = stageDifficultyMul(stage);
+    const baseCount = 5 + Math.floor((stage-1)*0.95) + Math.floor((wave-1)*0.75);
+    const count = clamp(baseCount, 6, 30);
 
-    const baseCount = 7 + Math.floor((stage-1)*0.25) + Math.floor((wave-1)*1.0);
-    const count = clamp(baseCount, 8, 22);
+    const hp = (24 + stage*7 + wave*5) * mul;
+    const fire = (0.52 + stage*0.055 + wave*0.055) * clamp(1 + (stage>=14?0.06:0), 1, 1.18);
+    const bullet = (245 + stage*15 + wave*14) * clamp(1 + (stage>=16?0.05:0), 1, 1.25);
 
-    const hp = (26 + stage*5 + wave*6) * mul;
-    const fire = clamp(0.55 + stage*0.020 + wave*0.070, 0.65, 1.35);
-    const bulletSpeed = (120 + stage*3.2 + wave*4.0) * (1 + 0.25*mod.bs);
-    const dmg = (5.8 + stage*0.22 + wave*0.42);
+    const dmgBase = (5.5 + stage*0.62 + wave*0.50);
+    const dmg = dmgBase * clamp(1 + (stage>=12?0.08:0), 1, 1.35);
 
-    // elite chance peaks midgame but bounded
-    const eliteChance = clamp(0.10 + (stage/100)*0.55 + (wave>=4?0.10:0), 0.10, 0.75);
+    const mobSpreadChance = clamp((stage-10)*0.025 + (wave-4)*0.030, 0, 0.35);
+    const mobPierceChance = clamp((stage-12)*0.020 + (wave-5)*0.025, 0, 0.30);
 
-    return {count,hp,fire,bulletSpeed,dmg,eliteChance, mod};
+    let eliteChance;
+    if(stage < 8) eliteChance = 0.05;
+    else if(stage < 12) eliteChance = 0.18;
+    else if(stage < 16) eliteChance = 0.35;
+    else if(stage < 20) eliteChance = 0.55;
+    else if(stage < 24) eliteChance = 0.70;
+    else eliteChance = 0.80;
+
+    return {count,hp,fire,bullet,dmg,mobSpreadChance,mobPierceChance,eliteChance};
   }
 
   function spawnMob(x,y,targetY,cfg,meta={}){
+    const isStrafe=Math.random()<(0.38+state.stage*0.03);
     const elite = !!meta.elite;
+    const hp = cfg.hp * (elite? 2.3 : 1.0);
     const r  = elite ? 18 : 15;
-    const hp = cfg.hp * (elite? 2.2 : 1.0);
-    const isStrafe = Math.random() < (elite?0.55:0.38);
-
     return {
       type: elite?'elite':'mob',
       x,y,targetY,r,
       hp,hpMax:hp,
       fireCd:rand(.35,1.15),
-      fireRate: elite ? Math.min(cfg.fire*1.05, 1.45) : cfg.fire,
-      bulletSpeed: cfg.bulletSpeed * (elite?1.08:1.00),
-      bulletDmg: cfg.dmg * (elite?1.25:1.00),
-      strafeAmp: isStrafe ? rand(55, elite?150:115) : 0,
-      strafeSpd: isStrafe ? rand(.90, elite?2.40:1.90) : 0,
+      fireRate: elite ? Math.min(cfg.fire*1.08, 1.0) : cfg.fire,
+      bulletSpeed: cfg.bullet * (elite?1.08:1.00),
+      bulletDmg: cfg.dmg * (elite?1.20:1.00),
+      evoSpread: meta.evoSpread||false,
+      evoPierce: meta.evoPierce||false,
+      strafeAmp:isStrafe?rand(45, elite?150:120):0,
+      strafeSpd:isStrafe?rand(.85, elite?2.35:1.85):0,
+      strafePhase:rand(0,Math.PI*2),
+      hitFlash:0
+    };
+  }
+
+  function spawnHealer(x,y,targetY){
+    const hp = 140 + state.stage*10;
+    return {
+      type:'healer',
+      x,y,targetY,r:15,
+      hp,hpMax:hp,
+      healCd: rand(1.0, 2.2),
+      healPeriod: HEALER_PERIOD,
+      healPct: HEALER_HEAL_PCT,
+      strafeAmp: rand(40,90),
+      strafeSpd: rand(1.0,2.0),
       strafePhase: rand(0,Math.PI*2),
       hitFlash:0
     };
   }
 
-  function spawnMiniBoss(cfg){
-    const holdY = enemyHoldY() - 6;
-    const hp = cfg.hp * 7.0;
-    return {
-      type:'miniboss',
-      x: W*0.5, y: -120, targetY: holdY, r: 26,
-      hp, hpMax: hp,
-      bulletSpeed: cfg.bulletSpeed * 1.25,
-      bulletDmg: cfg.dmg * 2.0,
-      fireRate: cfg.fire * 1.15,
-      phase:1,
-      hitFlash:0
-    };
+  const DROP_TYPES=[ {key:'heal',w:22},{key:'shield',w:18},{key:'spread',w:14},{key:'magnet',w:10} ];
+
+  function spreadAtCap(){ return player.spread_perm >= player.spreadCap; }
+  function pickDrop(){
+    const pool = spreadAtCap() ? DROP_TYPES.filter(x=>x.key!=='spread') : DROP_TYPES;
+    const total=pool.reduce((s,a)=>s+a.w,0) || 1;
+    let r=Math.random()*total;
+    for(const it of pool){r-=it.w;if(r<=0)return it.key}
+    return pool[0]?.key || 'heal';
+  }
+  function dropCoin(x,y,amt){ drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt}); }
+
+  const shopState={
+    spreadCapUp:0,
+    burstCdDown:0, invulnCdDown:0,
+    burstDurUp:0,  invulnDurUp:0,
+    magnetRun:0,
+    wingmanBought:0,
+    wingmanAtkDown:0
+  };
+
+  function wingmanActive(){
+    return (shopState.wingmanBought === 1) || (AI?.enabled === true);
+  }
+  function wingmanInterval(){
+    const lvl = clamp(shopState.wingmanAtkDown || 0, 0, WINGMAN_MAX_UPG);
+    return Math.max(WINGMAN_MIN_INTERVAL, WINGMAN_BASE_INTERVAL - lvl * WINGMAN_INTERVAL_STEP);
   }
 
-  function spawnBoss(){
-    // every stage 10: boss stage
-    const stage = state.stage;
-    const ch = chapterOf(stage);
-    const mod = chapterMod(ch);
-    const holdY = enemyHoldY() - 12;
+  function strongMagnetActive(){
+    return (shopState.magnetRun === 1) || (AI?.enabled === true);
+  }
 
-    // rotate boss kind by chapter: 1..10
-    const kind = (ch % 3 === 1) ? 'bullethell' : (ch % 3 === 2 ? 'sniper' : 'defender');
+  function maybeDrop(x,y,isBoss=false){
+    const p = isBoss ? .92 : .22;
+    if(Math.random() > p) return;
 
-    const baseHp = (900 + stage*140) * stageDifficultyMul(stage) * mod.hp;
-    const baseSpd= (190 + stage*2.7) * mod.bs;
-    const baseDmg= (12 + stage*0.35) * (mod.bs*0.90 + 0.15);
+    const t = pickDrop();
+    if(strongMagnetActive() && t === 'magnet'){
+      dropCoin(x, y, 3);
+      return;
+    }
+    drops.push({x,y,r:10,vy:rand(70,140),type:t,life:12});
+  }
 
-    enemies.push({
-      type:'boss', kind,
-      x: W*0.5, y: -140, targetY: holdY, r: 32,
-      hp: baseHp, hpMax: baseHp,
-      bulletSpeed: baseSpd,
-      bulletDmg: baseDmg,
-      phase:1, hitFlash:0,
-      // affix from chapter
-      jam: !!mod.jam,
-      split: !!mod.split,
-      // timers
-      t0: 0,
-      ringCd: 0.9,
-      spiralCd: 0.38,
-      burstCd: 0.70,
-      ballCd: 1.1,
-      snipeT: 0.25
-    });
-
-    toastMsg(`章節王：${kind.toUpperCase()}｜${mod.name}`, 1.0);
+  function applyDrop(type, d){
+    if(type==='heal'){
+      player.hp=clamp(player.hp+50,0,player.hpMax);
+    }else if(type==='shield'){
+      player.shieldMax=Math.max(player.shieldMax,30);
+      player.shield=clamp(player.shield+30,0,player.shieldMax);
+      player.shieldMax = Math.min(CAP.shieldMax, player.shieldMax);
+      player.shield = Math.min(player.shield, player.shieldMax);
+    }else if(type==='spread'){
+      buffs.spreadBonusT=Math.max(buffs.spreadBonusT,7.5);
+    }else if(type==='magnet'){
+      if(strongMagnetActive()){
+        dropCoin(d?.x ?? player.x, d?.y ?? player.y, 1);
+      }else{
+        buffs.magnet=Math.max(buffs.magnet,9.0);
+      }
+    }else if(type==='coin'){
+      state.coins += Math.max(1, d?.amt ?? 1);
+    }
   }
 
   function spawnWave(){
     enemies.length=0;
     eBullets.length=0;
-    drops.length=0;
+    state.waveInProgress=true;
 
     const cfg = waveConfig(state.stage, state.wave);
     const holdY = enemyHoldY();
     const lanes = cfg.count;
 
+    const hasHealer = Math.random() < HEALER_CHANCE_BY_STAGE(state.stage);
+
+    let healerLanes = new Set();
+    if(hasHealer){
+      const want = healerCountByChain();
+      const maxN = Math.min(want, Math.max(1, lanes-1));
+      while(healerLanes.size < maxN){
+        healerLanes.add(Math.floor(Math.random()*lanes));
+        if(healerLanes.size >= lanes-1) break;
+      }
+    }
+
     for(let i=0;i<lanes;i++){
       const x = (i+1)*(W/(lanes+1));
+
+      if(healerLanes.has(i)){
+        enemies.push(spawnHealer(x, -44 - i*18, holdY + rand(-18,18)));
+        continue;
+      }
+
+      const evoSpread = Math.random() < cfg.mobSpreadChance;
+      const evoPierce = Math.random() < cfg.mobPierceChance;
       const isElite = Math.random() < cfg.eliteChance;
 
-      enemies.push(spawnMob(
-        x, -40 - i*16,
-        holdY + rand(-18,18),
-        cfg,
-        {elite:isElite}
-      ));
-    }
-
-    // wave 5 = miniboss unless it's boss stage (sub 10)
-    if(state.wave === state.wavesPerStage && subOf(state.stage) !== 10){
-      enemies.push(spawnMiniBoss(cfg));
-      toastMsg('Mini Boss 入場', 0.9);
-    }
-
-    // boss stage: sub 10, wave 5 spawns boss
-    if(subOf(state.stage) === 10 && state.wave === state.wavesPerStage){
-      spawnBoss();
+      if(isElite){
+        enemies.push(spawnMob(
+          x, -40 - i*18, holdY + rand(-18,18),
+          cfg,
+          {elite:true, evoSpread:true, evoPierce:true}
+        ));
+      }else{
+        enemies.push(spawnMob(
+          x, -40 - i*18, holdY + rand(-18,18),
+          cfg,
+          {elite:false, evoSpread, evoPierce}
+        ));
+      }
     }
   }
 
-  // ===== Drops & economy =====
-  function coinRewardBase(stage, isBoss=false){
-    const ch = chapterOf(stage);
-    const mod = chapterMod(ch);
-    const base = isBoss ? 220 : 18;
-    const sMul = 1 + (stage/100)*1.2;
-    return Math.floor(base * sMul * mod.coin);
-  }
-
-  function dropCoin(x,y,amt){
-    drops.push({x,y,r:10,vy:rand(60,120),type:'coin',life:10,amt});
-  }
-
-  function maybeDrop(x,y,what){
-    // run-based, bounded: drops are mild; shop is main progression
-    if(Math.random() > 0.25) return;
-    const pool = ['heal','shield','coin'];
-    const t = pool[Math.floor(Math.random()*pool.length)];
-    if(t==='coin') dropCoin(x,y,3);
-    else drops.push({x,y,r:10,vy:rand(70,140),type:t,life:10});
-  }
-
-  function applyDrop(d){
-    if(d.type==='heal'){
-      player.hp = clamp(player.hp + 55, 0, player.hpMax);
-    }else if(d.type==='shield'){
-      player.shieldMax = Math.max(player.shieldMax, 60);
-      player.shield = clamp(player.shield + 40, 0, player.shieldMax);
-    }else if(d.type==='coin'){
-      state.coins += Math.max(1, d.amt||1);
+  function spawnAdds(count=4,power=.90){
+    const cfg=waveConfig(state.stage,state.wave),holdY=enemyHoldY()+rand(8,22);
+    const addHealer = (state.stage>=10) && Math.random()<0.65;
+    for(let i=0;i<count;i++){
+      if(addHealer && i===0){
+        const x=rand(40,W-40);
+        enemies.push(spawnHealer(x,-60-i*24,holdY+rand(-14,14)));
+        continue;
+      }
+      const x=rand(40,W-40);
+      const evoSpread = Math.random() < cfg.mobSpreadChance*0.85;
+      const evoPierce = Math.random() < cfg.mobPierceChance*0.85;
+      const m = spawnMob(x,-60-i*24,holdY+rand(-14,14),cfg,{elite:false,evoSpread,evoPierce});
+      m.hp*=power; m.hpMax=m.hp;
+      m.fireRate*= (1.05+rand(-.05,.12));
+      m.bulletSpeed*=(.95+rand(-.03,.08));
+      m.bulletDmg*=(.95+rand(-.05,.10));
+      m.r=14;
+      enemies.push(m);
     }
   }
 
-  // ===== Skills =====
-  let BURST_DURATION = 12;
-  let BURST_CD = 38;
-  let INVULN_DURATION = 10;
-  let INVULN_CD = 55;
+  // ===== Boss selection (variety every 10 stages, not 30) =====
+  function bossKindForStage(stage){
+    const ch = chapterOfStage(stage); // 1..10 for 1..100
+    const seq = ['boss','sniper','defender','boss','sniper','defender','boss','sniper','defender','boss'];
+    return seq[(ch-1) % seq.length] || 'boss';
+  }
 
-  const SKILL_EPS=1e-6;
+  function spawnBoss(){
+    const holdY = enemyHoldY() - 12;
+    const kind = bossKindForStage(state.stage);
+
+    const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
+
+    if(kind==='defender'){
+      const hpD = hpBase * 6.2;
+      enemies.push({
+        type:'boss', kind:'defender',
+        x: W*0.5, y: -100, targetY: holdY, r: 30,
+        hp: hpD, hpMax: hpD,
+        strafeAmp:0, strafeSpd:0, strafePhase:0,
+        phase:1, hitFlash:0,
+        ballCd:1.0, ballPeriod:4.0,
+      });
+      toastMsg('Boss（Defender）入場', 0.9);
+      return;
+    }
+
+    if(kind==='sniper'){
+      const baseSpd = 520 + state.stage*10;
+      const hp2 = hpBase * 2.2;
+      enemies.push({
+        type:'boss', kind:'sniper',
+        x: W*0.5, y: -100, targetY: holdY, r: 30,
+        hp: hp2, hpMax: hp2,
+        bulletSpeed: baseSpd,
+        bulletDmg: 12 + state.stage*2.2,
+        strafeAmp:0, strafeSpd:0, strafePhase:0,
+        phase:1, hitFlash:0,
+        snipeT:0.25,
+      });
+      toastMsg('Boss（Sniper）入場', 0.9);
+      return;
+    }
+
+    const baseSpd=240+state.stage*12;
+    enemies.push({
+      type:'boss', x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
+      bulletSpeed:baseSpd, bulletDmg:12+state.stage*2.0,
+      strafeAmp:240, strafeSpd:1.05+state.stage*0.06, strafePhase:0,
+      phase:1, ringCd:1.0, spiralCd:0.35, summonCd:999,
+      burstCd:0.55, burstLeft:0, burstGap:0.10, burstGapCd:0,
+      spin:0, hitFlash:0,
+      medCd: (state.stage>=20)? (6.8+Math.random()*3.5) : 999
+    });
+    toastMsg('Boss 入場',0.9);
+  }
+
+  function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
+  function nextStage(){
+    // ===== Victory boundary =====
+    if(state.stage >= FINAL_STAGE){
+      winGame();
+      return;
+    }
+    state.stage+=1;
+    state.wave=1;
+    state.waveClearCooldown=.85;
+    state.waveInProgress=false;
+
+    // chapter bonus coins (helps "can’t buy anything" without going infinite)
+    const sub = subOfStage(state.stage);
+    if(sub === 1){
+      const ch = chapterOfStage(state.stage);
+      const bonus = 250 + ch*140;
+      state.coins += bonus;
+      toastMsg(`章節 ${ch} 開始：+🪙${bonus}`, 0.75);
+    }
+
+    // reset per-stage shop counter
+    state.shopBuysThisStage = 0;
+  }
+
+  function price(base, lvl, growth=1.5){ return Math.floor(base * Math.pow(growth, lvl)); }
+
+  function shopItems(){
+    const burstDown = downtime(BURST_CD, BURST_DURATION);
+    const invDown   = downtime(INVULN_CD, INVULN_DURATION);
+    const wingActive = wingmanActive();
+    const wingInt = wingmanInterval();
+
+    const items = [];
+
+    items.push({
+      id:'spreadCapUp',
+      name:'散射上限 +1',
+      desc:`提升散射上限（目前 ${player.spreadCap}）`,
+      cost:price(220, shopState.spreadCapUp, 1.55),
+      canBuy:()=> shopState.spreadCapUp < 10 && player.spreadCap < CAP.spreadCap,
+      buy:()=>{ shopState.spreadCapUp++; player.spreadCap=Math.min(CAP.spreadCap, player.spreadCap+1); }
+    });
+
+    items.push({
+      id:'burstCdDown',
+      name:'爆發 CD -1s',
+      desc:`降低爆發 CD：目前 <b>${burstDown.toFixed(0)}s</b>`,
+      cost:price(120, shopState.burstCdDown, 1.55),
+      canBuy:()=> (shopState.burstCdDown < 10) && (downtime(BURST_CD, BURST_DURATION) > 6),
+      buy:()=>{
+        shopState.burstCdDown++;
+        BURST_CD = Math.max(BURST_DURATION + 6, BURST_CD - 1);
+        if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
+      }
+    });
+
+    items.push({
+      id:'burstDurUp',
+      name:'爆發持續 +1s',
+      desc:`延長爆發時間（目前 ${BURST_DURATION.toFixed(0)}s）`,
+      cost:price(120, shopState.burstDurUp, 1.55),
+      canBuy:()=> (shopState.burstDurUp < 10) && (BURST_DURATION < 50),
+      buy:()=>{
+        shopState.burstDurUp++;
+        BURST_DURATION = Math.min(50, BURST_DURATION + 1);
+        if(BURST_CD < BURST_DURATION) BURST_CD = BURST_DURATION;
+      }
+    });
+
+    items.push({
+      id:'invulnCdDown',
+      name:'無敵 CD -1s',
+      desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
+      cost:price(130, shopState.invulnCdDown, 1.55),
+      canBuy:()=> (shopState.invulnCdDown < 15) && (downtime(INVULN_CD, INVULN_DURATION) > 10),
+      buy:()=>{
+        shopState.invulnCdDown++;
+        INVULN_CD = Math.max(INVULN_DURATION + 10, INVULN_CD - 1);
+        if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
+      }
+    });
+
+    items.push({
+      id:'invulnDurUp',
+      name:'無敵持續 +1s',
+      desc:`延長無敵時間（目前 ${INVULN_DURATION.toFixed(0)}s）`,
+      cost:price(130, shopState.invulnDurUp, 1.55),
+      canBuy:()=> (shopState.invulnDurUp < 15) && (INVULN_DURATION < 45),
+      buy:()=>{
+        shopState.invulnDurUp++;
+        INVULN_DURATION = Math.min(45, INVULN_DURATION + 1);
+        if(INVULN_CD < INVULN_DURATION) INVULN_CD = INVULN_DURATION;
+      }
+    });
+
+    items.push({
+      id:'magnetRun',
+      name:'強力磁鐵',
+      desc:'本局獲得強力磁鐵效果：掉落物會自動飛到你身上（直到結算）',
+      cost:2200,
+      canBuy:()=> shopState.magnetRun===0 && !(AI?.enabled === true),
+      buy:()=>{
+        shopState.magnetRun = 1;
+        buffs.magnet = Math.max(buffs.magnet, 1e9);
+      }
+    });
+
+    items.push({
+      id:'wingmanBuy',
+      name:'僚機編隊（左右各一）',
+      desc:`購買後：左右各一個僚機，<b>每 ${wingInt.toFixed(1)}s</b> 發射追蹤火箭（100% 命中）`,
+      cost:3200,
+      canBuy:()=> (shopState.wingmanBought===0) && !(AI?.enabled === true),
+      buy:()=>{
+        shopState.wingmanBought = 1;
+        toastMsg('🛰️ 僚機就位', 0.7);
+      }
+    });
+
+    if(wingActive){
+      items.push({
+        id:'wingmanAtkDown',
+        name:'僚機攻擊間隔 -0.3s',
+        desc:`降低僚機火箭間隔：目前 <b>${wingInt.toFixed(1)}s</b>（最多 5 次）`,
+        cost:price(240, shopState.wingmanAtkDown, 1.55),
+        canBuy:()=> (shopState.wingmanAtkDown < WINGMAN_MAX_UPG),
+        buy:()=>{
+          shopState.wingmanAtkDown++;
+          toastMsg(`🛰️ 僚機加速：${wingmanInterval().toFixed(1)}s`, 0.55);
+        }
+      });
+    }
+
+    return items;
+  }
+
+  function renderShop(){
+    $panel.classList.remove('isStats');
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    $panelTitle.textContent='商店';
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=`金幣：<b>${state.coins}</b>`;
+
+    const items=shopItems();
+    for(const it of items){
+      const affordable = state.coins >= it.cost;
+      const allowed = it.canBuy ? it.canBuy() : true;
+      const canBuy = affordable && allowed;
+
+      const el=document.createElement('div');
+      el.className='opt';
+      el.innerHTML=
+        `<div class="t">${it.name} <span style="opacity:.8">（🪙${it.cost}）</span></div>`+
+        `<div class="d">${it.desc}${allowed?'':'<br><span style="opacity:.7">（已達上限／AI已自帶）</span>'}</div>`;
+
+      if(!canBuy){
+        el.style.opacity='0.55';
+        el.style.cursor='default';
+      }else{
+        el.addEventListener('click',()=>{
+          if(mode!=='shop' || !paused) return;
+          if(state.coins < it.cost) return;
+          if(it.canBuy && !it.canBuy()) return;
+
+          state.coins -= it.cost;
+          try{ it.buy && it.buy(); }catch(_){}
+          renderShop();
+        });
+      }
+      opts.appendChild(el);
+    }
+
+    $panelRow.style.display='flex';
+    const btnClose=document.createElement('button');
+    btnClose.className='pill';
+    btnClose.textContent='回到遊戲';
+    btnClose.addEventListener('click',closeShop);
+    $panelRow.appendChild(btnClose);
+  }
+
+  function openShop(){
+    if(mode!=='play') return;
+    if(lockedLandscape) return;
+    mode='shop';
+    paused=true;
+    $toast.classList.remove('show');
+    renderShop();
+  }
+  function closeShop(){
+    overlay.classList.remove('show');
+    $panel.classList.remove('isStats');
+    mode='play';
+    paused=false;
+    lastT=performance.now();
+  }
+  $btnShop.addEventListener('click',()=>{
+    if(mode==='play') openShop();
+    else if(mode==='shop') closeShop();
+  });
+
+  const SKILL_EPS = 1e-6;
   function skillCdLeft(k){ return Math.max(0, (skills[k]?.cd || 0)); }
   function canUseSkill(k){
     if(mode!=='play' || paused) return false;
@@ -523,281 +997,951 @@ canvas{width:100%;height:100%;display:block}
     if(!canUseSkill('burst')) return;
     skills.burst.cd = BURST_CD;
     buffs.burstT = Math.max(buffs.burstT, BURST_DURATION);
-    toastMsg(`🔥 爆發 ${BURST_DURATION}s`,0.7);
+    toastMsg(`🔥 爆發：傷害×2（${BURST_DURATION.toFixed(0)}s）`,0.7);
   }
   function useInvuln(){
     if(!canUseSkill('invuln')) return;
     skills.invuln.cd = INVULN_CD;
     buffs.invulnT = Math.max(buffs.invulnT, INVULN_DURATION);
-    toastMsg(`✨ 無敵 ${INVULN_DURATION}s`,0.7);
+    toastMsg(`✨ 無敵（${INVULN_DURATION.toFixed(0)}s）`,0.7);
   }
   $btnBurst.addEventListener('click',useBurst);
   $btnInvuln.addEventListener('click',useInvuln);
 
-  // ===== Shop (post-stage only) =====
-  const shopState={
-    spreadCapUp:0,
-    dmgUp:0,
-    fireRateUp:0,
-    pierceUp:0,
-    shieldCapUp:0,
-    regenUp:0,
-    burstTuned:0,
-    invulnTuned:0,
-    wingman:0,
-    wingmanRate:0,
+  function spreadTotal(){ return player.spread_perm + (buffs.spreadBonusT>0?1:0); }
+  function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
+  function pierceTotal(){ return player.pierce_perm; }
+
+  // === AUTOPLAY AI BEGIN ===
+  const AI = {
+    enabled:false,
+    sniperSweepX:0,
+    sniperForceLeft:true,
+    autoShop:true,
+    nextShopAtMs:0,
+    shopLock:false,
+    _savedManualMagnet: 0,
+
+    aimHoldX: null,
+    aimHoldT: 0,
+
+    toggle(on){
+      const newEnabled = (on==null) ? !this.enabled : !!on;
+      if(newEnabled === this.enabled) return;
+
+      if(this.enabled && !newEnabled){
+        if(shopState.magnetRun === 0){
+          buffs.magnet = Math.max(0, this._savedManualMagnet || 0);
+        }else{
+          buffs.magnet = Math.max(buffs.magnet, 1e9);
+        }
+      }
+
+      if(!this.enabled && newEnabled){
+        this._savedManualMagnet = buffs.magnet;
+        buffs.magnet = Math.max(buffs.magnet, 1e9);
+      }
+
+      this.enabled = newEnabled;
+      if($aiState) $aiState.textContent = this.enabled ? 'ON' : 'OFF';
+      if($btnAI) $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
+
+      padActive=false;
+      this.shopLock=false;
+      this.nextShopAtMs=0;
+
+      this.sniperForceLeft=true;
+      this.sniperSweepX=player.x;
+
+      this.aimHoldX=null;
+      this.aimHoldT=0;
+    },
+
+    pickUpgrade(picks){
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+
+      const baseScore = (k)=>{
+        if(k==='spread_perm')      return 120;
+        if(k==='pierce_perm')     return 105;
+        if(k==='dmg')             return 90;
+        if(k==='hp')              return 70;
+        if(k==='shield_cap')      return 58;
+        if(k==='firerate')        return 28;
+        if(k==='regen')           return 18;
+        if(k==='bullet_size')     return 10;
+        if(k==='xp_gain')         return 6;
+        return 0;
+      };
+
+      const scoreOf = (k)=>{
+        let s = baseScore(k);
+
+        if(hpPct < 0.35){
+          if(k==='hp') s += 35;
+          if(k==='shield_cap') s += 20;
+          if(k==='regen') s += 10;
+        }else if(hpPct < 0.55){
+          if(k==='hp') s += 12;
+          if(k==='shield_cap') s += 8;
+        }
+
+        if(k==='spread_perm' && player.spread_perm >= player.spreadCap) s = -1e9;
+        if(k==='pierce_perm' && player.pierce_perm >= PIERCE_CAP) s = -1e9;
+        if(k==='bullet_size' && player.bulletR >= BULLET_R_UPG_CAP) s = -1e9;
+
+        // caps
+        if(k==='dmg' && player.dmg >= CAP.dmg) s = -1e9;
+        if(k==='firerate' && player.fireRate >= CAP.fireRate) s = -1e9;
+        if(k==='regen' && player.regen >= CAP.regen) s = -1e9;
+
+        return s;
+      };
+
+      let best=picks[0], bestS=-1e18;
+      for(const u of picks){
+        const sc = scoreOf(u.key);
+        if(sc > bestS){ bestS=sc; best=u; }
+      }
+      return best;
+    },
+
+    pickShopItem(items, ctx){
+      const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+      const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+      const spreadBlocked = (player.spread_perm >= player.spreadCap-0.01);
+      const wantSurvive = (hpPct < 0.45) || (shieldPct < 0.20) || ((ctx?.bulletPressure||0) >= 6);
+
+      const scoreId = (id)=>{
+        switch(id){
+          case 'magnetRun':      return -1e9;
+          case 'wingmanBuy':     return 210;   // allow but not priority
+          case 'wingmanAtkDown': return 320;
+          case 'spreadCapUp':    return spreadBlocked ? 260 : 140;
+          case 'invulnCdDown':   return (wantSurvive ? 320 : 200);
+          case 'invulnDurUp':    return (wantSurvive ? 210 : 120);
+          case 'burstCdDown':    return (ctx?.hasBoss ? 220 : 140);
+          case 'burstDurUp':     return (ctx?.hasBoss ? 180 : 110);
+          default: return 0;
+        }
+      };
+
+      let best=null, bestS=-1e18;
+      for(const it of items){
+        if(!it) continue;
+        const affordable = state.coins >= it.cost;
+        const allowed = it.canBuy ? it.canBuy() : true;
+        if(!affordable || !allowed) continue;
+
+        const pricePenalty = it.cost * 0.06;
+        const s = scoreId(it.id) - pricePenalty;
+
+        if(s > bestS){ bestS=s; best=it; }
+      }
+      return best;
+    },
+
+    shopTick(dt, ctx){
+      if(!this.autoShop || !this.enabled) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+
+      // ===== AI shop cap per stage (prevents buying out everything) =====
+      if(state.shopBuysThisStage >= 4) return;
+
+      const bossNow = enemies.find(e=>e.type==='boss');
+      if(bossNow && (bossNow.kind==='sniper' || bossNow.kind==='defender')) return;
+
+      if(state.coins < 320) return;
+
+      const itemsNow = shopItems();
+      const hasAffordable = itemsNow.some(it => (state.coins >= it.cost) && (it.canBuy ? it.canBuy() : true));
+      if(!hasAffordable) return;
+
+      const now = performance.now();
+      if(this.shopLock) return;
+      if(now < (this.nextShopAtMs||0)) return;
+
+      this.shopLock = true;
+      this.nextShopAtMs = now + 7500;
+
+      openShop();
+      setTimeout(()=>{ this.autoBuyInShop(ctx); }, 60);
+    },
+
+    autoBuyInShop(ctx){
+      if(mode!=='shop' || !paused) { this.shopLock = false; return; }
+
+      const safeCtx = ctx || { hasBoss:false, bulletPressure:0, bestScore:0 };
+      const bought = [];
+
+      // ===== AI buys max 2 items per shop open =====
+      for(let loop=0; loop<2; loop++){
+        const items = shopItems();
+        const pick = this.pickShopItem(items, safeCtx);
+        if(!pick) break;
+        if(state.coins < pick.cost) break;
+        if(pick.canBuy && !pick.canBuy()) break;
+
+        state.coins -= pick.cost;
+        state.shopBuysThisStage++;
+        try{ pick.buy && pick.buy(); }catch(_){}
+        bought.push(pick.name);
+      }
+
+      try{ renderShop(); }catch(_){}
+
+      setTimeout(()=>{
+        closeShop();
+        if(bought.length){
+          toastMsg(`🛒 自動採購：${bought.join(' / ')}`, 0.55);
+        }
+        this.shopLock = false;
+      }, 80);
+    },
+
+    tick(dt){
+      if(!this.enabled) return;
+      if(mode!=='play' || paused || lockedLandscape) return;
+
+      const safeL = player.r + 10;
+      const safeR = W - player.r - 10;
+      const leftX  = safeL + 2;
+      const rightX = safeR - 2;
+
+      const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
+
+      if(sniperBoss){
+        if(this.sniperForceLeft){
+          this.sniperSweepX = leftX;
+          setPadX(leftX / W);
+          this.sniperForceLeft = false;
+          return;
+        }
+
+        const sweepSpd = 80;
+        this.sniperSweepX = clamp(this.sniperSweepX + sweepSpd * dt, leftX, rightX);
+
+        if(this.sniperSweepX >= rightX - 0.5){
+          setPadX(leftX / W);
+          this.sniperSweepX = leftX;
+          return;
+        }
+
+        setPadX(this.sniperSweepX / W);
+
+        if(canUseSkill('invuln')){
+          let minHit = 999;
+          const py = player.y;
+          for(const b of eBullets){
+            if(!b?.alive || !b.beam) continue;
+            const vy = b.vy || 0;
+            if(vy <= 1) continue;
+            const tHit = (py - b.y) / vy;
+            if(tHit > 0 && tHit < minHit) minHit = tHit;
+          }
+          if(minHit < 0.34) useInvuln();
+        }
+        return;
+      }else{
+        this.sniperForceLeft = true;
+        this.sniperSweepX = player.x;
+      }
+
+      const py = player.y;
+      const boss = enemies.find(e=>e.type==='boss') || null;
+      const defenderBoss = boss && boss.kind==='defender';
+
+      const shotsLive = shotsFromSpread(spreadTotal());
+
+      let target = null;
+      if(enemies.length){
+        target = boss || null;
+        if(!target){
+          for(const e of enemies){ if(!target || e.y > target.y) target = e; }
+        }
+      }
+      const aimBaseX = target ? target.x : (W*0.5);
+
+      let aimTargets = [aimBaseX];
+      if(!defenderBoss && target && shotsLive === 2){
+        const dy = Math.max(140, player.y - target.y);
+        const bulletVx = 240;
+        const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
+        aimTargets = [
+          clamp(aimBaseX - off, safeL, safeR),
+          clamp(aimBaseX + off, safeL, safeR),
+        ];
+      }
+
+      const horizon = 1.25;
+      const margin  = 7;
+      const intervals = [];
+      let minBeamHit = 999;
+      let nearestBallD = 1e18;
+
+      for(const b of eBullets){
+        if(!b?.alive) continue;
+
+        if(b.ball){
+          const d = dist2(b.x,b.y,player.x,player.y);
+          if(d < nearestBallD) nearestBallD = d;
+
+          const rad = (b.r||18) + player.r + 18;
+          intervals.push([b.x - rad, b.x + rad, 18]);
+          continue;
+        }
+
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > horizon) continue;
+
+        const xHit = b.x + (b.vx||0) * tHit;
+
+        if(b.beam){
+          const ang = Math.atan2(vy, (b.vx||0));
+          const L = b.len || 28;
+          const R = b.r || 5;
+          const xHalf = Math.abs(Math.cos(ang)) * (L/2);
+
+          const rad = player.r + R + margin + 12 + xHalf;
+          const w = (9 / (0.05 + tHit));
+          intervals.push([xHit - rad, xHit + rad, w * 9]);
+
+          if(tHit < minBeamHit) minBeamHit = tHit;
+          continue;
+        }
+
+        const rad  = (b.r||4) + player.r + margin;
+        const w    = 1 / (0.14 + tHit);
+        intervals.push([xHit - rad, xHit + rad, w]);
+      }
+
+      let imminentHit = false;
+      for(const b of eBullets){
+        if(!b?.alive || b.beam || b.ball) continue;
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > 0.28) continue;
+        const xHit = b.x + (b.vx||0) * tHit;
+        const rad = (b.r||4) + player.r + 10;
+        if(Math.abs(xHit - player.x) <= rad){
+          imminentHit = true;
+          break;
+        }
+      }
+      if(imminentHit){
+        const goLeft = (player.x > W*0.5);
+        const tx = goLeft ? leftX : rightX;
+        setPadX(tx / W);
+        if(canUseSkill('invuln')) useInvuln();
+        return;
+      }
+
+      const bandL = defenderBoss ? (W * 0.33) : safeL;
+      const bandR = defenderBoss ? (W * 0.67) : safeR;
+      const centerX = W * 0.5;
+
+      const candidates = 23;
+      let bestX = clamp(player.x, bandL, bandR);
+      let bestScore = -1e18;
+
+      for(let i=0;i<candidates;i++){
+        const x = bandL + (bandR-bandL)*(i/(candidates-1));
+        let score = 0;
+
+        for(const [l,r,w] of intervals){
+          if(x>=l && x<=r){
+            score -= 1e6 * w;
+          }else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * 4200 * w;
+          }
+        }
+
+        if(!defenderBoss && aimTargets && aimTargets.length){
+          const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+          score -= aimDist * (shotsLive===2 ? 3.0 : 3.8);
+        }
+
+        if(defenderBoss){
+          score -= Math.abs(x - centerX) * 22;
+        }
+
+        const edge = Math.min(x-bandL, bandR-x);
+        score += edge * (defenderBoss ? 1.8 : 0.06);
+
+        if(score > bestScore){ bestScore=score; bestX=x; }
+      }
+
+      const dangerLevel = intervals.length;
+      const safeEnoughForAimLock = (bestScore > -2.0e5) && (dangerLevel <= 5) && (buffs.invulnT<=0);
+
+      if(safeEnoughForAimLock){
+        if(this.aimHoldT <= 0 || this.aimHoldX == null){
+          this.aimHoldX = bestX;
+          this.aimHoldT = 0.25;
+        }else{
+          if(Math.abs(bestX - this.aimHoldX) > 70){
+            this.aimHoldX = bestX;
+            this.aimHoldT = 0.25;
+          }
+        }
+      }else{
+        this.aimHoldX = null;
+        this.aimHoldT = 0;
+      }
+
+      if(this.aimHoldT > 0){
+        this.aimHoldT = Math.max(0, this.aimHoldT - dt);
+        if(this.aimHoldX != null) bestX = this.aimHoldX;
+      }
+
+      const maxStep = player.moveSpeed * dt * (defenderBoss ? 0.92 : 0.98);
+      const nx = clamp(bestX, bandL, bandR);
+      const dx = clamp(nx - player.x, -maxStep, maxStep);
+      setPadX((player.x + dx) / W);
+
+      if(canUseSkill('invuln')){
+        const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+        const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+        const imminent = (bestScore < -6e5);
+        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+        const panic    = (dangerLevel >= 6 && hpPct < 0.60 && shieldPct < 0.22);
+
+        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
+
+        if(defenderBoss){
+          const hitRad = (18 + player.r + 10);
+          if(nearestBallD < hitRad*hitRad) useInvuln();
+        }
+      }
+
+      if(canUseSkill('burst')){
+        const manyEnemies = enemies.length >= 10;
+        const safeEnough  = (bestScore > -2.2e5) && (buffs.invulnT<=0);
+        if(safeEnough && (boss || manyEnemies)) useBurst();
+      }
+
+      this.shopTick(dt, { bulletPressure: dangerLevel, bestScore, hasBoss: !!boss });
+    }
   };
 
-  // wingman bounded
-  let allyRockets=[], wingAcc=0;
-  function wingmanActive(){ return shopState.wingman===1 || (AI.enabled===true); }
-  function wingInterval(){
-    const lvl = clamp(shopState.wingmanRate,0,5);
-    return Math.max(0.55, 2.0 - lvl*0.25);
+  if($btnAI){
+    $btnAI.addEventListener('click', ()=>AI.toggle());
+    if($aiState) $aiState.textContent = 'OFF';
+    $btnAI.setAttribute('aria-pressed', 'false');
   }
+  window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
+  // === AUTOPLAY AI END ===
+
+  const UPGRADES=[
+    {key:'dmg',t:'火力提升',d:'傷害 +15%'},
+    {key:'firerate',t:'射速提升',d:'射速 +15%'},
+    {key:'hp',t:'擴充裝甲',d:'HP 上限 +30，並回滿'},
+    {key:'pierce_perm',t:'永久穿透',d:'穿透 +1'},
+    {key:'spread_perm',t:'永久散射',d:'散射 +1'},
+    {key:'shield_cap',t:'護盾擴容',d:'護盾上限 +30，並回滿'},
+    {key:'regen',t:'自動修復',d:'每秒回復 +2'},
+    {key:'xp_gain',t:'學習加速',d:'獲得 XP +10%'},
+    {key:'bullet_size',t:'彈體增強',d:'子彈更大'},
+  ];
+  function canPickUpgrade(key){
+    if(key==='pierce_perm') return player.pierce_perm < Math.min(PIERCE_CAP, CAP.pierce);
+    if(key==='spread_perm') return player.spread_perm < player.spreadCap;
+    if(key==='bullet_size') return player.bulletR < Math.min(BULLET_R_UPG_CAP, CAP.bulletR);
+    if(key==='dmg') return player.dmg < CAP.dmg;
+    if(key==='firerate') return player.fireRate < CAP.fireRate;
+    if(key==='regen') return player.regen < CAP.regen;
+    return true;
+  }
+
+  function openLevelUp(){
+    mode='levelup';
+    paused=true;
+
+    $panel.classList.remove('isStats');
+    overlay.classList.add('show');
+    $panelTitle.textContent='升級：選一個';
+    $panelSub.style.display='none';
+    $panelRow.style.display='none';
+    $panelRow.innerHTML='';
+    opts.innerHTML='';
+
+    const filtered=UPGRADES.filter(u=>canPickUpgrade(u.key));
+    const pool=[...filtered];
+    const picks=[];
+    const guardFillers=['regen','xp_gain','bullet_size','dmg','firerate'];
+
+    while(picks.length<3 && pool.length){
+      const i=Math.floor(Math.random()*pool.length);
+      picks.push(pool.splice(i,1)[0]);
+    }
+    while(picks.length<3){
+      const k=guardFillers[picks.length % guardFillers.length];
+      const u=UPGRADES.find(x=>x.key===k);
+      if(u && !picks.some(p=>p.key===u.key) && canPickUpgrade(u.key)) picks.push(u);
+      else break;
+    }
+
+    if(AI.enabled){
+      const best = AI.pickUpgrade(picks);
+      applyUpgrade(best.key);
+      overlay.classList.remove('show');
+      mode='play';
+      paused=false;
+      $toast.classList.remove('show');
+      lastT=performance.now();
+      return;
+    }
+
+    for(const u of picks){
+      const el=document.createElement('div');
+      el.className='opt';
+      el.innerHTML=`<div class="t">${u.t}</div><div class="d">${u.d}</div>`;
+      el.addEventListener('click',()=>{
+        applyUpgrade(u.key);
+        overlay.classList.remove('show');
+        mode='play';
+        paused=false;
+        $toast.classList.remove('show');
+        lastT=performance.now();
+      });
+      opts.appendChild(el);
+    }
+  }
+
+  function applyUpgrade(key){
+    if(key==='dmg') player.dmg=Math.min(CAP.dmg, player.dmg*1.15);
+    else if(key==='firerate') player.fireRate=Math.min(CAP.fireRate, player.fireRate*1.15);
+    else if(key==='hp'){player.hpMax+=30;player.hp=player.hpMax}
+    else if(key==='pierce_perm') player.pierce_perm=Math.min(Math.min(PIERCE_CAP, CAP.pierce), player.pierce_perm+1);
+    else if(key==='spread_perm'){
+      player.spread_perm=Math.min(player.spreadCap, player.spread_perm+1);
+      if(player.spread_perm > player.spreadCap) player.spread_perm = player.spreadCap;
+    }
+    else if(key==='shield_cap'){
+      player.shieldMax=Math.min(CAP.shieldMax, player.shieldMax+30);
+      player.shield=player.shieldMax
+    }
+    else if(key==='regen') player.regen=Math.min(CAP.regen, player.regen+2);
+    else if(key==='xp_gain') player.xpGainMul*=1.10;
+    else if(key==='bullet_size') player.bulletR = clamp(player.bulletR+1, BULLET_R_MIN, Math.min(BULLET_R_CAP, CAP.bulletR));
+  }
+
+  // ===== XP curve (keeps late-game not frozen; does NOT create runaway power) =====
+  function xpStageMul(stage){
+    if(stage <= 10) return 1 + (stage-1)*0.05;
+    if(stage <= 20) return 1.45 + (stage-10)*0.06;
+    if(stage <= 40) return 2.05 + (stage-20)*0.06;
+    return Math.min(6.0, 3.25 + (stage-40)*0.07);
+  }
+  function addXp(xp){
+    xp*=player.xpGainMul;
+    state.xp+=xp;
+
+    while(state.xp>=state.nextXp){
+      state.xp-=state.nextXp;
+      state.level+=1;
+
+      const g =
+        (state.level < 20) ? 1.15 :
+        (state.level < 35) ? 1.13 :
+        (state.level < 50) ? 1.11 : 1.09;
+
+      state.nextXp=Math.floor(state.nextXp*g+14);
+      openLevelUp();
+    }
+  }
+
+  function enemyBulletCap(){
+    const boss = enemies.find(e=>e.type==='boss');
+    if(!boss) return 140;
+    if(boss.kind === 'sniper')   return 380;
+    if(boss.kind === 'defender') return 34;
+    return 260;
+  }
+
+  let fireAcc=0;
+
+  function spreadDmgMul(n){
+    if(n<=1) return 1;
+    return clamp(1 / (1 + 0.25*(n-1)), 0.22, 1.0);
+  }
+
+  function shotVXPattern(n){
+    if(n<=1) return [0];
+
+    const baseMax = 240;
+    const extra   = Math.max(0, n-5) * 16;
+    const maxV    = clamp(baseMax + extra, 150, 320);
+
+    const arr=[];
+    const hasCenter = (n % 2 === 1);
+    const pairs = Math.floor(n/2);
+
+    const gamma = 1.55;
+
+    if(hasCenter) arr.push(0);
+
+    for(let k=1;k<=pairs;k++){
+      const t = k / pairs;
+      const mag = Math.pow(t, gamma) * maxV;
+      arr.push(-mag, +mag);
+    }
+    return arr;
+  }
+
+  function shoot(dt){
+    fireAcc+=dt*player.fireRate;
+    while(fireAcc>=1){ fireAcc-=1; spawnPlayerShot(); }
+  }
+
+  function spawnPlayerShot(){
+    const s=spreadTotal();
+    const n=Math.max(1, 1 + Math.floor(s));
+    const r = clamp(player.bulletR, BULLET_R_MIN, Math.min(BULLET_R_CAP, CAP.bulletR));
+
+    const burstMul = (buffs.burstT>0)?2.0:1.0;
+    const dmg = player.dmg * spreadDmgMul(n) * bulletSizeDmgMul(r) * burstMul;
+
+    const vxArr=shotVXPattern(n);
+    const pr=pierceTotal();
+    const baseY=player.y-player.r-6;
+
+    const clashLeftBase = ((r>=6)?2:1) + Math.min(5, pr);
+
+    for(const vx of vxArr){
+      pBullets.push({x:player.x,y:baseY,r,vx,vy:-player.bulletSpeed,dmg,pierce:pr,alive:true, clashLeft:clashLeftBase});
+    }
+  }
+
+  function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
+    if(eBullets.length>=enemyBulletCap())return;
+    const spd=(e.bulletSpeed??300)*sMul*ENEMY_BULLET_SPEED_MUL;
+
+    const isBeam = !!meta.beam;
+    const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
+    const pierce = meta.pierce ?? 0;
+
+    const baseHp = enemyBulletHpByStage(state.stage);
+    const hp = isBeam ? 1 : (meta.hp ?? baseHp);
+
+    const len = isBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
+
+    eBullets.push({x:e.x,y:e.y+e.r+4,r,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,dmg:(e.bulletDmg??8)*dMul,alive:true,pierce,hp,beam:isBeam,len});
+  }
+
+  function mobShoot(e){
+    if(e.type==='healer') return;
+
+    const ang=Math.atan2(player.y-e.y,player.x-e.x);
+    const evoS = e.evoSpread;
+    const evoP = e.evoPierce;
+
+    const en2=(state.stage>=3||state.wave>=4);
+    const en3=(state.stage>=5||state.wave>=6);
+    const enLate=(state.stage>=12);
+    const enBrutal=(state.stage>=20);
+
+    const isElite = (e.type==='elite');
+
+    if(isElite){
+      const spread = 0.10;
+      const lanes = (Math.random() < 0.55) ? 2 : 1;
+      const useBeam2 = (Math.random() < 0.50);
+
+      if(lanes === 1){
+        enemyShoot(e, ang, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam2, len: useBeam2 ? (enBrutal?34:28) : 0 });
+      }else{
+        for(const da of [-spread, spread]){
+          enemyShoot(e, ang + da, 1.0, 0.98, { r:(enBrutal?5:4), pierce: evoP?1:0, beam: useBeam2, len: useBeam2 ? (enBrutal?34:28) : 0 });
+        }
+      }
+      return;
+    }
+
+    if(evoS && (enLate || Math.random()<0.55)){
+      const lanes = enBrutal?4:3;
+      const spread = enBrutal?0.18:0.15;
+      for(let i=0;i<lanes;i++){
+        const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+        enemyShoot(e,ang+t*spread,1.0,0.95,{r: enBrutal?5:4, pierce: evoP?1:0, beam:false});
+      }
+      return;
+    }
+
+    if(en3&&Math.random()<.22){
+      for(const da of [-0.16,0,0.16]) enemyShoot(e,ang+da,1.0,.92,{pierce:evoP?1:0, beam:false});
+    }else if(en2&&Math.random()<.35){
+      for(const da of [-0.12,0.12]) enemyShoot(e,ang+da,1.0,.95,{pierce:evoP?1:0, beam:false});
+    }else{
+      enemyShoot(e,ang,1.0,1.0,{pierce:evoP?1:0, beam:false});
+    }
+  }
+
+  function bossTick(e,dt){
+    if(e.kind === 'defender'){
+      const rr = e.hp/e.hpMax;
+      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
+      if(newPhase!==e.phase){
+        e.phase=newPhase;
+        toastMsg(`Defender：Phase ${e.phase}`, 0.55);
+      }
+
+      e.x = W*0.5;
+
+      const period =
+        (e.phase===1 ? e.ballPeriod : (e.phase===2 ? e.ballPeriod*0.90 : e.ballPeriod*0.80));
+
+      e.ballCd -= dt;
+      if(e.ballCd <= 0){
+        const aim = Math.atan2(player.y - e.y, player.x - e.x);
+        const jitter = rand(-0.50, 0.50);
+        const ang = aim + jitter;
+
+        const spd = 260 + state.stage*3.4;
+        const R = 18;
+        const dmg = 24 + Math.floor(state.stage*0.35);
+
+        eBullets.push({
+          ball:true, alive:true,
+          x:e.x, y:e.y+e.r+10, r:R,
+          vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+          dmg, hitCd:0,
+        });
+
+        addBurst(e.x, e.y+e.r+10, 10);
+        e.ballCd = period;
+      }
+      return;
+    }
+
+    if(e.kind === 'sniper'){
+      const rr = e.hp/e.hpMax;
+      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
+      if(newPhase!==e.phase){
+        e.phase=newPhase;
+        toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
+      }
+
+      e.x = W*0.5;
+
+      const baseInterval = (e.phase===1 ? 0.050 : (e.phase===2 ? 0.044 : 0.038));
+      const stageBoost = Math.max(0, state.stage - 21) * 0.00020;
+      const interval = clamp(baseInterval - stageBoost, 0.026, baseInterval);
+
+      e.snipeT = (e.snipeT ?? 0.20) - dt;
+
+      let guard = 0;
+      while(e.snipeT <= 0 && guard++ < 4){
+        const ang = Math.atan2(player.y - e.y, player.x - e.x);
+
+        enemyShoot(e, ang, 1.55, 1.15, {
+          beam:true, len:(state.stage>=60?46:40),
+          r:(state.stage>=60?7:6), pierce:0, hp:1
+        });
+
+        if(eBullets.length >= enemyBulletCap()){
+          e.snipeT = interval;
+          break;
+        }
+        e.snipeT += interval;
+      }
+      return;
+    }
+
+    const r=e.hp/e.hpMax;
+    const newPhase=(r<=.40)?3:(r<=.70?2:1);
+    if(newPhase!==e.phase){
+      e.phase=newPhase;
+      if(e.phase===2){toastMsg('Boss：Phase 2',.7);e.ringCd=.90;e.spiralCd=.40}
+      else if(e.phase===3){toastMsg('Boss：Phase 3',.7);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
+    }
+    const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
+    const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
+
+    const brutal = state.stage>=20;
+    const bossEasy = state.stage < 10;
+    const densMul = bossEasy ? 0.72 : 1.0;
+    const cdMul   = bossEasy ? 1.18 : 1.0;
+
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
+
+    e.burstCd-=dt;
+    if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
+      e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
+      e.burstGapCd=0;
+      e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55)) * cdMul;
+    }
+    if(e.burstLeft>0){
+      e.burstGapCd-=dt;
+      if(e.burstGapCd<=0){
+        const ang=Math.atan2(player.y-e.y,player.x-e.x);
+        const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
+        const lanes = Math.max(3, Math.round(lanesBase * densMul));
+        const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
+        for(let i=0;i<lanes;i++){
+          const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+          enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
+        }
+        e.burstLeft-=1;
+        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
+      }
+    }
+
+    e.ringCd-=dt;
+    if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
+      const nBase=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
+      const n=Math.max(10, Math.round(nBase * densMul));
+      const base=Math.random()*Math.PI*2;
+      for(let i=0;i<n;i++){
+        const a=base+(i/n)*Math.PI*2;
+        enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
+      }
+      e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0) * cdMul;
+    }
+
+    e.spiralCd-=dt;
+    e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
+    if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
+      const nBase=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
+      const n=Math.max(4, Math.round(nBase * densMul));
+      const base=e.spin;
+      for(let i=0;i<n;i++){
+        const a=base+(i/n)*Math.PI*2;
+        enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
+      }
+      e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
+    }
+
+    if(e.phase===3){
+      e.summonCd-=dt;
+      if(e.summonCd<=0){
+        spawnAdds(4+(Math.random()<0.5?1:0),.92);
+        e.summonCd=5.2+(Math.random()*1.8-.7);
+      }
+    }
+  }
+
+  // Wingmen rockets
   function pickRocketTarget(){
     if(!enemies.length) return null;
-    let best=null, bestS=-1e18;
+    let best=null, bestScore=-1e18;
     for(const e of enemies){
-      if(!e||e.hp<=0) continue;
-      const s=(e.type==='boss'?1e6:0)+e.y*2 - Math.abs(e.x-player.x)*0.18;
-      if(s>bestS){bestS=s;best=e}
+      if(!e || e.hp<=0) continue;
+      const isBoss = (e.type==='boss');
+      const score = (isBoss? 1e6:0) + e.y*2 - Math.abs(e.x - player.x)*0.15;
+      if(score > bestScore){ bestScore=score; best=e; }
     }
     return best;
   }
+
   function spawnRocket(fromX, fromY){
-    const t=pickRocketTarget(); if(!t) return;
-    const burstMul=(buffs.burstT>0)?2.0:1.0;
-    allyRockets.push({x:fromX,y:fromY,vx:0,vy:-240,speed:520,turn:14,r:6,dmg:player.dmg*0.85*burstMul,target:t,life:5.0});
+    const t = pickRocketTarget();
+    if(!t) return;
+
+    const burstMul = (buffs.burstT>0)?2.0:1.0;
+
+    allyRockets.push({
+      x:fromX, y:fromY,
+      vx:0, vy:-260,
+      speed: 480,
+      turn: 14.0,
+      r: 6,
+      dmg: Math.min(CAP.dmg, player.dmg) * 1.25 * burstMul,
+      target: t,
+      life: 6.0
+    });
   }
+
   function wingmanTick(dt){
     if(!wingmanActive()) return;
-    const itv=wingInterval();
-    wingAcc+=dt;
-    while(wingAcc>=itv){
-      wingAcc-=itv;
-      const offX=34, baseY=player.y-18;
-      spawnRocket(clamp(player.x-offX,10,W-10),baseY);
-      spawnRocket(clamp(player.x+offX,10,W-10),baseY);
+    const interval = wingmanInterval();
+
+    wingmanAcc += dt;
+    while(wingmanAcc >= interval){
+      wingmanAcc -= interval;
+
+      const offX = 34;
+      const baseY = player.y - 18;
+
+      spawnRocket(clamp(player.x - offX, 10, W-10), baseY);
+      spawnRocket(clamp(player.x + offX, 10, W-10), baseY);
     }
   }
+
   function updateRockets(dt){
     for(const r of allyRockets){
-      r.life-=dt; if(r.life<=0){r.dead=true;continue;}
-      if(!r.target || r.target.hp<=0) r.target=pickRocketTarget();
-      if(!r.target){r.dead=true;continue;}
-      const tx=r.target.x, ty=r.target.y;
-      const dx=tx-r.x, dy=ty-r.y;
-      const d=Math.hypot(dx,dy)||1;
-      const ux=dx/d, uy=dy/d;
-      const vlen=Math.hypot(r.vx,r.vy)||1;
-      let vx=r.vx/vlen, vy=r.vy/vlen;
-      const t=clamp(r.turn*dt,0,1);
-      vx=(1-t)*vx+t*ux; vy=(1-t)*vy+t*uy;
-      const nv=Math.hypot(vx,vy)||1; vx/=nv; vy/=nv;
-      r.vx=vx*r.speed; r.vy=vy*r.speed;
-      r.x+=r.vx*dt; r.y+=r.vy*dt;
+      r.life -= dt;
+      if(r.life <= 0){ r.dead=true; continue; }
 
-      const hitRad=(r.r+(r.target.r||15)+4);
-      if(dist2(r.x,r.y,tx,ty)<=hitRad*hitRad){
-        r.dead=true;
-        r.target.hp-=r.dmg;
-        r.target.hitFlash=0.12;
-        addBurst(r.x,r.y,10);
-        if(r.target.hp<=0) killEnemy(r.target);
+      if(!r.target || r.target.hp<=0){
+        r.target = pickRocketTarget();
+        if(!r.target){ r.dead=true; continue; }
       }
+
+      const tx=r.target.x, ty=r.target.y;
+      const dx=tx - r.x, dy=ty - r.y;
+      const dist = Math.hypot(dx,dy) || 1;
+
+      const ux = dx / dist, uy = dy / dist;
+
+      const vlen = Math.hypot(r.vx, r.vy) || 1;
+      let vx = r.vx / vlen, vy = r.vy / vlen;
+
+      const turnT = clamp(r.turn * dt, 0, 1);
+      vx = (1-turnT)*vx + turnT*ux;
+      vy = (1-turnT)*vy + turnT*uy;
+
+      const nv = Math.hypot(vx,vy) || 1;
+      vx/=nv; vy/=nv;
+
+      r.vx = vx * r.speed;
+      r.vy = vy * r.speed;
+
+      r.x += r.vx * dt;
+      r.y += r.vy * dt;
+
+      const hitRad = (r.r + (r.target.r||15) + 4);
+      if(dist2(r.x, r.y, tx, ty) <= hitRad*hitRad){
+        r.dead = true;
+        r.target.hp -= r.dmg;
+        r.target.hitFlash = 0.12;
+        addBurst(r.x, r.y, 10);
+
+        if(r.target.hp <= 0){
+          const e = r.target;
+
+          let coinAmt = 1;
+          if(e.type === 'boss')  coinAmt = 45;
+          if(e.type === 'elite') coinAmt = 4;
+          if(e.type === 'healer') coinAmt = 12;
+          dropCoin(e.x, e.y, coinAmt);
+
+          if(e.type==='boss'){
+            state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
+            addBurst(e.x,e.y,26);
+          }else if(e.type==='elite'){
+            state.score+=38; addXp(20* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,12);
+          }else if(e.type==='healer'){
+            state.score+=30; addXp(15* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,14);
+          }else{
+            state.score+=18; addXp(10* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+            addBurst(e.x,e.y,10);
+          }
+          e.hp = 0;
+        }
+      }
+
       if(r.x<-80||r.x>W+80||r.y<-120||r.y>H+120) r.dead=true;
     }
-    allyRockets=allyRockets.filter(x=>!x.dead);
-  }
-
-  function price(base, lvl, growth=1.45){ return Math.floor(base * Math.pow(growth, lvl)); }
-
-  function shopItems(){
-    const items=[];
-    const stage = state.stage;
-    const ch = chapterOf(stage);
-
-    // stage budget: encourages "buy some, not all"
-    // and avoids AI compounding forever
-    const budgetCap = 2500 + ch*900 + Math.floor(stage*18);
-
-    function canBuyCore(){
-      if(mode!=='shop') return false;
-      if(state.shopBuysThisStage >= state.shopBuysCap) return false;
-      if(state.coins <= 0) return false;
-      if(state.coins > budgetCap*3) return true; // don't hard lock, just guidance
-      return true;
-    }
-
-    items.push({
-      id:'dmgUp', name:'火力 +15%', cost:price(180, shopState.dmgUp),
-      desc:`提升傷害（目前 ${Math.floor(player.dmg)}）`,
-      canBuy:()=> canBuyCore() && shopState.dmgUp < 10 && player.dmg < CAP.dmg,
-      buy:()=>{ shopState.dmgUp++; player.dmg = Math.min(CAP.dmg, player.dmg*1.15); }
-    });
-
-    items.push({
-      id:'fireRateUp', name:'射速 +12%', cost:price(180, shopState.fireRateUp),
-      desc:`提升射速（目前 ${player.fireRate.toFixed(2)}/s）`,
-      canBuy:()=> canBuyCore() && shopState.fireRateUp < 10 && player.fireRate < CAP.fireRate,
-      buy:()=>{ shopState.fireRateUp++; player.fireRate = Math.min(CAP.fireRate, player.fireRate*1.12); }
-    });
-
-    items.push({
-      id:'pierceUp', name:'穿透 +1', cost:price(220, shopState.pierceUp),
-      desc:`提升穿透（目前 ${player.pierce_perm}）`,
-      canBuy:()=> canBuyCore() && shopState.pierceUp < 4 && player.pierce_perm < CAP.pierce,
-      buy:()=>{ shopState.pierceUp++; player.pierce_perm = Math.min(CAP.pierce, player.pierce_perm+1); }
-    });
-
-    items.push({
-      id:'spreadCapUp', name:'散射上限 +1', cost:price(240, shopState.spreadCapUp),
-      desc:`提升散射上限（目前 ${player.spreadCap}）`,
-      canBuy:()=> canBuyCore() && shopState.spreadCapUp < 7 && player.spreadCap < CAP.spreadCap,
-      buy:()=>{ shopState.spreadCapUp++; player.spreadCap = Math.min(CAP.spreadCap, player.spreadCap+1); }
-    });
-
-    items.push({
-      id:'shieldCapUp', name:'護盾上限 +30', cost:price(160, shopState.shieldCapUp),
-      desc:`提升護盾上限並回滿（目前 ${Math.floor(player.shieldMax)}）`,
-      canBuy:()=> canBuyCore() && shopState.shieldCapUp < 6 && player.shieldMax < CAP.shieldMax,
-      buy:()=>{
-        shopState.shieldCapUp++;
-        player.shieldMax = Math.min(CAP.shieldMax, player.shieldMax + 30);
-        player.shield = player.shieldMax;
-      }
-    });
-
-    items.push({
-      id:'regenUp', name:'回復 +2/s', cost:price(200, shopState.regenUp),
-      desc:`提升自動回復（目前 ${player.regen}/s）`,
-      canBuy:()=> canBuyCore() && shopState.regenUp < 5 && player.regen < CAP.regen,
-      buy:()=>{ shopState.regenUp++; player.regen = Math.min(CAP.regen, player.regen+2); }
-    });
-
-    // Skill tuning with diminishing returns (prevents invuln/burst perma uptime)
-    items.push({
-      id:'burstTuned', name:'爆發調校', cost:price(260, shopState.burstTuned),
-      desc:`降低爆發空窗（CD/持續 目前 ${BURST_CD}s / ${BURST_DURATION}s）`,
-      canBuy:()=> canBuyCore() && shopState.burstTuned < 6,
-      buy:()=>{
-        shopState.burstTuned++;
-        // diminishing: early strong, later weak
-        const k = shopState.burstTuned;
-        BURST_CD = Math.max(24, BURST_CD - (k<=3?2:1));
-        BURST_DURATION = Math.min(16, BURST_DURATION + (k<=3?1:0.5));
-        if(skills.burst.cd > BURST_CD) skills.burst.cd = BURST_CD;
-      }
-    });
-
-    items.push({
-      id:'invulnTuned', name:'無敵調校', cost:price(320, shopState.invulnTuned),
-      desc:`降低無敵空窗（CD/持續 目前 ${INVULN_CD}s / ${INVULN_DURATION}s）`,
-      canBuy:()=> canBuyCore() && shopState.invulnTuned < 6,
-      buy:()=>{
-        shopState.invulnTuned++;
-        const k = shopState.invulnTuned;
-        INVULN_CD = Math.max(34, INVULN_CD - (k<=3?3:1));
-        INVULN_DURATION = Math.min(13, INVULN_DURATION + (k<=3?1:0.5));
-        if(skills.invuln.cd > INVULN_CD) skills.invuln.cd = INVULN_CD;
-      }
-    });
-
-    items.push({
-      id:'wingman', name:'僚機編隊', cost:1500,
-      desc:`左右各一僚機（追蹤火箭）`,
-      canBuy:()=> canBuyCore() && shopState.wingman===0 && !(AI.enabled===true),
-      buy:()=>{ shopState.wingman=1; toastMsg('🛰️ 僚機就位',0.7); }
-    });
-
-    if(shopState.wingman===1 || AI.enabled===true){
-      items.push({
-        id:'wingmanRate', name:'僚機加速 -0.25s', cost:price(260, shopState.wingmanRate),
-        desc:`僚機間隔目前 ${wingInterval().toFixed(2)}s（最多 5 次）`,
-        canBuy:()=> canBuyCore() && shopState.wingmanRate < 5,
-        buy:()=>{ shopState.wingmanRate++; toastMsg(`🛰️ 僚機加速：${wingInterval().toFixed(2)}s`,0.6); }
-      });
-    }
-
-    return items;
-  }
-
-  function renderShop(){
-    overlay.classList.add('show');
-    opts.innerHTML='';
-    $panelRow.innerHTML='';
-    $panelTitle.textContent='商店（本關結算）';
-
-    const ch = chapterOf(state.stage), sub = subOf(state.stage);
-    const mod = chapterMod(ch);
-    $panelSub.innerHTML =
-      `CH ${ch}-${sub}｜${mod.name}<br>` +
-      `金幣：<b>${state.coins}</b>　（本關購買：${state.shopBuysThisStage}/${state.shopBuysCap}）<br>` +
-      `提示：你不需要買滿，買對就行（我們不是在跑無限複利）`;
-
-    const items=shopItems();
-    for(const it of items){
-      const affordable = state.coins >= it.cost;
-      const allowed = it.canBuy ? it.canBuy() : true;
-      const canBuy = affordable && allowed;
-
-      const el=document.createElement('div');
-      el.className='opt';
-      el.innerHTML =
-        `<div class="t">${it.name} <span style="opacity:.8">（🪙${it.cost}）</span></div>`+
-        `<div class="d">${it.desc}${allowed?'':'<br><span style="opacity:.7">（已達上限／本關購買達上限／AI已自帶）</span>'}</div>`;
-
-      if(!canBuy){
-        el.style.opacity='0.55';
-        el.style.cursor='default';
-      }else{
-        el.addEventListener('click',()=>{
-          if(mode!=='shop' || !paused) return;
-          if(state.coins < it.cost) return;
-          if(it.canBuy && !it.canBuy()) return;
-          state.coins -= it.cost;
-          state.shopBuysThisStage++;
-          try{ it.buy && it.buy(); }catch(_){}
-          renderShop();
-        });
-      }
-      opts.appendChild(el);
-    }
-
-    const btnClose=document.createElement('button');
-    btnClose.className='pill';
-    btnClose.textContent='繼續';
-    btnClose.addEventListener('click',closeShop);
-    $panelRow.appendChild(btnClose);
-  }
-
-  function openShop(force=false){
-    if(!force){
-      // only allow after stage clear
-      if(mode!=='post') return;
-    }
-    mode='shop';
-    paused=true;
-    $toast.classList.remove('show');
-    renderShop();
-  }
-  function closeShop(){
-    overlay.classList.remove('show');
-    mode='play';
-    paused=false;
-    lastT=performance.now();
-  }
-
-  $btnShop.addEventListener('click',()=>{
-    if(mode==='shop') closeShop();
-    else if(mode==='post') openShop(true);
-    else toastMsg('商店只在過關後開放', 0.7);
-  });
-
-  // ===== Damage, kill, scoring =====
-  function addBurst(x,y,n=10){
-    for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
+    allyRockets = allyRockets.filter(x=>!x.dead);
   }
 
   function damagePlayer(dmg){
@@ -810,389 +1954,436 @@ canvas{width:100%;height:100%;display:block}
     }
     if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
 
-    hitIFrameT = 0.32;
+    const hitXp = clamp(Math.ceil(dmg*0.35), 1, 6);
+    addXp(hitXp);
+
+    hitIFrameT = 0.35;
     if(player.hp<=0) gameOver();
   }
 
-  function enemyCoinValue(e){
-    if(e.type==='boss') return coinRewardBase(state.stage,true);
-    if(e.type==='miniboss') return Math.floor(coinRewardBase(state.stage,false)*3.0);
-    if(e.type==='elite') return Math.floor(coinRewardBase(state.stage,false)*1.6);
-    return coinRewardBase(state.stage,false);
+  function addBurst(x,y,n=10){
+    for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
   }
 
-  function killEnemy(e){
-    // coins & score
-    const c = enemyCoinValue(e);
-    dropCoin(e.x,e.y, Math.max(1, Math.floor(c/22)));
-    state.coins += Math.floor(c/10); // immediate wallet growth is bounded
-
-    if(e.type==='boss') state.score += 800;
-    else if(e.type==='miniboss') state.score += 220;
-    else if(e.type==='elite') state.score += 65;
-    else state.score += 20;
-
-    maybeDrop(e.x,e.y,e.type);
-    addBurst(e.x,e.y, e.type==='boss'?26:12);
-    e.hp = 0;
-  }
-
-  // ===== Boss behaviors (varied by kind + chapter affix) =====
-  function bossTick(b,dt){
-    b.t0 += dt;
-
-    // phase based on HP
-    const rr=b.hp/b.hpMax;
-    const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
-    if(newPhase!==b.phase){
-      b.phase=newPhase;
-      toastMsg(`Boss Phase ${b.phase}`,0.6);
-    }
-
-    // Chapter affix: JAM = slows skill cooldown recovery a bit (anti-perma)
-    // We'll implement JAM in update() by scaling skill cd tick; here we just use b.jam flag.
-    // Chapter affix: SPLIT = bullets split on clear (implemented in bullet collision for eBullets).
-
-    if(b.kind==='defender'){
-      b.x = W*0.5;
-      b.ballCd -= dt;
-      const period = (b.phase===1?1.2:(b.phase===2?1.0:0.85));
-      if(b.ballCd<=0){
-        const aim=Math.atan2(player.y-b.y,player.x-b.x);
-        const ang=aim+rand(-0.45,0.45);
-        const spd= 210 + state.stage*1.8;
-        eBullets.push({ball:true, alive:true, x:b.x, y:b.y+b.r+10, r:18, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, dmg:18+state.stage*0.18, hitCd:0});
-        b.ballCd=period;
-      }
-      return;
-    }
-
-    if(b.kind==='sniper'){
-      b.x = W*0.5;
-      const base = (b.phase===1?0.070:(b.phase===2?0.055:0.045));
-      b.snipeT -= dt;
-      while(b.snipeT<=0){
-        const ang=Math.atan2(player.y-b.y,player.x-b.x);
-        enemyShoot(b, ang, {beam:true, len:(b.phase===3?48:42), r:(b.phase===3?7:6), spdMul:2.0, dmgMul:1.10});
-        b.snipeT += base;
-        break;
-      }
-      return;
-    }
-
-    // bullethell
-    b.burstCd -= dt;
-    if(b.burstCd<=0){
-      const ang=Math.atan2(player.y-b.y,player.x-b.x);
-      const lanes = (b.phase===1?5:(b.phase===2?6:7));
-      const spread = (b.phase===1?0.22:(b.phase===2?0.26:0.30));
-      for(let i=0;i<lanes;i++){
-        const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-        enemyShoot(b, ang+t*spread, {spdMul:1.05, dmgMul:0.95});
-      }
-      b.burstCd = (b.phase===1?0.85:(b.phase===2?0.65:0.52));
-    }
-
-    b.ringCd -= dt;
-    if(b.ringCd<=0){
-      const n=(b.phase===1?14:(b.phase===2?18:24));
-      const base=Math.random()*Math.PI*2;
-      for(let i=0;i<n;i++){
-        const a=base+(i/n)*Math.PI*2;
-        enemyShoot(b,a,{spdMul:0.95,dmgMul:0.80});
-      }
-      b.ringCd=(b.phase===1?1.15:(b.phase===2?0.90:0.70));
-    }
-  }
-
-  // ===== AI (simple, bounded; not "never die") =====
-  const AI = {
-    enabled:false,
-    toggle(on){
-      this.enabled = (on==null) ? !this.enabled : !!on;
-      $aiState.textContent = this.enabled ? 'ON' : 'OFF';
-      $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
-    },
-    tick(dt){
-      if(!this.enabled) return;
-      if(mode!=='play' || paused) return;
-
-      // basic: pick safest x by sampling + avoid imminent bullets
-      const samples=19;
-      let bestX=player.x, bestS=-1e18;
-      const py=player.y;
-
-      for(let i=0;i<samples;i++){
-        const x = (i/(samples-1))*W;
-        const safeL=player.r+8, safeR=W-player.r-8;
-        const xx=clamp(x,safeL,safeR);
-
-        let score=0;
-        // keep near mid to reduce corner cheese
-        score -= Math.abs(xx - W*0.5)*0.08;
-
-        // bullet avoidance
-        for(const b of eBullets){
-          if(!b.alive) continue;
-          if(b.beam) continue;
-          if(b.ball){
-            const d=dist2(xx,py,b.x,b.y);
-            if(d < (player.r+b.r+12)**2) score -= 5e6;
-            continue;
-          }
-          const vy=b.vy||0;
-          if(vy<=1) continue;
-          const tHit=(py-b.y)/vy;
-          if(tHit<0 || tHit>0.9) continue;
-          const xHit=b.x + (b.vx||0)*tHit;
-          const rad=(b.r||4)+player.r+8;
-          const d=Math.abs(xHit-xx);
-          score -= (d<rad)? (3e6*(1/(0.1+tHit))) : (4000/(d+6));
-        }
-
-        // aim alignment (mild)
-        let target=null;
-        for(const e of enemies){ if(!target || e.y > target.y) target=e; }
-        if(target) score -= Math.abs(xx - target.x)*0.20;
-
-        if(score>bestS){bestS=score;bestX=xx;}
-      }
-
-      const maxStep = 520*dt;
-      const dx=clamp(bestX-player.x, -maxStep, maxStep);
-      setPadX((player.x+dx)/W);
-
-      // defensive skill usage (not perfect, so it can still die)
-      const danger = bestS < -1.2e6;
-      if(danger && canUseSkill('invuln')) useInvuln();
-      if(enemies.some(e=>e.type==='boss') && canUseSkill('burst') && bestS>-9e5) useBurst();
-    }
-  };
-  $btnAI.addEventListener('click',()=>AI.toggle());
-
-  // ===== Game modes & flow =====
-  let mode='play'; // play | post | shop | gameover | win
-  let paused=false;
-  let lastT=performance.now();
-
+  let toastT=0, lastToastText='';
   function toastMsg(text,sec=.75){
+    if(text===lastToastText && toastT>0.25) return;
+    lastToastText = text;
     $toast.textContent=text;
     $toast.classList.add('show');
     toastT=sec;
   }
-  let toastT=0;
 
-  function stageClear(){
-    // stage clear checkpoint
-    mode='post';
-    paused=true;
-    state.shopBuysThisStage = 0;
+  function healerTick(h,dt){
+    h.healCd -= dt;
+    if(h.healCd>0) return;
+    h.healCd = h.healPeriod;
 
-    // chapter clear bonus
-    const ch=chapterOf(state.stage), sub=subOf(state.stage);
-    if(sub===10){
-      const bonus = 900 + ch*500;
-      state.coins += bonus;
-      toastMsg(`章節完成 +🪙${bonus}`, 1.0);
-    }else{
-      const bonus = 160 + ch*70;
-      state.coins += bonus;
-      toastMsg(`過關獎勵 +🪙${bonus}`, 0.85);
+    const targets = enemies.filter(e=>e.hp>0 && e.type!=='healer');
+    if(!targets.length) return;
+
+    let totalAdd = 0;
+    for(const t of targets){
+      const add = t.hpMax * h.healPct * (t.type==='boss' ? HEALER_BOSS_MUL : 1);
+      const before = t.hp;
+      t.hp = Math.min(t.hpMax, t.hp + add);
+      totalAdd += Math.max(0, t.hp - before);
+      addBurst(t.x, t.y, 6);
     }
-
-    // auto-open shop (you can disable if you want)
-    openShop(true);
+    toastMsg(`💙 +${Math.floor(totalAdd)}`, 0.35);
   }
 
-  function nextStage(){
-    if(state.stage >= 100){
-      winGame();
-      return;
-    }
-    state.stage++;
-    state.wave=1;
-    state.shopBuysThisStage=0;
-    enemies.length=0; eBullets.length=0; pBullets.length=0; drops.length=0; particles.length=0;
-    spawnWave();
-    mode='play';
-    paused=false;
-    lastT=performance.now();
-  }
-
-  function nextWave(){
-    state.wave++;
-    enemies.length=0; eBullets.length=0; pBullets.length=0; drops.length=0; particles.length=0;
-    spawnWave();
-  }
-
-  function gameOver(){
-    mode='gameover';
-    paused=true;
+  function renderGameOverPanel(){
+    $panel.classList.remove('isStats');
     overlay.classList.add('show');
-    opts.innerHTML=''; $panelRow.innerHTML='';
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    const s = gameOverSummary || {
+      score: state.score,
+      coins: state.coins,
+      best: Number(localStorage.getItem('blaster_best_score_v4')||0),
+      stage: state.stage,
+      wave: state.wave,
+      level: state.level
+    };
+
     $panelTitle.textContent='Game Over';
-    $panelSub.innerHTML=`分數：<b>${state.score}</b><br>關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b><br>金幣：<b>${state.coins}</b><br><span style="opacity:.8">你掛了，代表平衡開始變得像產品而不是永動機（讚）。</span>`;
-    const btn=document.createElement('button');
-    btn.className='pill'; btn.textContent='重新開始';
-    btn.addEventListener('click',()=>{ overlay.classList.remove('show'); resetRun(); });
-    $panelRow.appendChild(btn);
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=
+      `本局分數：<b>${s.score}</b><br>`+
+      `本局金幣：<b>${s.coins}</b><br>`+
+      `最高分：<b>${s.best}</b><br>`+
+      `關卡 ${s.stage} / 波次 ${s.wave} / 等級 ${s.level}`;
+
+    $panelRow.style.display='flex';
+
+    const btnRestart=document.createElement('button');
+    btnRestart.className='pill';
+    btnRestart.textContent='重新開始';
+    btnRestart.addEventListener('click',()=>{
+      overlay.classList.remove('show');
+      resetRun();
+      mode='play';
+      paused=false;
+      lastT=performance.now();
+    });
+    $panelRow.appendChild(btnRestart);
+
+    const btnStats=document.createElement('button');
+    btnStats.className='pill';
+    btnStats.textContent='查看狀態';
+    btnStats.addEventListener('click',()=>openStats(true));
+    $panelRow.appendChild(btnStats);
+  }
+
+  function renderWinPanel(){
+    $panel.classList.remove('isStats');
+    overlay.classList.add('show');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    const bestKey='blaster_best_score_v4';
+    const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
+    localStorage.setItem(bestKey,String(best));
+
+    $panelTitle.textContent='Victory 🎉';
+    $panelSub.style.display='block';
+    $panelSub.innerHTML=
+      `破關完成：<b>關卡 ${FINAL_STAGE}</b><br>`+
+      `本局分數：<b>${state.score}</b><br>`+
+      `本局金幣：<b>${state.coins}</b><br>`+
+      `最高分：<b>${best}</b><br>`+
+      `結算：等級 <b>${state.level}</b>`;
+
+    $panelRow.style.display='flex';
+
+    const btnRestart=document.createElement('button');
+    btnRestart.className='pill';
+    btnRestart.textContent='重新開始';
+    btnRestart.addEventListener('click',()=>{
+      overlay.classList.remove('show');
+      resetRun();
+      mode='play';
+      paused=false;
+      lastT=performance.now();
+    });
+    $panelRow.appendChild(btnRestart);
+
+    const btnStats=document.createElement('button');
+    btnStats.className='pill';
+    btnStats.textContent='查看狀態';
+    btnStats.addEventListener('click',()=>openStats(false));
+    $panelRow.appendChild(btnStats);
   }
 
   function winGame(){
     mode='win';
     paused=true;
-    overlay.classList.add('show');
-    opts.innerHTML=''; $panelRow.innerHTML='';
-    $panelTitle.textContent='Victory 🎉';
-    $panelSub.innerHTML=`破關完成：<b>100 關</b><br>分數：<b>${state.score}</b><br>金幣：<b>${state.coins}</b><br><span style="opacity:.8">恭喜，你的遊戲終於有終點，不再是 AI 的壓力測試平台。</span>`;
-    const btn=document.createElement('button');
-    btn.className='pill'; btn.textContent='重新開始';
-    btn.addEventListener('click',()=>{ overlay.classList.remove('show'); resetRun(); });
-    $panelRow.appendChild(btn);
+    $toast.classList.remove('show');
+    renderWinPanel();
+  }
+
+  function gameOver(){
+    mode='gameover';
+    paused=true;
+    $toast.classList.remove('show');
+
+    const bestKey='blaster_best_score_v4';
+    const best=Math.max(Number(localStorage.getItem(bestKey)||0), state.score);
+    localStorage.setItem(bestKey,String(best));
+
+    gameOverSummary = {
+      score: state.score,
+      coins: state.coins,
+      best,
+      stage: state.stage,
+      wave: state.wave,
+      level: state.level
+    };
+
+    renderGameOverPanel();
   }
 
   function resetRun(){
-    state.stage=1; state.wave=1; state.coins=0; state.score=0;
-    state.shopBuysThisStage=0;
+    state.stage=1;state.wave=1;state.score=0;state.coins=0;state.xp=0;state.level=1;state.nextXp=60;state.waveClearCooldown=0;state.waveInProgress=false;
+    state.shopBuysThisStage = 0;
 
     player.hpMax=BASE_HP; player.hp=BASE_HP;
-    player.dmg=30; player.fireRate=6.2; player.bulletSpeed=820;
-    player.spread_perm=0; player.spreadCap=5;
+    player.moveSpeed=520;player.fireRate=6.2;player.dmg=30;player.bulletSpeed=820;
+    player.spread_perm=0;player.spreadCap=SPREAD_CAP_BASE;
     player.pierce_perm=2;
-    player.shield=0; player.shieldMax=0;
-    player.regen=0;
+    player.shield=0;player.shieldMax=0;
+    player.regen=0; player.xpGainMul=1.0;
+    player.bulletR=BULLET_R_BASE;
 
     for(const k in shopState) shopState[k]=0;
-    BURST_DURATION=12; BURST_CD=38;
-    INVULN_DURATION=10; INVULN_CD=55;
-    buffs.invulnT=0; buffs.burstT=0;
-    skills.burst.cd=0; skills.invuln.cd=0;
-    hitIFrameT=0;
+    BURST_DURATION=20; BURST_CD=50;
+    INVULN_DURATION=20; INVULN_CD=80;
 
-    allyRockets=[]; wingAcc=0;
-    pBullets=[]; eBullets=[]; enemies=[]; drops=[]; particles=[];
-    mode='play'; paused=false;
+    for(const k in buffs) buffs[k]=0;
+    hitIFrameT = 0;
+
+    skills.burst.cd=0;
+    skills.invuln.cd=0;
+
+    allyRockets=[];
+    wingmanAcc=0;
+
+    if(AI.enabled){
+      buffs.magnet = Math.max(buffs.magnet, 1e9);
+    }
+
+    pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
+  }
+
+  const BASE_PLAYER = { hpMax: BASE_HP, dmg: 30, fireRate: 6.2, bulletSpeed: 820, pierce_perm: 2, bulletR: BULLET_R_BASE, xpGainMul: 1.0 };
+  function pctMul(now, base){ if(!base) return 0; return Math.round(((now/base)-1)*1000)/10; }
+
+  function openStats(fromGameOver=false){
+    if(lockedLandscape) return;
+    if(mode==='shop') return;
+
+    statsFromGameOver = (fromGameOver === true) || (mode === 'gameover');
+
+    mode='stats';
+    paused=true;
+
+    $toast.classList.remove('show');
+    overlay.classList.add('show');
+    $panel.classList.add('isStats');
+    opts.innerHTML='';
+    $panelRow.innerHTML='';
+
+    $panelTitle.textContent='狀態一覽';
+    $panelSub.style.display='block';
+
+    const spreadShotsPerm = Math.max(1, 1 + Math.floor(player.spread_perm));
+    const spreadShotsLive = Math.max(1, 1 + Math.floor(spreadTotal()));
+
+    const dmgPct = pctMul(player.dmg, BASE_PLAYER.dmg);
+    const frPct  = pctMul(player.fireRate, BASE_PLAYER.fireRate);
+    const xpPctM = pctMul(player.xpGainMul, 1.0);
+
+    const burstDown = downtime(BURST_CD, BURST_DURATION);
+    const invDown   = downtime(INVULN_CD, INVULN_DURATION);
+
+    const magnetTxt =
+      (shopState.magnetRun ? '永久（本局購買）'
+        : (AI.enabled ? 'AI 自帶（本局）'
+          : (buffs.magnet>0 ? `限時 ${Math.ceil(buffs.magnet)}s` : '無')));
+
+    const wingTxt =
+      (shopState.wingmanBought ? `已購買｜${wingmanInterval().toFixed(1)}s`
+        : (AI.enabled ? `AI 自帶｜${wingmanInterval().toFixed(1)}s`
+          : '無'));
+
+    const lines = [
+      `關卡：<b>${state.stage}</b>　波次：<b>${state.wave}</b>　等級：<b>${state.level}</b>`,
+      `HP：<b>${Math.floor(player.hp)}/${Math.floor(player.hpMax)}</b>（上限 +${Math.floor(player.hpMax-BASE_PLAYER.hpMax)}）`,
+      `護盾：<b>${Math.floor(player.shield)}/${Math.floor(player.shieldMax)}</b>（上限 +${Math.floor(player.shieldMax)}）`,
+      `攻擊：<b>${Math.floor(player.dmg)}</b>（+${dmgPct}%）`,
+      `射速：<b>${player.fireRate.toFixed(2)}</b>/s（+${frPct}%）`,
+      `散射：永久 <b>${spreadShotsPerm}</b> 發（上限 <b>${player.spreadCap}</b>）｜目前 <b>${spreadShotsLive}</b> 發`,
+      `穿透：<b>${player.pierce_perm}</b>`,
+      `彈體大小：<b>${player.bulletR}</b>`,
+      `回復：<b>${player.regen}</b>/s`,
+      `XP 加成：<b>+${xpPctM}%</b>（倍率 ${player.xpGainMul.toFixed(2)}x）`,
+      `磁鐵：<b>${magnetTxt}</b>`,
+      `僚機：<b>${wingTxt}</b>（升級 ${shopState.wingmanAtkDown||0}/${WINGMAN_MAX_UPG}）`,
+      `爆發 CD：<b>${burstDown.toFixed(0)}s</b>`,
+      `無敵 CD：<b>${invDown.toFixed(0)}s</b>`,
+      `商店：散射上限購買 <b>${shopState.spreadCapUp}</b>`,
+      `商店：爆發CD↓ <b>${shopState.burstCdDown}</b>｜爆發時間↑ <b>${shopState.burstDurUp}</b>`,
+      `商店：無敵CD↓ <b>${shopState.invulnCdDown}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>`,
+      `商店：磁鐵購買 <b>${shopState.magnetRun?1:0}</b>｜僚機購買 <b>${shopState.wingmanBought?1:0}</b>`,
+    ];
+    $panelSub.innerHTML = lines.join('<br>');
+
+    const pills = [
+      ['🪙 金幣', state.coins],
+      ['🧠 XP', `${Math.floor(state.xp)}/${Math.floor(state.nextXp)}`],
+      ['🛡 護盾', `${Math.floor(player.shield)}/${Math.floor(player.shieldMax)}`],
+      ['🔥 爆發', buffs.burstT>0 ? `${Math.ceil(buffs.burstT)}s` : '—'],
+      ['✨ 無敵', buffs.invulnT>0 ? `${Math.ceil(buffs.invulnT)}s` : '—'],
+      ['🧲 磁鐵', strongMagnetActive() ? 'ON' : (buffs.magnet>0 ? 'ON' : 'OFF')],
+      ['🛰️ 僚機', wingmanActive() ? `ON (${wingmanInterval().toFixed(1)}s)` : 'OFF'],
+    ];
+
+    for(const [k,v] of pills){
+      const el=document.createElement('div');
+      el.className='opt';
+      el.style.cursor='default';
+      el.innerHTML = `<div class="t">${k}</div><div class="d"><b>${v}</b></div>`;
+      opts.appendChild(el);
+    }
+
+    $panelRow.style.display='flex';
+    const btnClose=document.createElement('button');
+    btnClose.className='pill';
+    btnClose.textContent='關閉';
+    btnClose.addEventListener('click',closeStats);
+    $panelRow.appendChild(btnClose);
+  }
+
+  function closeStats(){
+    if(statsFromGameOver){
+      mode='gameover';
+      paused=true;
+      $panel.classList.remove('isStats');
+      renderGameOverPanel();
+      return;
+    }
+    overlay.classList.remove('show');
+    $panel.classList.remove('isStats');
+    mode='play';
+    paused=false;
     lastT=performance.now();
   }
 
-  // Pause & post-stage
-  $btnPause.addEventListener('click',()=>{
-    if(mode!=='play'){ toastMsg('目前不是戰鬥中',0.7); return; }
-    paused=!paused;
-    $toast.textContent = paused ? 'Paused' : '';
-    if(paused) $toast.classList.add('show'); else $toast.classList.remove('show');
-    lastT=performance.now();
+  $btnStats.addEventListener('click', ()=>openStats(false));
+  $btnStats.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStats(false); }
   });
 
-  // ===== Update loop =====
   function update(dt){
-    // regen and timers
-    if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
-    if(hitIFrameT>0) hitIFrameT=Math.max(0, hitIFrameT-dt);
-
-    // Chapter JAM affix: if boss has jam, slow down skill cooldown recovery
-    let cdMul = 1.0;
-    const boss = enemies.find(e=>e.type==='boss');
-    if(boss && boss.jam) cdMul = 0.80;
-
-    for(const k of ['invulnT','burstT']){
+    for(const k of ['magnet','spreadBonusT','invulnT','burstT']){
       if(buffs[k]>0) buffs[k]=Math.max(0,buffs[k]-dt);
     }
     for(const k in skills){
-      if(skills[k].cd>0) skills[k].cd=Math.max(0, skills[k].cd - dt*cdMul);
+      if(skills[k].cd>0) skills[k].cd=Math.max(0, skills[k].cd-dt);
     }
 
+    if(hitIFrameT > 0) hitIFrameT = Math.max(0, hitIFrameT - dt);
+    if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
+
     player.y=H-42;
+
     AI.tick(dt);
 
     player.x=clamp(player.x,player.r+8,W-player.r-8);
 
-    // wingman
     wingmanTick(dt);
     updateRockets(dt);
 
-    // shooting
     shoot(dt);
 
-    // move enemies + shoot
     for(const e of enemies){
       e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
       if(e.strafeAmp>0){
         e.strafePhase+=dt*e.strafeSpd;
         const ox=Math.sin(e.strafePhase)*e.strafeAmp;
-        if(e.type==='boss' || e.type==='miniboss') e.x=W*0.5+ox;
-        else { if(e.baseX==null)e.baseX=e.x; e.x=e.baseX+ox; }
+        if(e.type==='boss') e.x=W*.5+ox;
+        else {if(e.baseX==null)e.baseX=e.x; e.x=e.baseX+ox}
       }
       e.x=clamp(e.x,e.r+10,W-e.r-10);
 
       if(e.type==='boss') bossTick(e,dt);
-      else if(e.type==='miniboss'){
-        e.fireCd = (e.fireCd||0) - dt;
-        if(e.fireCd<=0){
-          const ang=Math.atan2(player.y-e.y,player.x-e.x);
-          const lanes = 3;
-          const spread = 0.18;
-          for(let i=0;i<lanes;i++){
-            const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-            enemyShoot(e, ang+t*spread, {spdMul:1.05, dmgMul:0.95, r:5});
-          }
-          e.fireCd = 1/Math.max(0.9, e.fireRate||1.0);
-        }
-      }else{
+      else if(e.type==='healer') healerTick(e,dt);
+      else {
         e.fireCd-=dt;
-        if(e.fireCd<=0){
-          const ang=Math.atan2(player.y-e.y,player.x-e.x);
-          const isElite=(e.type==='elite');
-          if(isElite && Math.random()<0.35){
-            for(const da of [-0.12,0.12]) enemyShoot(e, ang+da, {spdMul:1.05, dmgMul:0.95});
-          }else{
-            enemyShoot(e, ang, {spdMul:1.0, dmgMul:1.0});
-          }
-          e.fireCd=1/Math.max(0.7, e.fireRate);
-        }
+        if(e.fireCd<=0){mobShoot(e); e.fireCd=1/e.fireRate}
       }
-      if(e.hitFlash>0) e.hitFlash=Math.max(0, e.hitFlash-dt);
+
+      if(e.hitFlash>0) e.hitFlash=Math.max(0,e.hitFlash-dt);
     }
 
-    // move bullets
     for(const b of pBullets){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
       if(b.y<-30||b.x<-40||b.x>W+40) b.alive=false;
     }
+
     for(const b of eBullets){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
+
       if(b.ball){
-        if(b.hitCd>0) b.hitCd=Math.max(0,b.hitCd-dt);
-        // bounce
-        const L=b.r+6, R=W-b.r-6, T=b.r+6, B=H-b.r-6;
-        if(b.x<L){b.x=L; b.vx=Math.abs(b.vx)*0.95; b.vy*=0.95;}
-        if(b.x>R){b.x=R; b.vx=-Math.abs(b.vx)*0.95; b.vy*=0.95;}
-        if(b.y<T){b.y=T; b.vy=Math.abs(b.vy)*0.95; b.vx*=0.95;}
-        if(b.y>B){b.y=B; b.vy=-Math.abs(b.vy)*0.95; b.vx*=0.95;}
+        if(b.hitCd>0) b.hitCd = Math.max(0, b.hitCd - dt);
+
+        const L = b.r + 6;
+        const R = W - b.r - 6;
+        const T = b.r + 6;
+        const B = H - b.r - 6;
+
+        if(b.x < L){ b.x = L; b.vx = Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
+        if(b.x > R){ b.x = R; b.vx = -Math.abs(b.vx) * (0.92 + Math.random()*0.12); b.vy *= (0.90 + Math.random()*0.20); }
+        if(b.y < T){ b.y = T; b.vy = Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
+        if(b.y > B){ b.y = B; b.vy = -Math.abs(b.vy) * (0.92 + Math.random()*0.12); b.vx *= (0.90 + Math.random()*0.20); }
+
         continue;
       }
-      if(b.y>H+50||b.x<-60||b.x>W+60) b.alive=false;
+
+      if(b.y>H+40||b.x<-50||b.x>W+50) b.alive=false;
     }
 
-    // drops
     for(const d of drops){
       d.y+=d.vy*dt; d.life-=dt;
+
+      if(strongMagnetActive()){
+        const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
+        const spd = 820;
+        d.x+=(dx/l)*spd*dt; d.y+=(dy/l)*spd*dt;
+      }else if(buffs.magnet>0){
+        const dx=player.x-d.x,dy=player.y-d.y,l=Math.hypot(dx,dy)||1;
+        const spd = 260;
+        d.x+=(dx/l)*spd*dt; d.y+=(dy/l)*spd*dt;
+      }
+
       if(d.y>H+60||d.life<=0) d.dead=true;
       if(dist2(d.x,d.y,player.x,player.y)<(d.r+player.r+8)**2){
         d.dead=true;
-        applyDrop(d);
+        applyDrop(d.type, d);
       }
     }
 
-    // particles
     for(const p of particles){
       p.x+=p.vx*dt; p.y+=p.vy*dt;
       p.vx*=(1-dt*2.8); p.vy*=(1-dt*2.8);
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // collisions: player bullets vs enemies
+    for(const b of pBullets){
+      if(!b.alive) continue;
+      if((b.clashLeft??0)<=0) continue;
+
+      for(const eb of eBullets){
+        if(!eb.alive) continue;
+
+        if(eb.ball){
+          if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
+            b.alive = false;
+            addBurst(eb.x, eb.y, 4);
+            break;
+          }
+          continue;
+        }
+
+        if(eb.beam) continue;
+
+        if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
+          if((eb.pierce||0)>0){
+            eb.pierce -= 1;
+            b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
+            if(b.clashLeft<=0) b.alive=false;
+            addBurst(eb.x,eb.y,3);
+            state.score+=1;
+            break;
+          }
+
+          const clearDmg = b.dmg * bulletClearMul(b.r);
+          eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
+
+          addBurst(eb.x,eb.y,4);
+          state.score+=1;
+
+          b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
+          if(eb.hp<=0) eb.alive=false;
+          if(b.clashLeft<=0) b.alive=false;
+          break;
+        }
+      }
+    }
+
     for(const b of pBullets){
       if(!b.alive) continue;
       for(const e of enemies){
@@ -1201,19 +2392,52 @@ canvas{width:100%;height:100%;display:block}
           e.hp-=b.dmg; e.hitFlash=.12;
           addBurst(b.x,b.y,4);
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
-          if(e.hp<=0) killEnemy(e);
+
+          if(e.hp<=0){
+            let coinAmt = 1;
+            if(e.type === 'boss')  coinAmt = 45;
+            if(e.type === 'elite') coinAmt = 4;
+            if(e.type === 'healer') coinAmt = 12;
+            dropCoin(e.x, e.y, coinAmt);
+
+            if(e.type==='boss'){
+              state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
+              addBurst(e.x,e.y,26);
+            }else if(e.type==='elite'){
+              state.score+=38; addXp(20* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              addBurst(e.x,e.y,12);
+            }else if(e.type==='healer'){
+              state.score+=30; addXp(15* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              addBurst(e.x,e.y,14);
+            }else{
+              state.score+=18; addXp(10* xpStageMul(state.stage)); maybeDrop(e.x,e.y,false);
+              addBurst(e.x,e.y,10);
+            }
+          }
           break;
         }
       }
     }
 
-    // collisions: enemy bullets vs player (beams simplified)
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
       if(eb.beam){
-        // simple hit: treat beam as fat bullet (cheap but ok)
-        if(dist2(eb.x,eb.y,player.x,player.y) < (player.r + (eb.r||6) + 6)**2){
+        const ang=Math.atan2(eb.vy,eb.vx);
+        const L=eb.len||28, R=eb.r||5;
+        const dx=Math.cos(ang)*(L/2), dy=Math.sin(ang)*(L/2);
+        const ax=eb.x-dx, ay=eb.y-dy;
+        const bx=eb.x+dx, by=eb.y+dy;
+
+        const px=player.x, py=player.y;
+        const vx=bx-ax, vy=by-ay;
+        const wx=px-ax, wy=py-ay;
+        const c1=wx*vx+wy*vy;
+        const c2=vx*vx+vy*vy || 1;
+        let t=c1/c2; t=clamp(t,0,1);
+        const cx=ax+t*vx, cy=ay+t*vy;
+
+        if(dist2(px,py,cx,cy) < (player.r + R + 1)**2){
           eb.alive=false;
           damagePlayer(eb.dmg);
           addBurst(player.x,player.y,10);
@@ -1221,144 +2445,175 @@ canvas{width:100%;height:100%;display:block}
         continue;
       }
 
-      if(eb.ball){
-        if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
-          if((eb.hitCd||0)<=0){
+      if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
+        if(eb.ball){
+          if((eb.hitCd||0) <= 0){
             damagePlayer(eb.dmg);
-            eb.hitCd=0.25;
+            eb.hitCd = 0.25;
             addBurst(player.x,player.y,10);
           }
+        }else{
+          eb.alive=false;
+          damagePlayer(eb.dmg);
+          addBurst(player.x,player.y,10);
         }
-        continue;
-      }
-
-      if(dist2(eb.x,eb.y,player.x,player.y)<(eb.r+player.r)**2){
-        eb.alive=false;
-        damagePlayer(eb.dmg);
-        addBurst(player.x,player.y,10);
       }
     }
 
-    // SPLIT affix: when boss has split, clearing a bullet emits 2 tiny fragments
-    // We'll implement a cheap variant: random fragments spawn over time when boss exists
-    if(boss && boss.split && Math.random()<dt*0.65){
-      // spawn 2 fragments near boss aimed roughly downwards
-      const a=Math.atan2(player.y-boss.y, player.x-boss.x);
-      for(const da of [-0.25,0.25]){
-        const spd= (boss.bulletSpeed||240)*1.1;
-        eBullets.push({x:boss.x,y:boss.y+boss.r+6,r:3,vx:Math.cos(a+da)*spd,vy:Math.sin(a+da)*spd,dmg:(boss.bulletDmg||12)*0.55,alive:true});
-      }
-    }
-
-    // cleanup
     pBullets=pBullets.filter(b=>b.alive);
     eBullets=eBullets.filter(b=>b.alive);
     enemies=enemies.filter(e=>e.hp>0);
     drops=drops.filter(d=>!d.dead);
     particles=particles.filter(p=>!p.dead);
 
-    // win/flow: wave clear
-    if(enemies.length===0){
-      if(state.wave < state.wavesPerStage){
-        nextWave();
-      }else{
-        // stage completed
-        stageClear();
+    if(!state.waveInProgress){
+      state.waveClearCooldown-=dt;
+      if(state.waveClearCooldown<=0){
+        if(state.wave===state.bossEveryWaves){spawnBoss();state.waveInProgress=true}
+        else spawnWave();
       }
+    }else{
+      if(enemies.length===0){
+        if(state.wave===state.bossEveryWaves) { nextStage(); }
+        else { nextWave(); }
+      }
+    }
+
+    if(toastT>0){
+      toastT=Math.max(0,toastT-dt);
+      if(toastT===0 && !paused) $toast.classList.remove('show');
     }
   }
 
-  // ===== Draw =====
   function draw(){
     ctx.clearRect(0,0,W,H);
 
-    // subtle grid
     ctx.save();ctx.globalAlpha=.10;ctx.strokeStyle='#e7eefc';
     const step=48;
     for(let x=0;x<=W;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
     for(let y=0;y<=H;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
     ctx.restore();
 
-    // particles
     ctx.save();ctx.fillStyle='rgba(120,255,200,.7)';
     for(const p of particles){ctx.globalAlpha=clamp(p.life*2.0,0,1);ctx.beginPath();ctx.arc(p.x,p.y,2.2,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
-    // drops
     for(const d of drops){
       ctx.save();
       ctx.fillStyle='rgba(255,255,255,.08)';ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=1;
       ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(120,255,200,.95)';ctx.font='12px system-ui,"Noto Sans TC"';
       ctx.textAlign='center';ctx.textBaseline='middle';
-      const icon = d.type==='heal'?'✚':(d.type==='shield'?'🛡':'🪙');
+
+      let icon =
+        d.type==='heal'?'✚':
+        d.type==='shield'?'⛨':
+        d.type==='spread'?'✦':
+        d.type==='magnet'?'🧲':'';
+
+      if(d.type==='coin'){
+        const a = Math.max(1, d.amt ?? 1);
+        icon = (a>=30) ? '🎁' : (a>=10) ? '💎' : (a>=3) ? '💰' : '🪙';
+      }
+
       ctx.fillText(icon,d.x,d.y+.5);
       ctx.restore();
     }
 
-    // rockets
-    ctx.save();ctx.fillStyle='rgba(255,220,140,.95)';
+    ctx.save();
+    ctx.fillStyle='rgba(255,220,140,.95)';
     for(const r of allyRockets){
-      ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+      ctx.fill();
       ctx.globalAlpha=.45;
-      ctx.beginPath();ctx.arc(r.x - (r.vx*0.012), r.y - (r.vy*0.012), r.r*0.65, 0, Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.arc(r.x - (r.vx*0.012), r.y - (r.vy*0.012), r.r*0.65, 0, Math.PI*2);
+      ctx.fill();
       ctx.globalAlpha=1;
     }
     ctx.restore();
 
-    // enemies
     for(const e of enemies){
       ctx.save();
-      const isBoss=(e.type==='boss');
-      const isMini=(e.type==='miniboss');
-      const isElite=(e.type==='elite');
-      const flash=e.hitFlash>0;
+      const isBoss=e.type==='boss', flash=e.hitFlash>0;
+      const isSniperBoss = isBoss && (e.kind === 'sniper');
+      const isDefenderBoss = isBoss && (e.kind === 'defender');
+      const isElite=e.type==='elite';
+      const isHealer=e.type==='healer';
+
       ctx.fillStyle = flash ? 'rgba(255,255,255,.18)'
+        : isDefenderBoss ? 'rgba(255,255,255,.10)'
+        : isSniperBoss ? 'rgba(120,220,255,.12)'
         : isBoss ? 'rgba(255,120,120,.14)'
-        : isMini ? 'rgba(220,180,255,.14)'
-        : isElite? 'rgba(220,180,255,.12)'
+        : isElite ? 'rgba(220,180,255,.14)'
+        : isHealer ? 'rgba(140,190,255,.14)'
         : 'rgba(255,255,255,.10)';
-      ctx.strokeStyle = isBoss?'rgba(255,120,120,.35)'
-        : isMini?'rgba(220,180,255,.45)'
-        : isElite?'rgba(220,180,255,.35)'
+
+      ctx.strokeStyle =
+        isDefenderBoss ? 'rgba(255,255,255,.45)'
+        : isSniperBoss ? 'rgba(120,220,255,.42)'
+        : isBoss ? 'rgba(255,120,120,.35)'
+        : isElite ? 'rgba(220,180,255,.45)'
+        : isHealer ? 'rgba(140,190,255,.40)'
         : 'rgba(255,255,255,.20)';
-      ctx.lineWidth = isBoss?2:(isMini?1.8:1);
+
+      ctx.lineWidth = isBoss?2:(isElite?1.8:1);
       ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fill();ctx.stroke();
 
-      // HP bar
-      const w=isBoss?110:(isMini?92:(isElite?70:52)),h=6,x=e.x-w/2,y=e.y-e.r-14;
+      const w=isBoss?96:(isElite?70:(isHealer?62:52)),h=6,x=e.x-w/2,y=e.y-e.r-14;
       ctx.globalAlpha=.9;ctx.fillStyle='rgba(255,255,255,.10)';ctx.fillRect(x,y,w,h);
+
       const hpPct=clamp(e.hp/e.hpMax,0,1);
-      ctx.fillStyle=isBoss?'rgba(255,120,120,.9)':(isMini?'rgba(220,180,255,.9)':'rgba(120,255,200,.9)');
+      ctx.fillStyle=isBoss?'rgba(255,120,120,.9)'
+        :(isElite?'rgba(220,180,255,.9)'
+        :(isHealer?'rgba(140,190,255,.92)':'rgba(120,255,200,.9)'));
       ctx.fillRect(x,y,w*hpPct,h);
 
       if(isBoss){
-        ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.70)';
+        ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.65)';
         ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='bottom';
-        ctx.fillText(`${e.kind.toUpperCase()} P${e.phase||1}${e.jam?' ·JAM':''}${e.split?' ·SPLIT':''}`,e.x,y-2);
+        const k = e.kind ? String(e.kind).toUpperCase() : 'BOSS';
+        ctx.fillText(`${k} P${e.phase||1}`,e.x,y-2);
+      }
+      if(isHealer){
+        ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.75)';
+        ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
+        ctx.fillText(`💙 ${Math.ceil(e.healCd)}s`,e.x,e.y+e.r+6);
       }
       ctx.restore();
     }
 
-    // bullets
     ctx.save();ctx.fillStyle='rgba(120,255,200,.95)';
-    for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill()}
+    for(const b of pBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill()}
     ctx.restore();
 
     ctx.save();ctx.fillStyle='rgba(255,160,160,.92)';
     for(const b of eBullets){
-      if(b.ball){
+      if(!b.beam){
         ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
       }else{
-        ctx.beginPath();ctx.arc(b.x,b.y,b.r||4,0,Math.PI*2);ctx.fill();
+        const ang=Math.atan2(b.vy,b.vx);
+        const L=b.len||28, R=b.r||5;
+        ctx.save();ctx.translate(b.x,b.y);ctx.rotate(ang);
+        if(ctx.roundRect){
+          ctx.beginPath();ctx.roundRect(-L/2, -R, L, R*2, R);ctx.fill();
+        }else{
+          ctx.beginPath();ctx.rect(-L/2, -R, L, R*2);ctx.fill();
+          ctx.beginPath();ctx.arc(-L/2,0,R,0,Math.PI*2);ctx.fill();
+          ctx.beginPath();ctx.arc(L/2,0,R,0,Math.PI*2);ctx.fill();
+        }
+        ctx.restore();
       }
     }
     ctx.restore();
 
-    // player
     ctx.save();
     ctx.translate(player.x,player.y);
-    if(hitIFrameT>0) ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
+
+    if(hitIFrameT > 0){
+      ctx.globalAlpha = 0.55 + 0.35*Math.sin(performance.now()/70);
+    }
 
     if(buffs.burstT>0){
       ctx.save();
@@ -1380,19 +2635,41 @@ canvas{width:100%;height:100%;display:block}
       ctx.beginPath();ctx.arc(0,0,player.r+10,0,Math.PI*2);ctx.stroke();
       ctx.globalAlpha=1;
     }
+
     if(buffs.invulnT>0){
       ctx.globalAlpha=.55;ctx.strokeStyle='rgba(255,255,255,.65)';ctx.lineWidth=2;
       ctx.beginPath();ctx.arc(0,0,player.r+15,0,Math.PI*2);ctx.stroke();
     }
     ctx.restore();
+
+    if(wingmanActive()){
+      const offX = 34;
+      const wy = player.y - 18;
+
+      ctx.save();
+      ctx.fillStyle='rgba(160,220,255,.30)';
+      ctx.strokeStyle='rgba(160,220,255,.60)';
+      ctx.lineWidth=1.5;
+
+      for(const sx of [player.x-offX, player.x+offX]){
+        const x = clamp(sx, 10, W-10);
+        ctx.beginPath();
+        ctx.arc(x, wy, 8, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+
+        ctx.globalAlpha=.85;
+        ctx.fillStyle='rgba(160,220,255,.65)';
+        ctx.font='10px system-ui,"Noto Sans TC"';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('🛰', x, wy+0.5);
+        ctx.globalAlpha=1;
+      }
+      ctx.restore();
+    }
   }
 
   function syncHud(){
-    const ch=chapterOf(state.stage), sub=subOf(state.stage);
-    const mod=chapterMod(ch);
-    $hudChapter.textContent=`CH ${ch}-${sub} · ${mod.name}`;
-    $hudStage.textContent=`關卡 ${state.stage}`;
-    $hudWave.textContent=`波次 ${state.wave}/${state.wavesPerStage}`;
+    $stage.textContent=`關卡 ${state.stage}`;
 
     const hpPct=clamp(player.hp/player.hpMax,0,1);
     $hpFill.style.width=`${hpPct*100}%`;
@@ -1401,7 +2678,10 @@ canvas{width:100%;height:100%;display:block}
     $hudShield.textContent=`🛡 +${Math.floor(player.shield)}`;
     $hudCoins.textContent = `🪙 ${state.coins}`;
 
-    // cd displays
+    $lv.textContent=`LV ${state.level}`;
+    const xpP=clamp(state.xp/state.nextXp,0,1);
+    $xpPct.textContent=`${Math.floor(xpP*100)}%`;
+
     const burstLeft  = skillCdLeft('burst');
     const invulnLeft = skillCdLeft('invuln');
 
@@ -1416,32 +2696,19 @@ canvas{width:100%;height:100%;display:block}
     $btnBurst.disabled  = !(mode==='play' && !paused && buffs.burstT<=SKILL_EPS  && burstLeft<=SKILL_EPS);
     $btnInvuln.disabled = !(mode==='play' && !paused && buffs.invulnT<=SKILL_EPS && invulnLeft<=SKILL_EPS);
 
-    // shop button enabled only post/shop
-    $btnShop.disabled = !(mode==='post' || mode==='shop');
+    $btnShop.disabled = lockedLandscape || !(mode==='play' || mode==='shop');
   }
 
   function frame(t){
-    const dt=Math.min(.033,(t-lastT)/1000); lastT=t;
+    const dt=Math.min(.033,(t-lastT)/1000);lastT=t;
     if(mode==='play' && !paused) update(dt);
-    draw();
-    syncHud();
-
-    if(toastT>0){
-      toastT=Math.max(0,toastT-dt);
-      if(toastT===0 && !paused) $toast.classList.remove('show');
-      else $toast.classList.add('show');
-    }
+    draw(); syncHud();
     requestAnimationFrame(frame);
   }
 
-  // bootstrap
-  function syncLayout(){ resize(); }
-  syncLayout();
-  window.addEventListener('resize',syncLayout,{passive:true});
-
   setPadX(.5);
-  player.x=W*0.5; player.y=H-42;
   spawnWave();
+  syncOrientationLock();
   requestAnimationFrame(frame);
 })();
 </script>
