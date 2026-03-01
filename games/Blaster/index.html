@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: campaign100-affix-boss4-tier-2026-03-01c
+  BUILD: 刪掉註解
 </div>
 
 <div class="app">
@@ -832,7 +832,7 @@ canvas{width:100%;height:100%;display:block}
     const holdY = enemyHoldY() - 12;
     const kind = bossKindForStage(state.stage);
 
-    const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
+    const hpBase = (65000 + state.stage*170) * stageDifficultyMul(state.stage);
 
     // Boss-level affixes (1-2)
     const bossAff = rollAffixes(state.stage, true);
@@ -1011,7 +1011,7 @@ canvas{width:100%;height:100%;display:block}
     // ✅ diminishing returns for invuln cd down: first 5 => -1s, later => -0.5s
     items.push({
       id:'invulnCdDown',
-      name:'無敵 CD -1s（後期遞減）',
+      name:'無敵 CD -1s',
       desc:`降低無敵 CD：目前 <b>${invDown.toFixed(0)}s</b>`,
       cost:price(120, shopState.invulnCdDown, 1.58),
       canBuy:()=> (shopState.invulnCdDown < 15) && (downtime(INVULN_CD, INVULN_DURATION) > 8),
@@ -1050,7 +1050,7 @@ canvas{width:100%;height:100%;display:block}
 
     items.push({
       id:'wingmanBuy',
-      name:'僚機編隊（左右各一）',
+      name:'僚機編隊',
       desc:`購買後：左右各一個僚機，<b>每 ${wingInt.toFixed(1)}s</b> 發射追蹤火箭（100% 命中）`,
       cost:3200,
       canBuy:()=> (shopState.wingmanBought===0) && !(AI?.enabled === true),
@@ -1063,7 +1063,7 @@ canvas{width:100%;height:100%;display:block}
     if(wingActive){
       items.push({
         id:'wingmanAtkDown',
-        name:'僚機攻擊間隔 ↓（後期遞減）',
+        name:'僚機攻擊間隔 ↓',
         desc:`降低僚機火箭間隔：目前 <b>${wingInt.toFixed(1)}s</b>（最多 5 次）`,
         cost:price(240, shopState.wingmanAtkDown, 1.60),
         canBuy:()=> (shopState.wingmanAtkDown < WINGMAN_MAX_UPG),
@@ -1097,7 +1097,7 @@ canvas{width:100%;height:100%;display:block}
       el.className='opt';
       el.innerHTML=
         `<div class="t">${it.name} <span style="opacity:.8">（🪙${it.cost}）</span></div>`+
-        `<div class="d">${it.desc}${allowed?'':'<br><span style="opacity:.7">（已達上限／AI已自帶）</span>'}</div>`;
+        `<div class="d">${it.desc}${allowed?'':'<br><span style="opacity:.7">（已達上限）</span>'}</div>`;
 
       if(!canBuy){
         el.style.opacity='0.55';
@@ -2517,8 +2517,7 @@ canvas{width:100%;height:100%;display:block}
       `磁鐵：<b>${magnetTxt}</b>`,
       `僚機：<b>${wingTxt}</b>（升級 ${shopState.wingmanAtkDown||0}/${WINGMAN_MAX_UPG}）`,
       `爆發 CD：<b>${burstDown.toFixed(0)}s</b>`,
-      `無敵 CD：<b>${invDown.toFixed(0)}s</b>`,
-      `AI 商店：本關已買 <b>${state.shopBuysThisStage}</b> / <b>${state.shopBuysCapForAI}</b>`
+      `無敵 CD：<b>${invDown.toFixed(0)}s</b>`
     ];
     $panelSub.innerHTML = lines.join('<br>');
 
