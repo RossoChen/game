@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 2000
+  BUILD: 改王
 </div>
 
 <div class="app">
@@ -1767,46 +1767,65 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-
+  
     const spd=(e.bulletSpeed??300)*sMul*enemyBulletSpeedMul(state.stage);
-
+  
     const isBeam = !!meta.beam;
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
     const pierce = meta.pierce ?? 0;
-
+  
     const baseHp = enemyBulletHpByStage(state.stage);
-    const hp = isBeam ? 1 : (meta.hp ?? baseHp);
-
-    const len = isBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
-
+  
     // affix: pierce bonus
-    const pierceBonus = (e.bulletPierceBonus||0);
+    const pierceBonus = (e && (e.bulletPierceBonus||0)) || 0;
     const outPierce = pierce + pierceBonus;
-
+  
     // affix: beamer bias
-    const outBeam = isBeam || (e.beamer && Math.random() < 0.28);
-
+    const outBeam = isBeam || (!!(e && e.beamer) && Math.random() < 0.28);
+  
+    // ✅ Boss 子彈更耐打（避免一下就被清光）
+    const isBossShooter = !!(e && e.type === 'boss');
+    const bossHpMul = isBossShooter ? (1.9 + 0.25 * tierOfStage(state.stage)) : 1.0; // Tier0~3：1.9~2.65
+  
+    // ✅ 裝甲彈：不能被玩家子彈對撞清掉
+    const unclashable = !!meta.unclashable;
+  
+    // beam 一樣不給 HP（本來就不能被清）
+    let hp = 1;
+    if(!outBeam){
+      const rawHp = (meta.hp ?? baseHp);
+      hp = Math.floor(rawHp * bossHpMul);
+      if(unclashable) hp = 999999; // 裝甲彈不吃清彈
+    }
+  
+    const len = outBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
+  
     eBullets.push({
-      x:e.x,y:e.y+e.r+4,
+      x:e.x,
+      y:e.y+e.r+4,
       r,
       vx:Math.cos(ang)*spd,
       vy:Math.sin(ang)*spd,
       dmg:((e.bulletDmg??8)*dMul),
       alive:true,
+  
       pierce: outPierce,
       hp,
-      beam:outBeam,
-      len: outBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0,
-
+      beam: outBeam,
+      len,
+  
+      // ✅ new
+      unclashable,
+  
       // splitter meta
       split: !!meta.split,
       splitGen: meta.splitGen||0,
       splitN: meta.splitN||0,
       splitJ: meta.splitJ||0,
-
+  
       // vamp source
-      vamp: !!e.vamp,
-      srcId: e._id || 0,
+      vamp: !!(e && e.vamp),
+      srcId: (e && e._id) || 0,
     });
   }
 
@@ -1956,29 +1975,42 @@ canvas{width:100%;height:100%;display:block}
         e.phase=newPhase;
         toastMsg(`Splitter：Phase ${e.phase}`, 0.55);
       }
-
+    
       e.spin = (e.spin||0) + dt*(1.2 + e.phase*0.35);
       e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||1.05);
       const ox = Math.sin(e.strafePhase) * (e.strafeAmp||200);
       e.x = W*0.5 + ox;
-
+    
       e.splitCd -= dt;
       if(e.splitCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanes = (e.phase===1?2:(e.phase===2?3:4));
         const spread = (e.phase===1?0.10:(e.phase===2?0.16:0.20));
+    
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+    
+          // ✅ 一部分 split 彈變裝甲彈（不可被清）
+          const armor = (Math.random() < (0.18 + 0.06*tierOfStage(state.stage))); // Tier0~3：18%~36%
+    
           enemyShoot(e,ang+t*spread,1.12,1.00,{
             r:6,
             hp: Math.floor(enemyBulletHpByStage(state.stage)*1.25),
             pierce: (state.stage>=60?1:0),
-            split:true, splitGen:0, splitN:2, splitJ:(e.phase===3?0.30:0.26)
+    
+            split:true,
+            splitGen:0,
+            splitN:2,
+            splitJ:(e.phase===3?0.30:0.26),
+    
+            // ✅ new
+            unclashable: armor
           });
         }
+    
         e.splitCd = (e.phase===1?0.70:(e.phase===2?0.58:0.48));
       }
-
+    
       e.ringCd -= dt;
       if(e.ringCd<=0){
         const n = (e.phase===1?12:(e.phase===2?18:24));
@@ -2679,10 +2711,10 @@ canvas{width:100%;height:100%;display:block}
     for(const b of pBullets){
       if(!b.alive) continue;
       if((b.clashLeft??0)<=0) continue;
-
+    
       for(const eb of eBullets){
         if(!eb.alive) continue;
-
+    
         if(eb.ball){
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
             b.alive = false;
@@ -2691,10 +2723,15 @@ canvas{width:100%;height:100%;display:block}
           }
           continue;
         }
-
+    
+        // beam 不做對撞（原邏輯）
         if(eb.beam) continue;
-
+    
+        // ✅ 裝甲彈：不給你用子彈清
+        if(eb.unclashable) continue;
+    
         if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
+          // enemy bullet pierce: 先消耗玩家 clash
           if((eb.pierce||0)>0){
             eb.pierce -= 1;
             b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
@@ -2703,14 +2740,15 @@ canvas{width:100%;height:100%;display:block}
             state.score+=1;
             break;
           }
-
+    
           const clearDmg = b.dmg * bulletClearMul(b.r);
           eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
-
+    
           addBurst(eb.x,eb.y,4);
           state.score+=1;
-
+    
           b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
+    
           if(eb.hp<=0){
             // splitter bullet splits on death too
             if(eb.split) splitBullet(eb);
