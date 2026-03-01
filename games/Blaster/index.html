@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: campaign100-2026-03-01a
+  BUILD: campaign100-ai-2026-03-01b
 </div>
 
 <div class="app">
@@ -349,7 +349,6 @@ canvas{width:100%;height:100%;display:block}
   let mode='play';
   let gameOverSummary = null;
   let statsFromGameOver = false;
-  let statsPrevMode = null; // ✅ remembers if stats opened from gameover/win
   let lastT=performance.now();
 
   function isLandscape(){
@@ -395,7 +394,7 @@ canvas{width:100%;height:100%;display:block}
   const SPREAD_CAP_BASE=5;
   const PIERCE_CAP=5;
 
-  // ✅ Campaign ends here
+  // ✅ Campaign ends at 100
   const FINAL_STAGE = 100;
 
   const BULLET_R_MIN=3;
@@ -457,7 +456,8 @@ canvas{width:100%;height:100%;display:block}
   const state={
     stage:1,wave:1,score:0,coins:0,xp:0,level:1,nextXp:60,
     waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5,
-    // ✅ AI anti-runaway (counts purchases per stage for AI)
+
+    // ✅ AI anti-runaway: counts auto purchases per stage
     shopBuysThisStage: 0,
     shopBuysCapForAI: 4,
   };
@@ -707,9 +707,9 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // ✅ boss rotation per 10 stages
+  // ✅ Boss rotate every 10 stages
   function bossKindForStage(stage){
-    const ch = Math.ceil(stage/10);
+    const ch = Math.ceil(stage/10); // 1..10
     const seq = ['boss','sniper','defender','boss','sniper','defender','boss','sniper','defender','boss'];
     return seq[(ch-1) % seq.length] || 'boss';
   }
@@ -717,7 +717,6 @@ canvas{width:100%;height:100%;display:block}
   function spawnBoss(){
     const holdY = enemyHoldY() - 12;
     const kind = bossKindForStage(state.stage);
-
     const hpBase = (650 + state.stage*170) * stageDifficultyMul(state.stage);
 
     if(kind==='defender'){
@@ -753,8 +752,7 @@ canvas{width:100%;height:100%;display:block}
 
     const baseSpd=240+state.stage*12;
     enemies.push({
-      type:'boss', kind:'boss',
-      x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
+      type:'boss', x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
       bulletSpeed:baseSpd, bulletDmg:12+state.stage*2.0,
       strafeAmp:240, strafeSpd:1.05+state.stage*0.06, strafePhase:0,
       phase:1, ringCd:1.0, spiralCd:0.35, summonCd:999,
@@ -767,18 +765,18 @@ canvas{width:100%;height:100%;display:block}
 
   function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
 
+  // ✅ Victory at FINAL_STAGE + reset AI shop counter
   function nextStage(){
-    // ✅ Victory at FINAL_STAGE
     if(state.stage >= FINAL_STAGE){
       winGame();
       return;
     }
-    state.stage += 1;
-    state.wave = 1;
-    state.waveClearCooldown = .85;
-    state.waveInProgress = false;
+    state.stage+=1;
+    state.wave=1;
+    state.waveClearCooldown=.85;
+    state.waveInProgress=false;
 
-    // ✅ reset AI purchase counter per stage
+    // reset per stage
     state.shopBuysThisStage = 0;
   }
 
@@ -991,26 +989,47 @@ canvas{width:100%;height:100%;display:block}
   // === AUTOPLAY AI BEGIN ===
   const AI = {
     enabled:false,
-
-    // ✅ Sniper SOP
     sniperSweepX:0,
     sniperForceLeft:true,
-
-    // shop
     autoShop:true,
     nextShopAtMs:0,
     shopLock:false,
+    _savedManualMagnet: 0,
+
+    // ✅ 穩定輸出：黏性鎖定（避免左右瞬移）
+    aimHoldX: null,
+    aimHoldT: 0,
 
     toggle(on){
-      this.enabled = (on==null) ? !this.enabled : !!on;
+      const newEnabled = (on==null) ? !this.enabled : !!on;
+      if(newEnabled === this.enabled) return;
+
+      if(this.enabled && !newEnabled){
+        if(shopState.magnetRun === 0){
+          buffs.magnet = Math.max(0, this._savedManualMagnet || 0);
+        }else{
+          buffs.magnet = Math.max(buffs.magnet, 1e9);
+        }
+      }
+
+      if(!this.enabled && newEnabled){
+        this._savedManualMagnet = buffs.magnet;
+        buffs.magnet = Math.max(buffs.magnet, 1e9);
+      }
+
+      this.enabled = newEnabled;
       if($aiState) $aiState.textContent = this.enabled ? 'ON' : 'OFF';
       if($btnAI) $btnAI.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
 
       padActive=false;
       this.shopLock=false;
       this.nextShopAtMs=0;
+
       this.sniperForceLeft=true;
       this.sniperSweepX=player.x;
+
+      this.aimHoldX=null;
+      this.aimHoldT=0;
     },
 
     pickUpgrade(picks){
@@ -1096,7 +1115,7 @@ canvas{width:100%;height:100%;display:block}
       if(!this.autoShop || !this.enabled) return;
       if(mode!=='play' || paused || lockedLandscape) return;
 
-      // ✅ hard cap: AI per-stage purchase budget
+      // ✅ AI per-stage hard cap
       if(state.shopBuysThisStage >= (state.shopBuysCapForAI||0)) return;
 
       const bossNow = enemies.find(e=>e.type==='boss');
@@ -1125,7 +1144,7 @@ canvas{width:100%;height:100%;display:block}
       const safeCtx = ctx || { hasBoss:false, bulletPressure:0, bestScore:0 };
       const bought = [];
 
-      // ✅ each shop open buys max 2 items
+      // ✅ buy max 2 items per shop open
       for(let loop=0; loop<2; loop++){
         const items = shopItems();
         const pick = this.pickShopItem(items, safeCtx);
@@ -1134,7 +1153,7 @@ canvas{width:100%;height:100%;display:block}
         if(pick.canBuy && !pick.canBuy()) break;
 
         state.coins -= pick.cost;
-        state.shopBuysThisStage++; // ✅ counts toward per-stage cap
+        state.shopBuysThisStage++; // ✅ count per stage
 
         try{ pick.buy && pick.buy(); }catch(_){}
         bought.push(pick.name);
@@ -1162,7 +1181,7 @@ canvas{width:100%;height:100%;display:block}
 
       const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
 
-      // Sniper：保持 SOP
+      // Sniper：保持你原本 SOP
       if(sniperBoss){
         if(this.sniperForceLeft){
           this.sniperSweepX = leftX;
@@ -1200,8 +1219,200 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
-      // Non-sniper: keep your existing logic minimal
-      // (intentionally left as original behavior)
+      // ===== 非 Sniper：穩定對齊輸出 + 必要才閃 =====
+      const py = player.y;
+
+      const boss = enemies.find(e=>e.type==='boss') || null;
+      const defenderBoss = boss && boss.kind==='defender';
+
+      const shotsLive = shotsFromSpread(spreadTotal());
+
+      // 1) 選目標（優先 Boss，否則選最靠下）
+      let target = null;
+      if(enemies.length){
+        target = boss || null;
+        if(!target){
+          for(const e of enemies){ if(!target || e.y > target.y) target = e; }
+        }
+      }
+      const aimBaseX = target ? target.x : (W*0.5);
+
+      // 2) aimTargets（兩發時左右對齊；Defender 不用雙點）
+      let aimTargets = [aimBaseX];
+      if(!defenderBoss && target && shotsLive === 2){
+        const dy = Math.max(140, player.y - target.y);
+        const bulletVx = 240;
+        const off = clamp(dy * (bulletVx / (player.bulletSpeed || 820)), 70, 170);
+        aimTargets = [
+          clamp(aimBaseX - off, safeL, safeR),
+          clamp(aimBaseX + off, safeL, safeR),
+        ];
+      }
+
+      // 3) intervals（預測危險）
+      const horizon = 1.25;
+      const margin  = 7;
+      const intervals = [];
+      let minBeamHit = 999;
+      let nearestBallD = 1e18;
+
+      for(const b of eBullets){
+        if(!b?.alive) continue;
+
+        if(b.ball){
+          const d = dist2(b.x,b.y,player.x,player.y);
+          if(d < nearestBallD) nearestBallD = d;
+
+          const rad = (b.r||18) + player.r + 18;
+          intervals.push([b.x - rad, b.x + rad, 18]);
+          continue;
+        }
+
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > horizon) continue;
+
+        const xHit = b.x + (b.vx||0) * tHit;
+
+        if(b.beam){
+          const ang = Math.atan2(vy, (b.vx||0));
+          const L = b.len || 28;
+          const R = b.r || 5;
+          const xHalf = Math.abs(Math.cos(ang)) * (L/2);
+
+          const rad = player.r + R + margin + 12 + xHalf;
+          const w = (9 / (0.05 + tHit));
+          intervals.push([xHit - rad, xHit + rad, w * 9]);
+
+          if(tHit < minBeamHit) minBeamHit = tHit;
+          continue;
+        }
+
+        const rad  = (b.r||4) + player.r + margin;
+        const w    = 1 / (0.14 + tHit);
+        intervals.push([xHit - rad, xHit + rad, w]);
+      }
+
+      // 4) 近身必撞才大閃（避免每幀抖動）
+      let imminentHit = false;
+      for(const b of eBullets){
+        if(!b?.alive || b.beam || b.ball) continue;
+        const vy = b.vy || 0;
+        if(vy <= 1) continue;
+        const tHit = (py - b.y) / vy;
+        if(tHit < 0 || tHit > 0.28) continue;
+        const xHit = b.x + (b.vx||0) * tHit;
+        const rad = (b.r||4) + player.r + 10;
+        if(Math.abs(xHit - player.x) <= rad){
+          imminentHit = true;
+          break;
+        }
+      }
+      if(imminentHit){
+        const goLeft = (player.x > W*0.5);
+        const tx = goLeft ? leftX : rightX;
+        setPadX(tx / W);
+        if(canUseSkill('invuln')) useInvuln();
+        return;
+      }
+
+      // 5) Defender：限制中線帶，避免龜角
+      const bandL = defenderBoss ? (W * 0.33) : safeL;
+      const bandR = defenderBoss ? (W * 0.67) : safeR;
+      const centerX = W * 0.5;
+
+      // 6) 掃描：避彈 + 對齊輸出（輸出權重提高）
+      const candidates = 23;
+      let bestX = clamp(player.x, bandL, bandR);
+      let bestScore = -1e18;
+
+      for(let i=0;i<candidates;i++){
+        const x = bandL + (bandR-bandL)*(i/(candidates-1));
+        let score = 0;
+
+        for(const [l,r,w] of intervals){
+          if(x>=l && x<=r){
+            score -= 1e6 * w;
+          }else{
+            const d = (x<l) ? (l-x) : (x-r);
+            score -= (1/(d+6)) * 4200 * w;
+          }
+        }
+
+        // ✅ 對齊輸出（讓子彈可以抵銷敵彈）
+        if(!defenderBoss && aimTargets && aimTargets.length){
+          const aimDist = Math.min(...aimTargets.map(ax => Math.abs(x - ax)));
+          score -= aimDist * (shotsLive===2 ? 3.0 : 3.8);
+        }
+
+        // Defender：偏中線
+        if(defenderBoss){
+          score -= Math.abs(x - centerX) * 22;
+        }
+
+        // 輕微避免貼邊
+        const edge = Math.min(x-bandL, bandR-x);
+        score += edge * (defenderBoss ? 1.8 : 0.06);
+
+        if(score > bestScore){ bestScore=score; bestX=x; }
+      }
+
+      // 7) ✅ 瞄準黏性（安全時不亂換點）
+      const dangerLevel = intervals.length;
+      const safeEnoughForAimLock = (bestScore > -2.0e5) && (dangerLevel <= 5) && (buffs.invulnT<=0);
+
+      if(safeEnoughForAimLock){
+        if(this.aimHoldT <= 0 || this.aimHoldX == null){
+          this.aimHoldX = bestX;
+          this.aimHoldT = 0.25;
+        }else{
+          if(Math.abs(bestX - this.aimHoldX) > 70){
+            this.aimHoldX = bestX;
+            this.aimHoldT = 0.25;
+          }
+        }
+      }else{
+        this.aimHoldX = null;
+        this.aimHoldT = 0;
+      }
+
+      if(this.aimHoldT > 0){
+        this.aimHoldT = Math.max(0, this.aimHoldT - dt);
+        if(this.aimHoldX != null) bestX = this.aimHoldX;
+      }
+
+      // 8) 漸進移動（避免瞬移）
+      const maxStep = player.moveSpeed * dt * (defenderBoss ? 0.92 : 0.98);
+      const nx = clamp(bestX, bandL, bandR);
+      const dx = clamp(nx - player.x, -maxStep, maxStep);
+      setPadX((player.x + dx) / W);
+
+      // 9) 技能
+      if(canUseSkill('invuln')){
+        const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
+        const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
+
+        const imminent = (bestScore < -6e5);
+        const fragile  = (hpPct < 0.28 && shieldPct < 0.25);
+        const panic    = (dangerLevel >= 6 && hpPct < 0.60 && shieldPct < 0.22);
+
+        if(minBeamHit < 0.34 || imminent || fragile || panic) useInvuln();
+
+        if(defenderBoss){
+          const hitRad = (18 + player.r + 10);
+          if(nearestBallD < hitRad*hitRad) useInvuln();
+        }
+      }
+
+      if(canUseSkill('burst')){
+        const manyEnemies = enemies.length >= 10;
+        const safeEnough  = (bestScore > -2.2e5) && (buffs.invulnT<=0);
+        if(safeEnough && (boss || manyEnemies)) useBurst();
+      }
+
+      this.shopTick(dt, { bulletPressure: dangerLevel, bestScore, hasBoss: !!boss });
     }
   };
 
@@ -1794,7 +2005,7 @@ canvas{width:100%;height:100%;display:block}
     $panelRow.appendChild(btnStats);
   }
 
-  // ✅ Victory UI
+  // ✅ Victory panel
   function renderWinPanel(){
     $panel.classList.remove('isStats');
     overlay.classList.add('show');
@@ -1812,7 +2023,7 @@ canvas{width:100%;height:100%;display:block}
       `本局分數：<b>${state.score}</b><br>`+
       `本局金幣：<b>${state.coins}</b><br>`+
       `最高分：<b>${best}</b><br>`+
-      `結算：關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
+      `關卡 ${state.stage} / 波次 ${state.wave} / 等級 ${state.level}`;
 
     $panelRow.style.display='flex';
 
@@ -1888,6 +2099,10 @@ canvas{width:100%;height:100%;display:block}
     allyRockets=[];
     wingmanAcc=0;
 
+    if(AI.enabled){
+      buffs.magnet = Math.max(buffs.magnet, 1e9);
+    }
+
     pBullets=[];eBullets=[];enemies=[];drops=[];particles=[];
     spawnWave();
   }
@@ -1899,7 +2114,6 @@ canvas{width:100%;height:100%;display:block}
     if(lockedLandscape) return;
     if(mode==='shop') return;
 
-    statsPrevMode = mode; // ✅ remember where we came from
     statsFromGameOver = (fromGameOver === true) || (mode === 'gameover');
 
     mode='stats';
@@ -1953,7 +2167,7 @@ canvas{width:100%;height:100%;display:block}
       `商店：爆發CD↓ <b>${shopState.burstCdDown}</b>｜爆發時間↑ <b>${shopState.burstDurUp}</b>`,
       `商店：無敵CD↓ <b>${shopState.invulnCdDown}</b>｜無敵時間↑ <b>${shopState.invulnDurUp}</b>`,
       `商店：磁鐵購買 <b>${shopState.magnetRun?1:0}</b>｜僚機購買 <b>${shopState.wingmanBought?1:0}</b>`,
-      `AI 商店限制：本關已買 <b>${state.shopBuysThisStage}</b> / <b>${state.shopBuysCapForAI}</b>`
+      `AI 商店：本關已買 <b>${state.shopBuysThisStage}</b> / <b>${state.shopBuysCapForAI}</b>`
     ];
     $panelSub.innerHTML = lines.join('<br>');
 
@@ -1984,22 +2198,13 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function closeStats(){
-    // ✅ restore to previous screen (gameover/win)
-    if(statsPrevMode === 'gameover'){
+    if(statsFromGameOver){
       mode='gameover';
       paused=true;
       $panel.classList.remove('isStats');
       renderGameOverPanel();
       return;
     }
-    if(statsPrevMode === 'win'){
-      mode='win';
-      paused=true;
-      $panel.classList.remove('isStats');
-      renderWinPanel();
-      return;
-    }
-
     overlay.classList.remove('show');
     $panel.classList.remove('isStats');
     mode='play';
