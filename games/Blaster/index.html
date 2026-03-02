@@ -1811,12 +1811,36 @@ function bossTick(e,dt){
   const newPhase=(rr<=.35)?3:(rr<=.70?2:1);
   if(newPhase!==e.phase){ e.phase=newPhase; toastMsg(`${bossTitle(e.kind)}：Phase ${e.phase}`, superB?0.95:0.55); }
 
+  // Boss 橫移：加上上限 + 平滑，避免中後期甩到眼花
+  const center = W * 0.5;
+
   if((e.strafeSpd||0) > 0){
-    e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||1.0);
-    const ox = Math.sin(e.strafePhase) * (e.strafeAmp||200);
-    e.x = W*0.5 + ox;
+    // 速度上限：Tier 越高允許稍快，但不讓後期爆表
+    const tTier = tierOfStage(stage);
+    const spdCap =
+      1.75 + tTier*0.25 +
+      (superB ? 0.20 : 0) +
+      (e.kind==='overlord' ? 0.20 : 0) +
+      (e.kind==='harbinger' ? 0.10 : 0) +
+      (e.phase>=3 ? 0.10 : 0);
+
+    const spd = clamp((e.strafeSpd||0), 0, spdCap);
+
+    // 幅度上限：同時限制「螢幕比例」+「硬上限」，避免左右飄到像瞬移
+    const hardAmp = (e.kind==='overlord') ? 260 : (e.kind==='harbinger') ? 240 : 220;
+    const ampCap  = Math.min(W*0.36, hardAmp);
+    const amp     = clamp((e.strafeAmp||0), 0, ampCap);
+
+    e.strafePhase = (e.strafePhase||0) + dt*spd;
+
+    const targetX = center + Math.sin(e.strafePhase) * amp;
+
+    // 平滑（越大越黏）：讓視覺不抖、也不會突然反向甩爆
+    const ease = clamp(dt*10, 0, 1);
+    e.x = lerp((e.x==null?center:e.x), targetX, ease);
   }else{
-    e.x = W*0.5;
+    // 沒有橫移的 Boss 也順便平滑回中線，避免怪異跳動
+    e.x = lerp((e.x==null?center:e.x), center, clamp(dt*10, 0, 1));
   }
 
   const tempoMul = superB ? 0.86 : (big ? 0.92 : 1.18);
@@ -2690,11 +2714,12 @@ function update(dt){
     e.y=lerp(e.y,e.targetY,clamp(dt*2.6,0,1));
     if(e.barrierT>0) e.barrierT = Math.max(0, e.barrierT - dt);
 
-    if(e.strafeAmp>0){
-      e.strafePhase+=dt*e.strafeSpd;
-      const ox=Math.sin(e.strafePhase)*e.strafeAmp;
-      if(e.type==='boss') e.x=W*.5+ox;
-      else {if(e.baseX==null)e.baseX=e.x; e.x=e.baseX+ox}
+    // NOTE: Boss 的橫移交給 bossTick() 統一處理，避免「算兩次」速度翻倍
+    if(e.strafeAmp>0 && e.type!=='boss'){
+      e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||0);
+      const ox = Math.sin(e.strafePhase) * (e.strafeAmp||0);
+      if(e.baseX==null) e.baseX = e.x;
+      e.x = e.baseX + ox;
     }
     e.x=clamp(e.x,e.r+10,W-e.r-10);
 
