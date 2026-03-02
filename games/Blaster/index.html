@@ -163,7 +163,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: Boss10x+Mini+Overlord
+  BUILD: 100
 </div>
 
 <div class="app">
@@ -669,6 +669,7 @@ function applyDrop(type, d){
 }
 
 function coinAmtForEnemy(e){
+  if(state.stage===FINAL_STAGE && e.kind==='overlord') return 0;
   if(!e) return 1;
   if(e.type==='mob') return 2;
   if(e.type==='elite') return 5;
@@ -2407,7 +2408,7 @@ function gameOver(){
 
 function onEnemyKilled(e){
   const coinAmt = coinAmtForEnemy(e);
-  dropCoin(e.x, e.y, coinAmt);
+  if(coinAmt>0) dropCoin(e.x, e.y, coinAmt);
 
   const s = scoreXpForEnemy(e);
   state.score += s.score;
