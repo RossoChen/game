@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 改王
+  BUILD: 小改改
 </div>
 
 <div class="app">
@@ -1706,10 +1706,11 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyBulletCap(){
     const boss = enemies.find(e=>e.type==='boss');
-    if(!boss) return 140;
-    if(boss.kind === 'sniper')   return 420;
-    if(boss.kind === 'defender') return 30;
-    return 260;
+    if(!boss) return 240;
+    if(boss.kind === 'sniper')   return 500;
+    if(boss.kind === 'defender') return 20;
+  
+    return 400;
   }
 
   let fireAcc=0;
@@ -2106,24 +2107,33 @@ canvas{width:100%;height:100%;display:block}
     const newPhase=(r<=.40)?3:(r<=.70?2:1);
     if(newPhase!==e.phase){
       e.phase=newPhase;
-      if(e.phase===2){toastMsg('Boss：Phase 2',.7);e.ringCd=.90;e.spiralCd=.40}
-      else if(e.phase===3){toastMsg('Boss：Phase 3',.7);e.summonCd=1.3+Math.random()*1.0;e.ringCd=.70;e.spiralCd=.28;e.burstCd=.55}
+    if(e.phase===2){
+      toastMsg('Boss：Phase 2',.7);
+      e.ringCd = 0.74 * tempoMul;
+      e.spiralCd = 0.32 * tempoMul;
     }
-    const spdMul=(e.phase===1?0.96:(e.phase===2?1.00:1.05));
-    const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
-
+    else if(e.phase===3){
+      toastMsg('Boss：Phase 3',.7);
+      e.summonCd = 1.3+Math.random()*1.0;
+      e.ringCd = 0.56 * tempoMul;
+      e.spiralCd = 0.22 * tempoMul;
+      e.burstCd  = 0.48 * tempoMul;
+    }
+    }
     const brutal = state.stage>=20;
-    const bossEasy = state.stage < 10;
+    const bossEasy = state.stage < 8;
+    const tempoMul = bossEasy ? 0.92 : 0.82;
+    const spdBoost = 1 + clamp((state.stage-1)*0.0012, 0, 0.10);
+    const spdMul = (e.phase===1?1.08:(e.phase===2?1.14:1.22)) * spdBoost;
+    const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
     const densMul = bossEasy ? 0.72 : 1.0;
-    const cdMul   = bossEasy ? 1.18 : 1.0;
-
-    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.60;
+    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.80;
 
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
       e.burstGapCd=0;
-      e.burstCd=(e.phase===1?0.85:(e.phase===2?0.70:0.55)) * cdMul;
+      e.burstCd=(e.phase===1?0.78:(e.phase===2?0.64:0.50)) * tempoMul;
     }
     if(e.burstLeft>0){
       e.burstGapCd-=dt;
@@ -2137,7 +2147,7 @@ canvas{width:100%;height:100%;display:block}
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
         }
         e.burstLeft-=1;
-        e.burstGapCd=(e.phase===1?0.12:(e.phase===2?0.11:0.10)) * cdMul;
+        e.burstGapCd=(e.phase===1?0.105:(e.phase===2?0.095:0.085)) * tempoMul;
       }
     }
 
@@ -2150,7 +2160,7 @@ canvas{width:100%;height:100%;display:block}
         const a=base+(i/n)*Math.PI*2;
         enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
       }
-      e.ringCd=(e.phase===1?1.10:(e.phase===2?0.80:0.60)) * (brutal?0.92:1.0) * cdMul;
+      e.ringCd=(e.phase===1?0.96:(e.phase===2?0.70:0.52)) * (brutal?0.92:1.0) * tempoMul;
     }
 
     e.spiralCd-=dt;
@@ -2163,7 +2173,7 @@ canvas{width:100%;height:100%;display:block}
         const a=base+(i/n)*Math.PI*2;
         enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
       }
-      e.spiralCd=(e.phase===1?0.55:(e.phase===2?0.34:0.24))*(brutal?0.92:1.0) * cdMul;
+      e.spiralCd=(e.phase===1?0.48:(e.phase===2?0.30:0.21))*(brutal?0.92:1.0) * tempoMul;
     }
 
     if(e.phase===3){
