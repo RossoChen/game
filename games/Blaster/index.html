@@ -163,8 +163,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 100
-</div>
+  BUILD: Boss10x+Mini+Overlord+Harbinger90</div>
 
 <div class="app">
   <div class="hud">
@@ -669,12 +668,12 @@ function applyDrop(type, d){
 }
 
 function coinAmtForEnemy(e){
-  if(state.stage===FINAL_STAGE && e.kind==='overlord') return 0;
   if(!e) return 1;
   if(e.type==='mob') return 2;
   if(e.type==='elite') return 5;
   if(e.type==='healer') return 12;
   if(e.type==='boss'){
+    if(state.stage===FINAL_STAGE && e.kind==='overlord') return 0;
     if(e.rank==='super') return 220;
     if(e.rank==='big') return 70;
     if(e.rank==='mini') return 20;
@@ -776,6 +775,7 @@ function bossTitle(kind){
   if(kind==='gunner') return 'Gunner';
   if(kind==='storm') return 'Storm';
   if(kind==='reaper') return 'Reaper';
+  if(kind==='harbinger') return 'Harbinger';
   return 'Boss';
 }
 
@@ -783,6 +783,7 @@ const BIG_BOSS_ROT = ['warden','sniper','splitter','defender','gunner','storm','
 const MINI_BOSS_ROT = ['gunner','storm','reaper','sniper','splitter','boss'];
 
 function bigBossKindForStage(stage){
+  if(stage===90) return 'harbinger';
   const idx = Math.floor(stage/10)-1;
   return BIG_BOSS_ROT[idx % BIG_BOSS_ROT.length] || 'boss';
 }
@@ -878,6 +879,15 @@ function spawnBossByKind(kind, rank){
     mk({r:31, hp:hpR, hpMax:hpR, bulletSpeed:(260+stage*10), bulletDmg:(12 + stage*2.0) * enemyDmgMul(stage),
         strafeAmp:(rank==='mini'?160:210), strafeSpd:(1.02+stage*0.052)*(rank==='mini'?0.92:1.0), strafePhase:0,
         beamCd:0.65, beamPhase:0, ringCd:1.55});
+    return;
+  }
+  if(kind==='harbinger'){
+    const hpH = hpBase * 3.2;
+    mk({r:34, hp:hpH, hpMax:hpH, bulletSpeed:(285+stage*11), bulletDmg:(14 + stage*2.25) * enemyDmgMul(stage),
+        strafeAmp:240, strafeSpd:1.12+stage*0.030, strafePhase:0,
+        reflectCd:3.6, reflectT:0,
+        bombCd:1.10, fanCd:0.52, fanLeft:0, fanGapCd:0,
+        beamCd:0.95, beamPhase:0});
     return;
   }
   if(kind==='overlord'){
@@ -1767,6 +1777,30 @@ function splitBullet(b){
   }
 }
 
+function reflectPlayerBullet(pb, boss){
+  if(eBullets.length>=enemyBulletCap()) return;
+  const stage = state.stage;
+  const r = clamp((pb.r||4)-1, 3, 8);
+  const vx = (pb.vx||0)*0.65 + rand(-40,40);
+  const vy = Math.abs(pb.vy||520)*0.92;
+  const dmg = clamp((pb.dmg||20)*0.30, 8, 28) * enemyDmgMul(stage);
+  const hp = Math.floor(enemyBulletHpByStage(stage) * 0.60);
+  eBullets.push({
+    x:pb.x, y:pb.y,
+    r, vx, vy,
+    dmg, alive:true,
+    pierce:0,
+    hp,
+    beam:false,
+    len:0,
+    unclashable:false,
+    split:false,
+    splitGen:0, splitN:0, splitJ:0,
+    vamp:false,
+    srcId: boss? (boss._id||0) : 0,
+  });
+}
+
 function bossTick(e,dt){
   const stage = state.stage;
   const mini = (e.rank==='mini');
@@ -1788,6 +1822,65 @@ function bossTick(e,dt){
   const tempoMul = superB ? 0.86 : (big ? 0.92 : 1.18);
   const brutal = stage>=20;
   const bossBulletHp = enemyBulletHpByStage(stage) * 0.60;
+
+  if(e.kind==='harbinger'){
+    // 反彈護盾（短暫無敵+反彈）
+    if((e.reflectT||0) > 0) e.reflectT = Math.max(0, e.reflectT - dt);
+    e.reflectCd = (e.reflectCd??4.2) - dt;
+    if(e.reflectCd<=0){
+      const dur = (e.phase===1?2.0:(e.phase===2?2.3:2.6));
+      e.reflectT = dur;
+      e.barrierT = Math.max(e.barrierT||0, dur);
+      e.reflectCd = (e.phase===1?7.8:(e.phase===2?6.4:5.4)) * tempoMul;
+      toastMsg('🪞 反彈護盾', 0.45);
+    }
+
+    // 大型裝甲炸彈（不可清彈）
+    e.bombCd = (e.bombCd??1.10) - dt;
+    if(e.bombCd<=0 && eBullets.length<enemyBulletCap()){
+      const ang = Math.atan2(player.y-e.y, player.x-e.x);
+      const spread = (e.phase===1?0.14:(e.phase===2?0.18:0.22));
+      for(const da of [-spread, spread]){
+        enemyShoot(e, ang+da, 0.72, 1.25, {r:9, hp: bossBulletHp, unclashable:true});
+      }
+      e.bombCd = (e.phase===1?1.30:(e.phase===2?1.10:0.92)) * tempoMul;
+    }
+
+    // 扇形灑彈（可清彈，靠頻率+速度製造威脅）
+    e.fanCd = (e.fanCd??0.52) - dt;
+    if(e.fanCd<=0 && eBullets.length<enemyBulletCap()){
+      e.fanLeft = (e.phase===1?2:(e.phase===2?3:4));
+      e.fanGapCd = 0;
+      e.fanCd = (e.phase===1?0.62:(e.phase===2?0.54:0.48)) * tempoMul;
+    }
+    if((e.fanLeft||0) > 0){
+      e.fanGapCd -= dt;
+      if(e.fanGapCd<=0){
+        const ang = Math.atan2(player.y-e.y, player.x-e.x);
+        const lanes = (e.phase===1?9:(e.phase===2?11:13));
+        const spr = 0.23;
+        for(let i=0;i<lanes;i++){
+          const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+          enemyShoot(e, ang+t*spr, 1.25, 1.00, {r:5, hp: bossBulletHp});
+        }
+        e.fanLeft -= 1;
+        e.fanGapCd = 0.085 * tempoMul;
+      }
+    }
+
+    // 交叉光束（封路，但不像 Reaper 一直逼）
+    e.beamPhase = (e.beamPhase||0) + dt*1.05;
+    e.beamCd = (e.beamCd??0.95) - dt;
+    if(e.beamCd<=0 && eBullets.length<enemyBulletCap()){
+      const base = Math.atan2(player.y-e.y, player.x-e.x) + Math.sin(e.beamPhase)*0.10;
+      const offs = (e.phase===3 ? [-0.12,0,0.12] : [-0.10,0.10]);
+      for(const da of offs){
+        enemyShoot(e, base+da, 1.55, 1.12, {beam:true, len:54, r:7, pierce:0, hp:1});
+      }
+      e.beamCd = (e.phase===1?1.05:(e.phase===2?0.92:0.78)) * tempoMul;
+    }
+    return;
+  }
 
   if(e.kind==='overlord'){
     e.spin = (e.spin||0) + dt*(2.2 + e.phase*0.55);
@@ -2711,6 +2804,9 @@ function update(dt){
       if(dist2(b.x,b.y,e.x,e.y)<(b.r+e.r)**2){
 
         if((e.barrierT||0) > 0){
+          if(e.type==='boss' && e.kind==='harbinger' && (e.reflectT||0) > 0){
+            reflectPlayerBullet(b, e);
+          }
           addBurst(b.x,b.y,2);
         }else{
           if(e.kind==='warden' && (e.shield||0) > 0){
@@ -2934,6 +3030,11 @@ function draw(){
       ctx.globalAlpha=.7;ctx.fillStyle='rgba(255,255,255,.55)';
       ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
       ctx.fillText('🧿', e.x, e.y+e.r+6);
+    }
+    if(isBoss && (e.reflectT||0) > 0){
+      ctx.globalAlpha=.85;ctx.fillStyle='rgba(255,255,255,.70)';
+      ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillText('🪞', e.x, e.y+e.r+18);
     }
 
     if(isBoss){
