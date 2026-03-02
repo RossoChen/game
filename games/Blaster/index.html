@@ -183,7 +183,7 @@ canvas{width:100%;height:100%;display:block}
 
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 小改改
+  BUILD: BossScheduleV1
 </div>
 
 <div class="app">
@@ -253,7 +253,7 @@ canvas{width:100%;height:100%;display:block}
 </div>
 
 <script>
-(()=>{ // setup
+(()=>{
   function isIOS(){
     return /iP(hone|ad|od)/.test(navigator.platform) || (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
   }
@@ -394,7 +394,6 @@ canvas{width:100%;height:100%;display:block}
   const SPREAD_CAP_BASE=5;
   const PIERCE_CAP=5;
 
-  // ✅ Campaign ends at 100
   const FINAL_STAGE = 100;
 
   const BULLET_R_MIN=3;
@@ -402,7 +401,6 @@ canvas{width:100%;height:100%;display:block}
   const BULLET_R_CAP=8;
   const BULLET_R_UPG_CAP=7;
 
-  // ✅ base speed mul (will be tier-adjusted)
   const ENEMY_BULLET_SPEED_MUL_BASE = 0.30;
 
   const BOSS_SPREAD_P1 = 0.24;
@@ -416,49 +414,38 @@ canvas{width:100%;height:100%;display:block}
 
   function downtime(totalCd, dur){ return Math.max(0, Math.round((totalCd - dur)*10)/10); }
 
-  // ===== Difficulty tiers (0..3 for 1..100) =====
   function tierOfStage(stage){ return clamp(Math.floor((stage-1)/25), 0, 3); }
   function enemyBulletSpeedMul(stage){
     const t = tierOfStage(stage);
-    // 0.30 / 0.32 / 0.34 / 0.36
     return ENEMY_BULLET_SPEED_MUL_BASE + t*0.02;
   }
   function enemyDmgMul(stage){
     const t = tierOfStage(stage);
-    // 1.00 / 1.10 / 1.20 / 1.30
     return 1 + t*0.10;
   }
   function enemyBulletHpMul(stage){
     const t = tierOfStage(stage);
-    // 1.00 / 1.10 / 1.22 / 1.36
     return [1.0, 1.10, 1.22, 1.36][t] || 1.0;
   }
 
-  // ===== Affix system =====
   const AFFIX = {
-    BARRIER: 'BARRIER', // spawn 0.6s immunity
-    HASTE:   'HASTE',   // strafe + fire
-    TANK:    'TANK',    // hp up
-    PIERCE:  'PIERCE',  // bullets pierce
-    BEAMER:  'BEAMER',  // more beams
-    VAMP:    'VAMP',    // hits heal self or boss
+    BARRIER: 'BARRIER',
+    HASTE:   'HASTE',
+    TANK:    'TANK',
+    PIERCE:  'PIERCE',
+    BEAMER:  'BEAMER',
+    VAMP:    'VAMP',
   };
 
   function rollAffixes(stage, isBoss=false){
     const t = tierOfStage(stage);
     const pool = [AFFIX.BARRIER, AFFIX.HASTE, AFFIX.TANK, AFFIX.PIERCE, AFFIX.BEAMER, AFFIX.VAMP];
-
-    // Boss: 1-2 affixes; Elite: 1 affix (later 2)
     const want = isBoss ? (t>=2 ? 2 : 1) : (stage>=70 ? 2 : 1);
-
     const out = [];
-    // Boss/Elite always have BARRIER early to avoid "spawn and die"
     if(isBoss || stage>=20) out.push(AFFIX.BARRIER);
-
     while(out.length < want){
       const k = pool[Math.floor(Math.random()*pool.length)];
       if(out.includes(k)) continue;
-      // keep barrier only once
       out.push(k);
     }
     return out;
@@ -466,7 +453,12 @@ canvas{width:100%;height:100%;display:block}
 
   function applyAffixesToEnemy(e){
     const aff = e.affixes || [];
-    // barrier
+    if(typeof e.hp !== 'number') e.hp = 1;
+    if(typeof e.hpMax !== 'number') e.hpMax = e.hp;
+    if(typeof e.fireRate !== 'number') e.fireRate = 1.0;
+    if(typeof e.strafeSpd !== 'number') e.strafeSpd = 0;
+    if(typeof e.strafeAmp !== 'number') e.strafeAmp = 0;
+
     if(aff.includes(AFFIX.BARRIER)){
       e.barrierT = Math.max(e.barrierT||0, 0.60);
     }
@@ -488,7 +480,6 @@ canvas{width:100%;height:100%;display:block}
     if(aff.includes(AFFIX.VAMP)){
       e.vamp = true;
     }
-    // clamp sanity
     e.fireRate = clamp(e.fireRate, 0.20, 2.50);
   }
 
@@ -535,8 +526,6 @@ canvas{width:100%;height:100%;display:block}
   const state={
     stage:1,wave:1,score:0,coins:0,xp:0,level:1,nextXp:60,
     waveClearCooldown:0,waveInProgress:false,bossEveryWaves:5,
-
-    // AI anti-runaway
     shopBuysThisStage: 0,
     shopBuysCapForAI: 4,
   };
@@ -561,7 +550,6 @@ canvas{width:100%;height:100%;display:block}
 
   let pBullets=[],eBullets=[],enemies=[],drops=[],particles=[];
 
-  // Wingmen
   let allyRockets=[];
   let wingmanAcc=0;
   const WINGMAN_BASE_INTERVAL = 2.0;
@@ -631,8 +619,6 @@ canvas{width:100%;height:100%;display:block}
       strafeSpd:isStrafe?rand(.85, elite?2.35:1.85):0,
       strafePhase:rand(0,Math.PI*2),
       hitFlash:0,
-
-      // affix fields
       affixes: meta.affixes || [],
       barrierT: 0,
       bulletPierceBonus: 0,
@@ -671,6 +657,18 @@ canvas{width:100%;height:100%;display:block}
   }
   function dropCoin(x,y,amt){ drops.push({x,y,r:10,vy:rand(70,130),type:'coin',life:12,amt}); }
 
+  function coinForEnemy(e){
+    if(!e) return 1;
+    if(e.type === 'boss'){
+      if(e.rank === 'super') return 220;
+      if(e.rank === 'big')   return 90;
+      return 25;
+    }
+    if(e.type === 'healer') return 14;
+    if(e.type === 'elite')  return 8;
+    return 2;
+  }
+
   const shopState={
     spreadCapUp:0,
     burstCdDown:0, invulnCdDown:0,
@@ -684,16 +682,13 @@ canvas{width:100%;height:100%;display:block}
     return (shopState.wingmanBought === 1) || (AI?.enabled === true);
   }
 
-  // ✅ diminishing returns for wingman atk down
   function wingmanInterval(){
     const lvl = clamp(shopState.wingmanAtkDown || 0, 0, WINGMAN_MAX_UPG);
-
     const base = WINGMAN_BASE_INTERVAL;
-    const step1 = 0.30; // first 3 upgrades
-    const step2 = 0.20; // last upgrades
+    const step1 = 0.30;
+    const step2 = 0.20;
     const a = Math.min(3, lvl);
     const b = Math.max(0, lvl - 3);
-
     const itv = base - a*step1 - b*step2;
     return Math.max(WINGMAN_MIN_INTERVAL, itv);
   }
@@ -754,7 +749,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // ✅ ensure affix elites
     const wantAffixElites = (state.stage >= 50) ? 2 : (state.stage >= 20 ? 1 : 0);
     const affixEliteLanes = new Set();
     while(affixEliteLanes.size < Math.min(wantAffixElites, Math.max(1, lanes-1))){
@@ -820,131 +814,167 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // ✅ boss rotation per 10 stages (now 5 kinds)
-  //   boss / warden / sniper / splitter / defender / ...
-  function bossKindForStage(stage){
-    const ch = Math.ceil(stage/10);
-    const seq = ['boss','warden','sniper','splitter','defender','boss','warden','sniper','splitter','defender'];
-    return seq[(ch-1) % seq.length] || 'boss';
+  function isBigBossStage(stage){ return (stage % 10) === 0 && stage !== FINAL_STAGE; }
+  function isSuperBossStage(stage){ return stage === FINAL_STAGE; }
+
+  const BIG_BOSS_SCHEDULE = {
+    10:'warden',
+    20:'sniper',
+    30:'splitter',
+    40:'defender',
+    50:'gunner',
+    60:'storm',
+    70:'reaper',
+    80:'boss',
+    90:'storm',
+  };
+
+  function bigBossKindForStage(stage){
+    return BIG_BOSS_SCHEDULE[stage] || 'boss';
+  }
+
+  function miniBossKindForStage(stage){
+    const m = stage % 10;
+    if(m===1) return 'gunner';
+    if(m===2) return 'storm';
+    if(m===3) return 'defender';
+    if(m===4) return 'splitter';
+    if(m===5) return 'warden';
+    if(m===6) return 'sniper';
+    if(m===7) return 'gunner';
+    if(m===8) return 'storm';
+    return 'boss';
+  }
+
+  function bossTitle(kind){
+    switch(kind){
+      case 'warden': return 'Warden';
+      case 'sniper': return 'Sniper';
+      case 'splitter': return 'Splitter';
+      case 'defender': return 'Defender';
+      case 'gunner': return 'Gunner';
+      case 'storm': return 'Storm';
+      case 'reaper': return 'Reaper';
+      case 'overlord': return 'Overlord';
+      default: return 'Boss';
+    }
   }
 
   function spawnBoss(){
+    const stage = state.stage;
     const holdY = enemyHoldY() - 12;
-    const kind = bossKindForStage(state.stage);
 
-    const hpBase = (2000 + state.stage*170) * stageDifficultyMul(state.stage);
+    const superBoss = isSuperBossStage(stage);
+    const bigBoss   = isBigBossStage(stage);
+    const rank = superBoss ? 'super' : (bigBoss ? 'big' : 'mini');
+    const kind = superBoss ? 'overlord' : (bigBoss ? bigBossKindForStage(stage) : miniBossKindForStage(stage));
 
-    // Boss-level affixes (1-2)
-    const bossAff = rollAffixes(state.stage, true);
+    const hpBase = (2000 + stage*170) * stageDifficultyMul(stage);
 
-    if(kind==='defender'){
-      const hpD = hpBase * 7.5;
-      const e = {
-        type:'boss', kind:'defender',
-        x: W*0.5, y: -100, targetY: holdY, r: 30,
-        hp: hpD, hpMax: hpD,
-        strafeAmp:0, strafeSpd:0, strafePhase:0,
-        phase:1, hitFlash:0,
-        ballCd:1.0, ballPeriod:4.0,
+    const rankHpMul =
+      (rank==='mini')  ? 0.62 :
+      (rank==='big')   ? 1.00 :
+      3.90;
 
-        affixes: bossAff, barrierT: 0, bulletPierceBonus: 0, beamer:false, vamp:false
-      };
-      applyAffixesToEnemy(e);
-      enemies.push(e);
-      toastMsg('Boss（Defender）入場', 0.9);
-      return;
-    }
+    const kindHpMul = (()=>{
+      if(rank==='mini') return 0.72;
+      if(kind==='defender') return 1.35;
+      if(kind==='sniper')   return 0.95;
+      if(kind==='warden')   return 1.15;
+      if(kind==='splitter') return 1.05;
+      if(kind==='gunner')   return 1.10;
+      if(kind==='storm')    return 1.20;
+      if(kind==='reaper')   return 1.15;
+      return 1.00;
+    })();
 
-    if(kind==='sniper'){
-      const baseSpd = 520 + state.stage*10;
-      const hp2 = hpBase * 1.85;
-      const e = {
-        type:'boss', kind:'sniper',
-        x: W*0.5, y: -100, targetY: holdY, r: 30,
-        hp: hp2, hpMax: hp2,
-        bulletSpeed: baseSpd,
-        bulletDmg: (12 + state.stage*2.2) * enemyDmgMul(state.stage),
-        strafeAmp:0, strafeSpd:0, strafePhase:0,
-        phase:1, hitFlash:0,
-        snipeT:0.25,
+    const hp = hpBase * rankHpMul * kindHpMul;
 
-        affixes: bossAff, barrierT: 0, bulletPierceBonus: 0, beamer:false, vamp:false
-      };
-      applyAffixesToEnemy(e);
-      enemies.push(e);
-      toastMsg('Boss（Sniper）入場', 0.9);
-      return;
-    }
+    const aff = (rank==='big' || rank==='super') ? rollAffixes(stage, true) : [];
 
-    if(kind==='warden'){
-      // ✅ Warden: has shield that reduces damage while up + regen
-      const hpW = hpBase * 2.4;
-      const e = {
-        type:'boss', kind:'warden',
-        x: W*0.5, y: -110, targetY: holdY, r: 32,
-        hp: hpW, hpMax: hpW,
-        bulletSpeed: (260+state.stage*11),
-        bulletDmg: (12 + state.stage*2.1) * enemyDmgMul(state.stage),
-        strafeAmp: 180, strafeSpd: 1.00+state.stage*0.045, strafePhase:0,
-        phase:1, hitFlash:0,
-        ringCd:0.9, spiralCd:0.34, summonCd:999,
-        burstCd:0.65, burstLeft:0, burstGap:0.10, burstGapCd:0,
-        spin:0,
-
-        // shield mechanics
-        shield: Math.max(900, hpW*0.60),
-        shieldMax: Math.max(900, hpW*0.60),
-        shieldRegen: Math.max(70, hpW*0.020), // per second
-        shieldDelay: 0,
-
-        affixes: bossAff, barrierT: 0, bulletPierceBonus: 0, beamer:false, vamp:false
-      };
-      applyAffixesToEnemy(e);
-      enemies.push(e);
-      toastMsg('Boss（Warden）入場', 0.9);
-      return;
-    }
-
-    if(kind==='splitter'){
-      // ✅ Splitter: fires split bullets that split into shards
-      const hpS = hpBase * 2.1;
-      const e = {
-        type:'boss', kind:'splitter',
-        x: W*0.5, y: -110, targetY: holdY, r: 31,
-        hp: hpS, hpMax: hpS,
-        bulletSpeed: (260+state.stage*10),
-        bulletDmg: (12 + state.stage*2.0) * enemyDmgMul(state.stage),
-        strafeAmp: 210, strafeSpd: 1.05+state.stage*0.050, strafePhase:0,
-        phase:1, hitFlash:0,
-        splitCd: 0.55,
-        ringCd: 1.15,
-        spin: 0,
-
-        affixes: bossAff, barrierT: 0, bulletPierceBonus: 0, beamer:false, vamp:false
-      };
-      applyAffixesToEnemy(e);
-      enemies.push(e);
-      toastMsg('Boss（Splitter）入場', 0.9);
-      return;
-    }
-
-    // base boss
-    const baseSpd=240+state.stage*12;
     const e = {
-      type:'boss', kind:'boss',
-      x:W*.5, y:-100, targetY:holdY, r:30, hp:hpBase, hpMax:hpBase,
-      bulletSpeed:baseSpd, bulletDmg:(12+state.stage*2.0) * enemyDmgMul(state.stage),
-      strafeAmp:240, strafeSpd:1.05+state.stage*0.06, strafePhase:0,
-      phase:1, ringCd:1.0, spiralCd:0.35, summonCd:999,
-      burstCd:0.55, burstLeft:0, burstGap:0.10, burstGapCd:0,
-      spin:0, hitFlash:0,
-      medCd: (state.stage>=20)? (6.8+Math.random()*3.5) : 999,
+      type:'boss',
+      kind,
+      rank,
 
-      affixes: bossAff, barrierT: 0, bulletPierceBonus: 0, beamer:false, vamp:false
+      x: W*0.5, y: -120, targetY: holdY,
+      r: (rank==='super') ? 52 : (rank==='big' ? 32 : 26),
+
+      hp, hpMax: hp,
+      phase: 1,
+      hitFlash: 0,
+
+      fireRate: 1.0,
+      strafeAmp: (kind==='sniper' || kind==='defender') ? 0 : (rank==='mini' ? 170 : 240),
+      strafeSpd: (kind==='sniper' || kind==='defender') ? 0 : (1.05 + stage*0.05),
+      strafePhase: 0,
+
+      bulletSpeed: (260 + stage*12),
+      bulletDmg: (12 + stage*2.0) * enemyDmgMul(stage),
+
+      affixes: aff,
+      barrierT: 0,
+      bulletPierceBonus: 0,
+      beamer:false,
+      vamp:false,
     };
+
+    if(kind==='boss'){
+      e.ringCd=1.0; e.spiralCd=0.35; e.summonCd=999;
+      e.burstCd=0.55; e.burstLeft=0; e.burstGap=0.10; e.burstGapCd=0;
+      e.spin=0;
+    }else if(kind==='warden'){
+      e.r = (rank==='super') ? 46 : (rank==='big' ? 34 : 28);
+      e.ringCd=0.9; e.burstCd=0.65; e.spin=0;
+
+      e.shield = Math.max(700, hp*0.55);
+      e.shieldMax = e.shield;
+      e.shieldRegen = Math.max(55, hp*0.016);
+      e.shieldDelay = 0;
+
+      e.bulletSpeed = (260+stage*11);
+      e.bulletDmg   = (12 + stage*2.1) * enemyDmgMul(stage);
+    }else if(kind==='sniper'){
+      e.snipeT=0.25;
+      e.bulletSpeed = (520 + stage*10);
+      e.bulletDmg   = (12 + stage*2.2) * enemyDmgMul(stage);
+    }else if(kind==='splitter'){
+      e.splitCd=0.55; e.ringCd=1.15; e.spin=0;
+      e.bulletSpeed = (260+stage*10);
+      e.bulletDmg   = (12 + stage*2.0) * enemyDmgMul(stage);
+    }else if(kind==='defender'){
+      e.r = (rank==='super') ? 46 : (rank==='big' ? 34 : 28);
+      e.ballCd=1.0; e.ballPeriod=4.0;
+    }else if(kind==='gunner'){
+      e.gunCd=0.55; e.gunLeft=0; e.gunGapCd=0;
+      e.ringCd=1.75; e.spin=0;
+      e.bulletSpeed = (300+stage*12);
+      e.bulletDmg   = (11 + stage*2.0) * enemyDmgMul(stage);
+    }else if(kind==='storm'){
+      e.ringCd=0.85; e.spiralCd=0.26; e.spin=0;
+      e.bulletSpeed = (280+stage*12);
+      e.bulletDmg   = (11 + stage*1.9) * enemyDmgMul(stage);
+    }else if(kind==='reaper'){
+      e.beamCd=0.55; e.beamPhase=0;
+      e.ringCd=1.35; e.spin=0;
+      e.bulletSpeed = (300+stage*11);
+      e.bulletDmg   = (12 + stage*2.1) * enemyDmgMul(stage);
+    }else if(kind==='overlord'){
+      e.r = 52;
+      e.ringCd=0.78; e.spiralCd=0.22; e.spin=0;
+      e.gunCd=0.52; e.gunLeft=0; e.gunGapCd=0;
+      e.beamCd=0.48; e.beamPhase=0;
+      e.summonCd=2.2;
+      e.strafeAmp=280; e.strafeSpd=1.12 + stage*0.04;
+      e.bulletSpeed=(320+stage*12);
+      e.bulletDmg=(14 + stage*2.4) * enemyDmgMul(stage);
+    }
+
     applyAffixesToEnemy(e);
     enemies.push(e);
-    toastMsg('Boss 入場',0.9);
+
+    const tag = (rank==='mini') ? '小BOSS' : (rank==='super' ? '終焉大魔王' : 'BOSS');
+    toastMsg(`${tag}（${bossTitle(kind)}）入場`, (rank==='super') ? 1.1 : 0.9);
   }
 
   function nextWave(){state.wave+=1;state.waveClearCooldown=.55;state.waveInProgress=false}
@@ -958,8 +988,6 @@ canvas{width:100%;height:100%;display:block}
     state.wave=1;
     state.waveClearCooldown=.85;
     state.waveInProgress=false;
-
-    // reset AI purchase counter per stage
     state.shopBuysThisStage = 0;
   }
 
@@ -1008,7 +1036,6 @@ canvas{width:100%;height:100%;display:block}
       }
     });
 
-    // ✅ diminishing returns for invuln cd down: first 5 => -1s, later => -0.5s
     items.push({
       id:'invulnCdDown',
       name:'無敵 CD -1s',
@@ -1171,7 +1198,6 @@ canvas{width:100%;height:100%;display:block}
   function shotsFromSpread(s){ return Math.max(1, 1 + Math.floor(s)); }
   function pierceTotal(){ return player.pierce_perm; }
 
-  // === AUTOPLAY AI BEGIN ===
   const AI = {
     enabled:false,
     sniperSweepX:0,
@@ -1180,8 +1206,6 @@ canvas{width:100%;height:100%;display:block}
     nextShopAtMs:0,
     shopLock:false,
     _savedManualMagnet: 0,
-
-    // ✅ 穩定輸出：黏性鎖定（避免左右瞬移）
     aimHoldX: null,
     aimHoldT: 0,
 
@@ -1364,7 +1388,6 @@ canvas{width:100%;height:100%;display:block}
 
       const sniperBoss = enemies.find(e => e.type==='boss' && e.kind==='sniper');
 
-      // Sniper：保持 SOP
       if(sniperBoss){
         if(this.sniperForceLeft){
           this.sniperSweepX = leftX;
@@ -1402,7 +1425,6 @@ canvas{width:100%;height:100%;display:block}
         this.sniperSweepX = player.x;
       }
 
-      // ===== 非 Sniper：穩定對齊輸出 + 必要才閃 =====
       const py = player.y;
 
       const boss = enemies.find(e=>e.type==='boss') || null;
@@ -1410,7 +1432,6 @@ canvas{width:100%;height:100%;display:block}
 
       const shotsLive = shotsFromSpread(spreadTotal());
 
-      // 1) 選目標（優先 Boss，否則選最靠下）
       let target = null;
       if(enemies.length){
         target = boss || null;
@@ -1420,7 +1441,6 @@ canvas{width:100%;height:100%;display:block}
       }
       const aimBaseX = target ? target.x : (W*0.5);
 
-      // 2) aimTargets（兩發時左右對齊；Defender 不用雙點）
       let aimTargets = [aimBaseX];
       if(!defenderBoss && target && shotsLive === 2){
         const dy = Math.max(140, player.y - target.y);
@@ -1432,20 +1452,15 @@ canvas{width:100%;height:100%;display:block}
         ];
       }
 
-      // 3) intervals（預測危險）
       const horizon = 1.25;
       const margin  = 7;
       const intervals = [];
       let minBeamHit = 999;
-      let nearestBallD = 1e18;
 
       for(const b of eBullets){
         if(!b?.alive) continue;
 
         if(b.ball){
-          const d = dist2(b.x,b.y,player.x,player.y);
-          if(d < nearestBallD) nearestBallD = d;
-
           const rad = (b.r||18) + player.r + 18;
           intervals.push([b.x - rad, b.x + rad, 18]);
           continue;
@@ -1478,7 +1493,6 @@ canvas{width:100%;height:100%;display:block}
         intervals.push([xHit - rad, xHit + rad, w]);
       }
 
-      // 4) 近身必撞才大閃（避免每幀抖動）
       let imminentHit = false;
       for(const b of eBullets){
         if(!b?.alive || b.beam || b.ball) continue;
@@ -1501,12 +1515,10 @@ canvas{width:100%;height:100%;display:block}
         return;
       }
 
-      // 5) Defender：限制中線帶，避免龜角
       const bandL = defenderBoss ? (W * 0.33) : safeL;
       const bandR = defenderBoss ? (W * 0.67) : safeR;
       const centerX = W * 0.5;
 
-      // 6) 掃描：避彈 + 對齊輸出
       const candidates = 23;
       let bestX = clamp(player.x, bandL, bandR);
       let bestScore = -1e18;
@@ -1539,7 +1551,6 @@ canvas{width:100%;height:100%;display:block}
         if(score > bestScore){ bestScore=score; bestX=x; }
       }
 
-      // 7) ✅ 瞄準黏性
       const dangerLevel = intervals.length;
       const safeEnoughForAimLock = (bestScore > -2.0e5) && (dangerLevel <= 5) && (buffs.invulnT<=0);
 
@@ -1563,13 +1574,11 @@ canvas{width:100%;height:100%;display:block}
         if(this.aimHoldX != null) bestX = this.aimHoldX;
       }
 
-      // 8) 漸進移動
       const maxStep = player.moveSpeed * dt * (defenderBoss ? 0.92 : 0.98);
       const nx = clamp(bestX, bandL, bandR);
       const dx = clamp(nx - player.x, -maxStep, maxStep);
       setPadX((player.x + dx) / W);
 
-      // 9) 技能
       if(canUseSkill('invuln')){
         const hpPct = player.hpMax>0 ? (player.hp/player.hpMax) : 1;
         const shieldPct = player.shieldMax>0 ? (player.shield/player.shieldMax) : 0;
@@ -1597,7 +1606,6 @@ canvas{width:100%;height:100%;display:block}
     $btnAI.setAttribute('aria-pressed', 'false');
   }
   window.addEventListener('keydown',(e)=>{ if(e.code==='KeyB') AI.toggle(); });
-  // === AUTOPLAY AI END ===
 
   const UPGRADES=[
     {key:'dmg',t:'火力提升',d:'傷害 +15%'},
@@ -1693,8 +1701,8 @@ canvas{width:100%;height:100%;display:block}
   function addXp(xp){
     xp *= player.xpGainMul;
     state.xp += xp;
-  
-    let guard = 0; // 避免極端狀況死迴圈
+
+    let guard = 0;
     while(state.xp >= state.nextXp && guard++ < 50){
       state.xp -= state.nextXp;
       state.level += 1;
@@ -1706,11 +1714,20 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyBulletCap(){
     const boss = enemies.find(e=>e.type==='boss');
-    if(!boss) return 240;
-    if(boss.kind === 'sniper')   return 500;
-    if(boss.kind === 'defender') return 20;
-  
-    return 400;
+    if(!boss) return 140;
+
+    const mini  = boss.rank === 'mini';
+    const big   = boss.rank === 'big';
+    const super = boss.rank === 'super';
+
+    if(boss.kind === 'sniper')   return mini ? 260 : (super ? 520 : 420);
+    if(boss.kind === 'defender') return mini ? 18  : (super ? 36  : 30);
+
+    if(super) return 520;
+    if(big)   return 360;
+    if(mini)  return 220;
+
+    return 260;
   }
 
   let fireAcc=0;
@@ -1760,7 +1777,6 @@ canvas{width:100%;height:100%;display:block}
     const pr=pierceTotal();
     const baseY=player.y-player.r-6;
 
-    // ✅ reduce bullet clash power in later tiers (prevents trivial bullet wipe)
     const t = tierOfStage(state.stage);
     const clashNerf = (t>=2) ? 1 : 0;
     const clashLeftBase = Math.max(1, (((r>=6)?2:1) + Math.min(5, pr)) - clashNerf);
@@ -1772,39 +1788,37 @@ canvas{width:100%;height:100%;display:block}
 
   function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
     if(eBullets.length>=enemyBulletCap())return;
-  
+
     const spd=(e.bulletSpeed??300)*sMul*enemyBulletSpeedMul(state.stage);
-  
+
     const isBeam = !!meta.beam;
     const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
     const pierce = meta.pierce ?? 0;
-  
+
     const baseHp = enemyBulletHpByStage(state.stage);
-  
-    // affix: pierce bonus
+
     const pierceBonus = (e && (e.bulletPierceBonus||0)) || 0;
     const outPierce = pierce + pierceBonus;
-  
-    // affix: beamer bias
+
     const outBeam = isBeam || (!!(e && e.beamer) && Math.random() < 0.28);
-  
-    // ✅ Boss 子彈更耐打（避免一下就被清光）
+
     const isBossShooter = !!(e && e.type === 'boss');
-    const bossHpMul = isBossShooter ? (1.9 + 0.25 * tierOfStage(state.stage)) : 1.0; // Tier0~3：1.9~2.65
-  
-    // ✅ 裝甲彈：不能被玩家子彈對撞清掉
+    const bossHpMul = isBossShooter ? (1.9 + 0.25 * tierOfStage(state.stage)) : 1.0;
+
     const unclashable = !!meta.unclashable;
-  
-    // beam 一樣不給 HP（本來就不能被清）
+
     let hp = 1;
     if(!outBeam){
-      const rawHp = (meta.hp ?? baseHp);
-      hp = Math.floor(rawHp * bossHpMul);
-      if(unclashable) hp = 999999; // 裝甲彈不吃清彈
+      if(meta.hp != null){
+        hp = Math.max(1, Math.floor(meta.hp));
+      }else{
+        hp = Math.floor((baseHp) * bossHpMul);
+      }
+      if(unclashable) hp = 999999;
     }
-  
+
     const len = outBeam ? (meta.len ?? (state.stage>=26?34:28)) : 0;
-  
+
     eBullets.push({
       x:e.x,
       y:e.y+e.r+4,
@@ -1813,22 +1827,19 @@ canvas{width:100%;height:100%;display:block}
       vy:Math.sin(ang)*spd,
       dmg:((e.bulletDmg??8)*dMul),
       alive:true,
-  
+
       pierce: outPierce,
       hp,
       beam: outBeam,
       len,
-  
-      // ✅ new
+
       unclashable,
-  
-      // splitter meta
+
       split: !!meta.split,
       splitGen: meta.splitGen||0,
       splitN: meta.splitN||0,
       splitJ: meta.splitJ||0,
-  
-      // vamp source
+
       vamp: !!(e && e.vamp),
       srcId: (e && e._id) || 0,
     });
@@ -1847,8 +1858,6 @@ canvas{width:100%;height:100%;display:block}
     const enBrutal=(state.stage>=20);
 
     const isElite = (e.type==='elite');
-
-    // affix beamer can inject beam even on normal patterns
     const forceBeam = e.beamer && Math.random()<0.20;
 
     if(isElite){
@@ -1885,7 +1894,6 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // splitter bullet split helper
   function splitBullet(b){
     if(!b || !b.split) return;
     if(b.splitGen >= 2) return;
@@ -1922,122 +1930,266 @@ canvas{width:100%;height:100%;display:block}
   }
 
   function bossTick(e,dt){
-    // ===== Warden: shield regen + mixed patterns =====
-    if(e.kind === 'warden'){
-      const rr = e.hp/e.hpMax;
-      const newPhase=(rr<=.35)?3:(rr<=.70?2:1);
-      if(newPhase!==e.phase){
-        e.phase=newPhase;
-        toastMsg(`Warden：Phase ${e.phase}`, 0.55);
+    const stage = state.stage;
+
+    const mini  = (e.rank === 'mini');
+    const big   = (e.rank === 'big');
+    const super = (e.rank === 'super');
+
+    const rr = e.hp/e.hpMax;
+    const newPhase = (rr<=.35)?3:(rr<=.70?2:1);
+    if(newPhase!==e.phase){
+      e.phase=newPhase;
+      const name = bossTitle(e.kind);
+      toastMsg(`${name}：Phase ${e.phase}`, super ? 0.9 : 0.55);
+    }
+
+    const tempoMul = super ? 0.86 : (big ? 0.92 : 1.18);
+
+    if((e.strafeSpd||0) > 0){
+      e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||1.0);
+      const ox = Math.sin(e.strafePhase) * (e.strafeAmp||200);
+      e.x = W*0.5 + ox;
+    }else{
+      e.x = W*0.5;
+    }
+
+    const bossBulletHp = enemyBulletHpByStage(stage) * 0.60;
+
+    if(e.kind === 'overlord'){
+      e.spin = (e.spin||0) + dt*(2.2 + e.phase*0.55);
+
+      e.ringCd -= dt;
+      if(e.ringCd<=0){
+        const n = (e.phase===1?26:(e.phase===2?34:44));
+        const base = Math.random()*Math.PI*2;
+        for(let i=0;i<n;i++){
+          const a=base+(i/n)*Math.PI*2;
+          enemyShoot(e,a,1.15,0.85,{r:6, hp: bossBulletHp});
+        }
+        e.ringCd = (e.phase===1?0.78:(e.phase===2?0.66:0.56)) * 0.88;
       }
 
-      // shield regen (delay after taking damage)
+      e.spiralCd -= dt;
+      if(e.spiralCd<=0){
+        const n = (e.phase===1?8:(e.phase===2?11:14));
+        const base = e.spin;
+        for(let i=0;i<n;i++){
+          const a = base + (i/n)*Math.PI*2;
+          enemyShoot(e,a,1.12,0.70,{r:5, hp: bossBulletHp});
+        }
+        e.spiralCd = (e.phase===1?0.22:(e.phase===2?0.18:0.15)) * 0.90;
+      }
+
+      e.gunCd -= dt;
+      if(e.gunCd<=0 && eBullets.length<enemyBulletCap()){
+        e.gunLeft = (e.phase===1?3:(e.phase===2?4:5));
+        e.gunGapCd = 0;
+        e.gunCd = (e.phase===1?0.52:(e.phase===2?0.44:0.38)) * 0.90;
+      }
+      if((e.gunLeft||0) > 0){
+        e.gunGapCd -= dt;
+        if(e.gunGapCd<=0){
+          const ang=Math.atan2(player.y-e.y,player.x-e.x);
+          const lanes = (e.phase===1?9:(e.phase===2?11:13));
+          const spread = 0.23;
+          for(let i=0;i<lanes;i++){
+            const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+            enemyShoot(e,ang+t*spread,1.22,1.00,{r:5, hp: bossBulletHp});
+          }
+          e.gunLeft -= 1;
+          e.gunGapCd = 0.08;
+        }
+      }
+
+      e.beamCd -= dt;
+      e.beamPhase = (e.beamPhase||0) + dt*1.1;
+      if(e.beamCd<=0 && eBullets.length<enemyBulletCap()){
+        const base = Math.atan2(player.y-e.y,player.x-e.x) + Math.sin(e.beamPhase)*0.14;
+        for(const da of [-0.10, 0, 0.10]){
+          enemyShoot(e, base+da, 1.55, 1.15, {beam:true, len:50, r:7, pierce:0, hp:1});
+        }
+        e.beamCd = (e.phase===1?0.48:(e.phase===2?0.42:0.36)) * 0.92;
+      }
+
+      e.summonCd -= dt;
+      if(e.summonCd<=0){
+        spawnAdds(4+(Math.random()<0.5?1:0), .92);
+        e.summonCd = 2.2 + Math.random()*1.4;
+      }
+      return;
+    }
+
+    if(e.kind === 'gunner'){
+      e.gunCd -= dt;
+      if(e.gunCd<=0 && eBullets.length<enemyBulletCap()){
+        e.gunLeft = (e.phase===1?2:(e.phase===2?3:4));
+        e.gunGapCd = 0;
+        e.gunCd = (e.phase===1?0.70:(e.phase===2?0.58:0.48)) * tempoMul;
+      }
+      if((e.gunLeft||0) > 0){
+        e.gunGapCd -= dt;
+        if(e.gunGapCd<=0){
+          const ang=Math.atan2(player.y-e.y,player.x-e.x);
+          const lanesBase = (e.phase===1?7:(e.phase===2?9:11));
+          const lanes = Math.max(5, lanesBase - (mini?2:0));
+          const spread = 0.22;
+          for(let i=0;i<lanes;i++){
+            const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
+            enemyShoot(e,ang+t*spread,1.18,1.00,{r:5, hp: bossBulletHp});
+          }
+          e.gunLeft -= 1;
+          e.gunGapCd = (mini?0.12:0.10) * tempoMul;
+        }
+      }
+
+      e.ringCd -= dt;
+      if(e.ringCd<=0){
+        const n = Math.max(10, (mini?12:(e.phase===1?14:(e.phase===2?18:22))));
+        const base=Math.random()*Math.PI*2;
+        for(let i=0;i<n;i++){
+          const a=base+(i/n)*Math.PI*2;
+          enemyShoot(e,a,1.02,0.75,{r:4, hp: bossBulletHp});
+        }
+        e.ringCd = (mini?2.2:(e.phase===1?1.85:(e.phase===2?1.55:1.25))) * tempoMul;
+      }
+      return;
+    }
+
+    if(e.kind === 'storm'){
+      e.spin = (e.spin||0) + dt*(1.8 + e.phase*0.45);
+
+      e.ringCd -= dt;
+      if(e.ringCd<=0){
+        const nBase = (e.phase===1?18:(e.phase===2?26:34));
+        const n = Math.max(12, nBase - (mini?6:0));
+        const base=Math.random()*Math.PI*2;
+        for(let i=0;i<n;i++){
+          const a=base+(i/n)*Math.PI*2;
+          enemyShoot(e,a,1.10,0.78,{r:5, hp: bossBulletHp});
+        }
+        e.ringCd = (e.phase===1?0.95:(e.phase===2?0.78:0.62)) * tempoMul;
+      }
+
+      e.spiralCd -= dt;
+      if(e.spiralCd<=0){
+        const nBase = (e.phase===1?6:(e.phase===2?9:12));
+        const n = Math.max(4, nBase - (mini?2:0));
+        const base=e.spin;
+        for(let i=0;i<n;i++){
+          const a=base+(i/n)*Math.PI*2;
+          enemyShoot(e,a,1.08,0.68,{r:4, hp: bossBulletHp});
+        }
+        e.spiralCd = (e.phase===1?0.30:(e.phase===2?0.24:0.20)) * tempoMul;
+      }
+      return;
+    }
+
+    if(e.kind === 'reaper'){
+      e.beamCd -= dt;
+      e.beamPhase = (e.beamPhase||0) + dt*1.0;
+
+      if(e.beamCd<=0 && eBullets.length<enemyBulletCap()){
+        const base = Math.atan2(player.y-e.y,player.x-e.x) + Math.sin(e.beamPhase)*0.12;
+
+        const beamCount = mini ? 1 : (e.phase===3 ? 3 : 2);
+        const offsets = (beamCount===1) ? [0] : (beamCount===2 ? [-0.10,0.10] : [-0.12,0,0.12]);
+
+        for(const da of offsets){
+          enemyShoot(e, base+da, 1.55, 1.15, {beam:true, len:(stage>=40?48:44), r:(stage>=40?7:6), pierce:0, hp:1});
+        }
+
+        e.beamCd = (e.phase===1?0.70:(e.phase===2?0.58:0.48)) * tempoMul;
+      }
+
+      e.ringCd -= dt;
+      if(e.ringCd<=0){
+        const n = Math.max(10, (mini?12:(e.phase===1?14:(e.phase===2?18:24))));
+        const base=Math.random()*Math.PI*2;
+        for(let i=0;i<n;i++){
+          const a=base+(i/n)*Math.PI*2;
+          enemyShoot(e,a,1.00,0.70,{r:4, hp: bossBulletHp});
+        }
+        e.ringCd = (e.phase===1?1.55:(e.phase===2?1.25:0.95)) * tempoMul;
+      }
+      return;
+    }
+
+    if(e.kind === 'warden'){
       if((e.shieldDelay||0) > 0) e.shieldDelay = Math.max(0, e.shieldDelay - dt);
       else{
         e.shield = clamp((e.shield||0) + (e.shieldRegen||0)*dt, 0, e.shieldMax||0);
       }
 
-      // movement
-      e.spin = (e.spin||0) + dt*(1.1 + e.phase*0.25);
-      e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||1.0);
-      const ox = Math.sin(e.strafePhase) * (e.strafeAmp||180);
-      e.x = W*0.5 + ox;
-
-      // patterns: ring + burst + occasional adds
-      const brutal = state.stage>=30;
-
       e.ringCd -= dt;
       if(e.ringCd<=0){
-        const n = (e.phase===1?16:(e.phase===2?22:30)) + (brutal?4:0);
+        const nBase = (e.phase===1?16:(e.phase===2?22:30));
+        const n = Math.max(12, nBase - (mini?6:0));
         const base=Math.random()*Math.PI*2;
         for(let i=0;i<n;i++){
           const a=base+(i/n)*Math.PI*2;
-          enemyShoot(e,a,1.02,0.75,{r: brutal?5:4, hp: enemyBulletHpByStage(state.stage)*0.70});
+          enemyShoot(e,a,1.02,0.75,{r: (stage>=30?5:4), hp: bossBulletHp});
         }
-        e.ringCd = (e.phase===1?1.05:(e.phase===2?0.85:0.65));
+        e.ringCd = (e.phase===1?1.05:(e.phase===2?0.85:0.65)) * tempoMul;
       }
 
       e.burstCd -= dt;
       if(e.burstCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes = (e.phase===1?4:(e.phase===2?5:6));
+        const lanesBase = (e.phase===1?4:(e.phase===2?5:6));
+        const lanes = Math.max(3, lanesBase - (mini?1:0));
         const spread = (e.phase===1?0.14:(e.phase===2?0.18:0.20));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-          enemyShoot(e,ang+t*spread,1.15,1.00,{r:5, pierce: (state.stage>=55?1:0), hp: enemyBulletHpByStage(state.stage)*0.85});
+          enemyShoot(e,ang+t*spread,1.15,1.00,{r:5, pierce: (stage>=55?1:0), hp: bossBulletHp});
         }
-        if(e.phase===3 && Math.random()<0.40) spawnAdds(3+(Math.random()<0.5?1:0),.92);
-        e.burstCd = (e.phase===1?0.85:(e.phase===2?0.70:0.56));
+        if(!mini && e.phase===3 && Math.random()<0.40) spawnAdds(3+(Math.random()<0.5?1:0),.92);
+        e.burstCd = (e.phase===1?0.85:(e.phase===2?0.70:0.56)) * tempoMul;
       }
       return;
     }
 
-    // ===== Splitter: split bullets + ring =====
     if(e.kind === 'splitter'){
-      const rr = e.hp/e.hpMax;
-      const newPhase=(rr<=.35)?3:(rr<=.70?2:1);
-      if(newPhase!==e.phase){
-        e.phase=newPhase;
-        toastMsg(`Splitter：Phase ${e.phase}`, 0.55);
-      }
-    
       e.spin = (e.spin||0) + dt*(1.2 + e.phase*0.35);
-      e.strafePhase = (e.strafePhase||0) + dt*(e.strafeSpd||1.05);
-      const ox = Math.sin(e.strafePhase) * (e.strafeAmp||200);
-      e.x = W*0.5 + ox;
-    
+
       e.splitCd -= dt;
       if(e.splitCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
-        const lanes = (e.phase===1?2:(e.phase===2?3:4));
+        const lanesBase = (e.phase===1?2:(e.phase===2?3:4));
+        const lanes = Math.max(2, lanesBase - (mini?1:0));
         const spread = (e.phase===1?0.10:(e.phase===2?0.16:0.20));
-    
+
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
-    
-          // ✅ 一部分 split 彈變裝甲彈（不可被清）
-          const armor = (Math.random() < (0.18 + 0.06*tierOfStage(state.stage))); // Tier0~3：18%~36%
-    
+          const armor = (!mini) && (Math.random() < (0.18 + 0.06*tierOfStage(stage)));
+
           enemyShoot(e,ang+t*spread,1.12,1.00,{
             r:6,
-            hp: Math.floor(enemyBulletHpByStage(state.stage)*1.25),
-            pierce: (state.stage>=60?1:0),
-    
-            split:true,
-            splitGen:0,
-            splitN:2,
-            splitJ:(e.phase===3?0.30:0.26),
-    
-            // ✅ new
+            hp: bossBulletHp,
+            pierce: (stage>=60?1:0),
+            split:true, splitGen:0, splitN:2, splitJ:(e.phase===3?0.30:0.26),
             unclashable: armor
           });
         }
-    
-        e.splitCd = (e.phase===1?0.70:(e.phase===2?0.58:0.48));
+
+        e.splitCd = (e.phase===1?0.70:(e.phase===2?0.58:0.48)) * tempoMul;
       }
-    
+
       e.ringCd -= dt;
       if(e.ringCd<=0){
-        const n = (e.phase===1?12:(e.phase===2?18:24));
+        const nBase = (e.phase===1?12:(e.phase===2?18:24));
+        const n = Math.max(10, nBase - (mini?6:0));
         const base=Math.random()*Math.PI*2;
         for(let i=0;i<n;i++){
           const a=base+(i/n)*Math.PI*2;
-          enemyShoot(e,a,0.98,0.70,{r:4, hp: enemyBulletHpByStage(state.stage)*0.70});
+          enemyShoot(e,a,0.98,0.70,{r:4, hp: bossBulletHp});
         }
-        e.ringCd = (e.phase===1?1.25:(e.phase===2?0.95:0.75));
+        e.ringCd = (e.phase===1?1.25:(e.phase===2?0.95:0.75)) * tempoMul;
       }
       return;
     }
 
-    // ===== Defender (your original) =====
     if(e.kind === 'defender'){
-      const rr = e.hp/e.hpMax;
-      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
-      if(newPhase!==e.phase){
-        e.phase=newPhase;
-        toastMsg(`Defender：Phase ${e.phase}`, 0.55);
-      }
-
       e.x = W*0.5;
 
       const period =
@@ -2049,9 +2201,9 @@ canvas{width:100%;height:100%;display:block}
         const jitter = rand(-0.50, 0.50);
         const ang = aim + jitter;
 
-        const spd = 260 + state.stage*3.4;
+        const spd = 260 + stage*3.4;
         const R = 18;
-        const dmg = (24 + Math.floor(state.stage*0.35)) * enemyDmgMul(state.stage);
+        const dmg = (24 + Math.floor(stage*0.35)) * enemyDmgMul(stage);
 
         eBullets.push({
           ball:true, alive:true,
@@ -2062,121 +2214,92 @@ canvas{width:100%;height:100%;display:block}
         });
 
         addBurst(e.x, e.y+e.r+10, 10);
-        e.ballCd = period;
+        e.ballCd = period * tempoMul;
       }
       return;
     }
 
-    // ===== Sniper (your original) =====
     if(e.kind === 'sniper'){
-      const rr = e.hp/e.hpMax;
-      const newPhase=(rr<=.40)?3:(rr<=.70?2:1);
-      if(newPhase!==e.phase){
-        e.phase=newPhase;
-        toastMsg(`Sniper：Phase ${e.phase}`, 0.45);
-      }
-
       e.x = W*0.5;
 
       const baseInterval = (e.phase===1 ? 0.050 : (e.phase===2 ? 0.044 : 0.038));
-      const stageBoost = Math.max(0, state.stage - 31) * 0.00025;
+      const stageBoost = Math.max(0, stage - 31) * 0.00025;
       const interval = clamp(baseInterval - stageBoost, 0.026, baseInterval);
 
       e.snipeT = (e.snipeT ?? 0.20) - dt;
 
       let guard = 0;
+      const localTempo = (mini ? 1.25 : (big ? 0.92 : 1.0));
       while(e.snipeT <= 0 && guard++ < 4){
         const ang = Math.atan2(player.y - e.y, player.x - e.x);
 
-        enemyShoot(e, ang, 1.55, 1.15, {
-          beam:true, len:(state.stage>=40?46:40),
-          r:(state.stage>=40?7:6), pierce:0, hp:1
-        });
+        enemyShoot(e, ang, 1.55, 1.15, {beam:true, len:(stage>=40?46:40), r:(stage>=40?7:6), pierce:0, hp:1});
 
         if(eBullets.length >= enemyBulletCap()){
-          e.snipeT = interval;
+          e.snipeT = interval * localTempo;
           break;
         }
-        e.snipeT += interval;
+        e.snipeT += interval * localTempo;
       }
       return;
     }
 
-    // ===== base boss (your original-ish) =====
-    const r=e.hp/e.hpMax;
-    const newPhase=(r<=.40)?3:(r<=.70?2:1);
-    if(newPhase!==e.phase){
-      e.phase=newPhase;
-    if(e.phase===2){
-      toastMsg('Boss：Phase 2',.7);
-      e.ringCd = 0.74 * tempoMul;
-      e.spiralCd = 0.32 * tempoMul;
-    }
-    else if(e.phase===3){
-      toastMsg('Boss：Phase 3',.7);
-      e.summonCd = 1.3+Math.random()*1.0;
-      e.ringCd = 0.56 * tempoMul;
-      e.spiralCd = 0.22 * tempoMul;
-      e.burstCd  = 0.48 * tempoMul;
-    }
-    }
-    const brutal = state.stage>=20;
-    const bossEasy = state.stage < 8;
-    const tempoMul = bossEasy ? 0.92 : 0.82;
-    const spdBoost = 1 + clamp((state.stage-1)*0.0012, 0, 0.10);
-    const spdMul = (e.phase===1?1.08:(e.phase===2?1.14:1.22)) * spdBoost;
+    const brutal = stage>=20;
+
+    const spdBoost = big ? 1.10 : (mini ? 1.02 : 1.06);
+    const spdMul=(e.phase===1?1.02:(e.phase===2?1.08:1.15)) * spdBoost;
     const dmgMul=(e.phase===1?1.00:(e.phase===2?1.02:1.05));
-    const densMul = bossEasy ? 0.72 : 1.0;
-    const bossBulletHp = enemyBulletHpByStage(state.stage) * 0.80;
+    const cdMul = (big ? 0.82 : (mini ? 1.12 : 1.0));
+    const densMul = 1.0;
 
     e.burstCd-=dt;
     if(e.burstCd<=0 && eBullets.length<enemyBulletCap()){
       e.burstLeft=(e.phase===1?2:(e.phase===2?3:4));
       e.burstGapCd=0;
-      e.burstCd=(e.phase===1?0.78:(e.phase===2?0.64:0.50)) * tempoMul;
+      e.burstCd=(e.phase===1?0.82:(e.phase===2?0.66:0.52)) * cdMul;
     }
     if(e.burstLeft>0){
       e.burstGapCd-=dt;
       if(e.burstGapCd<=0){
         const ang=Math.atan2(player.y-e.y,player.x-e.x);
         const lanesBase=(e.phase===1?5:(e.phase===2?5:6));
-        const lanes = Math.max(3, Math.round(lanesBase * densMul));
+        const lanes = Math.max(3, Math.round(lanesBase * densMul) - (mini?1:0));
         const spread=(e.phase===1?BOSS_SPREAD_P1:(e.phase===2?BOSS_SPREAD_P2:BOSS_SPREAD_P3));
         for(let i=0;i<lanes;i++){
           const t=(i-(lanes-1)/2)/(((lanes-1)/2)||1);
           enemyShoot(e,ang+t*spread,spdMul,dmgMul,{r: brutal?5:4, pierce: brutal?1:0, hp: bossBulletHp});
         }
         e.burstLeft-=1;
-        e.burstGapCd=(e.phase===1?0.105:(e.phase===2?0.095:0.085)) * tempoMul;
+        e.burstGapCd=(e.phase===1?0.11:(e.phase===2?0.10:0.09)) * cdMul;
       }
     }
 
     e.ringCd-=dt;
     if(e.ringCd<=0 && eBullets.length<enemyBulletCap()){
       const nBase=(e.phase===1?12:(e.phase===2?18:28)) + (brutal?6:0);
-      const n=Math.max(10, Math.round(nBase * densMul));
+      const n=Math.max(10, Math.round(nBase * densMul) - (mini?6:0));
       const base=Math.random()*Math.PI*2;
       for(let i=0;i<n;i++){
         const a=base+(i/n)*Math.PI*2;
         enemyShoot(e,a,spdMul*0.98,dmgMul*0.75,{r: brutal?5:4, hp: bossBulletHp});
       }
-      e.ringCd=(e.phase===1?0.96:(e.phase===2?0.70:0.52)) * (brutal?0.92:1.0) * tempoMul;
+      e.ringCd=(e.phase===1?1.02:(e.phase===2?0.74:0.56)) * (brutal?0.92:1.0) * cdMul;
     }
 
     e.spiralCd-=dt;
     e.spin=(e.spin??0)+dt*(e.phase===1?1.4:(e.phase===2?2.0:2.6))*(brutal?1.08:1.0);
     if(e.spiralCd<=0 && eBullets.length<enemyBulletCap()){
       const nBase=(e.phase===1?5:(e.phase===2?8:10)) + (brutal?2:0);
-      const n=Math.max(4, Math.round(nBase * densMul));
+      const n=Math.max(4, Math.round(nBase * densMul) - (mini?2:0));
       const base=e.spin;
       for(let i=0;i<n;i++){
         const a=base+(i/n)*Math.PI*2;
         enemyShoot(e,a,spdMul*1.00,dmgMul*0.65,{r: brutal?5:4, hp: bossBulletHp});
       }
-      e.spiralCd=(e.phase===1?0.48:(e.phase===2?0.30:0.21))*(brutal?0.92:1.0) * tempoMul;
+      e.spiralCd=(e.phase===1?0.50:(e.phase===2?0.30:0.22))*(brutal?0.92:1.0) * cdMul;
     }
 
-    if(e.phase===3){
+    if(!mini && e.phase===3){
       e.summonCd-=dt;
       if(e.summonCd<=0){
         spawnAdds(4+(Math.random()<0.5?1:0),.92);
@@ -2185,7 +2308,6 @@ canvas{width:100%;height:100%;display:block}
     }
   }
 
-  // Wingmen rockets
   function pickRocketTarget(){
     if(!enemies.length) return null;
     let best=null, bestScore=-1e18;
@@ -2270,11 +2392,7 @@ canvas{width:100%;height:100%;display:block}
         r.target.hitFlash = 0.12;
         addBurst(r.x, r.y, 10);
 
-        // boss/elite barrier check
-        if((r.target.barrierT||0) > 0){
-          // no dmg
-        }else{
-          // Warden shield absorbs rockets strongly
+        if((r.target.barrierT||0) <= 0){
           if(r.target.kind==='warden' && (r.target.shield||0) > 0){
             r.target.shield = Math.max(0, r.target.shield - r.dmg*1.10);
             r.target.shieldDelay = 1.2;
@@ -2285,12 +2403,7 @@ canvas{width:100%;height:100%;display:block}
 
         if(r.target.hp <= 0){
           const e = r.target;
-
-          let coinAmt = 1;
-          if(e.type === 'boss')  coinAmt = 30;
-          if(e.type === 'elite') coinAmt = 3;
-          if(e.type === 'healer') coinAmt = 10;
-          dropCoin(e.x, e.y, coinAmt);
+          dropCoin(e.x, e.y, coinForEnemy(e));
 
           if(e.type==='boss'){
             state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
@@ -2666,10 +2779,8 @@ canvas{width:100%;height:100%;display:block}
     for(const b of eBullets){
       b.x+=b.vx*dt; b.y+=b.vy*dt;
 
-      // Splitter bullets: split on leaving bounds
       if(b.split && b.alive){
         if(b.y>H+40||b.x<-50||b.x>W+50){
-          // split then die
           splitBullet(b);
           b.alive=false;
           continue;
@@ -2721,14 +2832,13 @@ canvas{width:100%;height:100%;display:block}
       p.life-=dt; if(p.life<=0) p.dead=true;
     }
 
-    // Player bullets vs enemy bullets (clash)
     for(const b of pBullets){
       if(!b.alive) continue;
       if((b.clashLeft??0)<=0) continue;
-    
+
       for(const eb of eBullets){
         if(!eb.alive) continue;
-    
+
         if(eb.ball){
           if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
             b.alive = false;
@@ -2737,15 +2847,11 @@ canvas{width:100%;height:100%;display:block}
           }
           continue;
         }
-    
-        // beam 不做對撞（原邏輯）
+
         if(eb.beam) continue;
-    
-        // ✅ 裝甲彈：不給你用子彈清
         if(eb.unclashable) continue;
-    
+
         if(dist2(b.x,b.y,eb.x,eb.y)<(b.r+eb.r+2)**2){
-          // enemy bullet pierce: 先消耗玩家 clash
           if((eb.pierce||0)>0){
             eb.pierce -= 1;
             b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
@@ -2754,17 +2860,16 @@ canvas{width:100%;height:100%;display:block}
             state.score+=1;
             break;
           }
-    
+
           const clearDmg = b.dmg * bulletClearMul(b.r);
           eb.hp = (eb.hp ?? enemyBulletHpByStage(state.stage)) - clearDmg;
-    
+
           addBurst(eb.x,eb.y,4);
           state.score+=1;
-    
+
           b.clashLeft = Math.max(0,(b.clashLeft||0)-1);
-    
+
           if(eb.hp<=0){
-            // splitter bullet splits on death too
             if(eb.split) splitBullet(eb);
             eb.alive=false;
           }
@@ -2774,18 +2879,15 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // Player bullets vs enemies
     for(const b of pBullets){
       if(!b.alive) continue;
       for(const e of enemies){
         if(e.hp<=0) continue;
         if(dist2(b.x,b.y,e.x,e.y)<(b.r+e.r)**2){
 
-          // barrier blocks damage fully
           if((e.barrierT||0) > 0){
             addBurst(b.x,b.y,2);
           }else{
-            // Warden shield: eats dmg; while shield >0, hp only takes 20%
             if(e.kind==='warden' && (e.shield||0) > 0){
               const d = b.dmg;
               e.shield = Math.max(0, e.shield - d*1.00);
@@ -2801,11 +2903,7 @@ canvas{width:100%;height:100%;display:block}
           if(b.pierce<=0) b.alive=false; else b.pierce-=1;
 
           if(e.hp<=0){
-            let coinAmt = 1;
-            if(e.type === 'boss')  coinAmt = 30;
-            if(e.type === 'elite') coinAmt = 3;
-            if(e.type === 'healer') coinAmt = 10;
-            dropCoin(e.x, e.y, coinAmt);
+            dropCoin(e.x, e.y, coinForEnemy(e));
 
             if(e.type==='boss'){
               state.score+=320; addXp(300* xpStageMul(state.stage)); maybeDrop(e.x,e.y,true);
@@ -2826,7 +2924,6 @@ canvas{width:100%;height:100%;display:block}
       }
     }
 
-    // Enemy bullets vs player
     for(const eb of eBullets){
       if(!eb.alive) continue;
 
@@ -2849,10 +2946,8 @@ canvas{width:100%;height:100%;display:block}
           eb.alive=false;
           damagePlayer(eb.dmg);
 
-          // vamp heal
           if(eb.vamp){
             const heal = Math.max(8, eb.dmg*0.45);
-            // heal nearest enemy (prefer boss)
             let tgt = enemies.find(x=>x.type==='boss') || enemies[0];
             if(tgt && tgt.hp>0){
               tgt.hp = Math.min(tgt.hpMax, tgt.hp + heal);
@@ -3016,7 +3111,6 @@ canvas{width:100%;height:100%;display:block}
         :(isHealer?'rgba(140,190,255,.92)':'rgba(120,255,200,.9)'));
       ctx.fillRect(x,y,w*hpPct,h);
 
-      // Warden shield bar
       if(isWardenBoss){
         const sw = 96, sh = 4;
         const sx = e.x - sw/2, sy = y - 7;
@@ -3025,7 +3119,6 @@ canvas{width:100%;height:100%;display:block}
         ctx.fillStyle='rgba(180,255,200,.85)'; ctx.fillRect(sx,sy,sw*sp,sh);
       }
 
-      // barrier indicator
       if((e.barrierT||0) > 0){
         ctx.globalAlpha=.7;ctx.fillStyle='rgba(255,255,255,.55)';
         ctx.font='11px system-ui,"Noto Sans TC"';ctx.textAlign='center';ctx.textBaseline='top';
@@ -3043,7 +3136,6 @@ canvas{width:100%;height:100%;display:block}
         ctx.fillText(`💙 ${Math.ceil(e.healCd)}s`,e.x,e.y+e.r+6);
       }
 
-      // elite affix tiny tag
       if(e.type==='elite' && (e.affixes?.length)){
         const tag = e.affixes.slice(0,2).map(a=>{
           if(a===AFFIX.BARRIER) return '🧿';
