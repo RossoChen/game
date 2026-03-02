@@ -2338,22 +2338,41 @@ function updateRockets(dt){
   allyRockets = allyRockets.filter(x=>!x.dead);
 }
 
-function damagePlayer(dmg){
-  if(buffs.invulnT>0) return;
-  if(hitIFrameT > 0) return;
-
-  if(player.shield>0){
-    const use=Math.min(player.shield,dmg);
-    player.shield-=use; dmg-=use;
+  function damagePlayer(dmg){
+    if(buffs.invulnT>0) return;
+    if(hitIFrameT > 0) return;
+  
+    // ===== AI DEBUG CHEAT (AI 開才生效) =====
+    if(AI?.enabled){
+      // 固定減傷：65% DR（你要更硬就把 0.35 再調小）
+      dmg *= 0.35;
+  
+      // 偷偷補盾：沒有盾上限就先給一個基本盤
+      if(player.shieldMax < 60) player.shieldMax = 60;
+      player.shield = clamp(player.shield + 18, 0, player.shieldMax);
+    }
+  
+    if(player.shield>0){
+      const use=Math.min(player.shield,dmg);
+      player.shield-=use; dmg-=use;
+    }
+    if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
+  
+    const hitXp = clamp(Math.ceil(dmg*0.35), 1, 6);
+    addXp(hitXp);
+  
+    hitIFrameT = 0.35;
+  
+    // ===== AI 最後防線：不讓它死（只限 AI）=====
+    if(player.hp<=0){
+      if(AI?.enabled){
+        player.hp = 1;                       // 保底 1 HP
+        buffs.invulnT = Math.max(buffs.invulnT, 0.9); // 給 0.9s 緩衝，避免連續撞死
+        return;
+      }
+      gameOver();
+    }
   }
-  if(dmg>0) player.hp=Math.max(0,player.hp-dmg);
-
-  const hitXp = clamp(Math.ceil(dmg*0.35), 1, 6);
-  addXp(hitXp);
-
-  hitIFrameT = 0.35;
-  if(player.hp<=0) gameOver();
-}
 
 function addBurst(x,y,n=10){
   for(let i=0;i<n;i++) particles.push({x,y,vx:rand(-220,220),vy:rand(-220,220),life:rand(.25,.55)});
