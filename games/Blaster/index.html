@@ -163,7 +163,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: boss速度
+  BUILD: 射速
 </div>
 
 <div class="app">
@@ -1644,7 +1644,28 @@ function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
   if(eBullets.length>=enemyBulletCap())return;
 
   const stage = state.stage;
-  const spd=(e.bulletSpeed??300)*sMul*enemyBulletSpeedMul(stage);
+  const rawSpd = (e.bulletSpeed ?? 300) * sMul * enemyBulletSpeedMul(stage);
+  let spd = rawSpd;
+  
+  const isBoss = (e && e.type === 'boss');
+  const kind = e?.kind || '';
+  const isSniper = (kind === 'sniper');
+  const isDefBall = !!meta.ball;
+  const late = (stage >= 70);
+  
+  if(isBoss && late && !isSniper && !isDefBall){
+    const cap =
+      (stage >= 95) ? 520 :
+      (stage >= 90) ? 540 :
+      (stage >= 80) ? 560 :
+      590;
+
+    const kindCap = (kind === 'overlord') ? (cap - 40)
+                  : (kind === 'harbinger') ? (cap - 20)
+                  : cap;
+  
+    spd = Math.min(spd, kindCap);
+  }
 
   const isBeam = !!meta.beam;
   const r = clamp(meta.r ?? (isBeam?5:4), 3, 10);
