@@ -163,7 +163,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 34
+  BUILD: 3434
 </div>
 
 <div class="app">
@@ -516,7 +516,8 @@ const WINGMAN_MAX_UPG = 5;
 function setPadX(nx){
   padX=Math.max(0,Math.min(1,nx));
   thumb.style.left=`${padX*100}%`;
-  player.x=lerp(player.x,padX*W,1);
+  // NOTE: 不直接改 player.x，避免 AI/手動造成「瞬移」。
+  // 真正移動改在 update(dt) 依 moveSpeed 平滑靠近 padX*W。
 }
 function pointerToPadX(e){const r=pad.getBoundingClientRect();return (e.clientX-r.left)/r.width}
 pad.addEventListener('pointerdown',e=>{e.preventDefault();pad.setPointerCapture(e.pointerId);padActive=true;setPadX(pointerToPadX(e))});
@@ -524,6 +525,14 @@ pad.addEventListener('pointermove',e=>{if(!padActive)return;e.preventDefault();s
 pad.addEventListener('pointerup',e=>{padActive=false;try{pad.releasePointerCapture(e.pointerId)}catch(_){}});pad.addEventListener('pointercancel',()=>padActive=false);
 
 function enemyHoldY(){return clamp(H*.18,110,190)}
+
+function bossSurvivalActive(){
+  const b = enemies.find(e=>e.type==='boss');
+  if(!b) return false;
+  // 90/100 關：給一點生存性，不然 AI/玩家都會被秒
+  return (state.stage>=80) && (b.kind==='harbinger' || b.kind==='overlord');
+}
+
 
 function stageDifficultyMul(stage){
   const early = 1 + Math.max(0, stage-1) * 0.035;
@@ -2410,6 +2419,14 @@ function updateRockets(dt){
       player.shield = clamp(player.shield + 18, 0, player.shieldMax);
     }
   
+
+
+    // 90/100 Boss 生存補強：降低單發尖峰傷害（只在 Harbinger/Overlord）
+    if(bossSurvivalActive()){
+      // 小幅減傷 + 單發傷害上限，讓走位/技能有空間
+      dmg *= 0.82;
+      dmg = Math.min(dmg, (state.stage===100 ? 16 : 18));
+    }
     if(player.shield>0){
       const use=Math.min(player.shield,dmg);
       player.shield-=use; dmg-=use;
@@ -2732,6 +2749,21 @@ function update(dt){
 
   if(hitIFrameT > 0) hitIFrameT = Math.max(0, hitIFrameT - dt);
   if(player.regen>0 && player.hp>0) player.hp=clamp(player.hp+player.regen*dt,0,player.hpMax);
+
+  // 90/100 Boss 生存補強：提供基礎護盾與緩慢回盾（只在 Harbinger/Overlord）
+  if(bossSurvivalActive()){
+    player.shieldMax = Math.max(player.shieldMax, 120);
+    player.shield = clamp(player.shield + 12*dt, 0, player.shieldMax);
+  }
+
+  // 依 padX 平滑移動（手動/AI 同一條管線），避免左右瞬移
+  {
+    const targetX = padX * W;
+    const maxStep = player.moveSpeed * dt;
+    const dx = clamp(targetX - player.x, -maxStep, maxStep);
+    player.x += dx;
+  }
+
 
   player.y=H-42;
 
