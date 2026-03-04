@@ -163,7 +163,7 @@ canvas{width:100%;height:100%;display:block}
 </head>
 <body>
 <div style="position:fixed;right:8px;bottom:8px;z-index:9999;font:12px system-ui;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.15)">
-  BUILD: 射速
+  BUILD: 34
 </div>
 
 <div class="app">
@@ -883,18 +883,22 @@ function spawnBossByKind(kind, rank){
     return;
   }
   if(kind==='harbinger'){
-    const hpH = hpBase * 3.2;
+    // Stage 90: 不移動 + 更厚血 + 降低子彈飛行速度（speed cap 另外在 enemyShoot() 做）
+    const hpH = hpBase * 3.2 * (stage===90 ? 1.25 : 1.0);
+    const noStrafe = (stage===90);
     mk({r:34, hp:hpH, hpMax:hpH, bulletSpeed:(285+stage*11), bulletDmg:(14 + stage*2.25) * enemyDmgMul(stage),
-        strafeAmp:240, strafeSpd:1.12+stage*0.030, strafePhase:0,
+        strafeAmp: (noStrafe?0:240), strafeSpd:(noStrafe?0:(1.12+stage*0.030)), strafePhase:0,
         reflectCd:3.6, reflectT:0,
         bombCd:1.10, fanCd:0.52, fanLeft:0, fanGapCd:0,
         beamCd:0.95, beamPhase:0});
     return;
   }
   if(kind==='overlord'){
-    const hpO = hpBase * 6.8;
+    // Stage 100: 不移動 + 更厚血 + 降低子彈飛行速度（speed cap 另外在 enemyShoot() 做）
+    const hpO = hpBase * 6.8 * (stage===100 ? 1.15 : 1.0);
+    const noStrafe = (stage===100);
     mk({r:36, hp:hpO, hpMax:hpO, bulletSpeed:(290+stage*12), bulletDmg:(14 + stage*2.4) * enemyDmgMul(stage),
-        strafeAmp:260, strafeSpd:1.30+stage*0.020, strafePhase:0,
+        strafeAmp:(noStrafe?0:260), strafeSpd:(noStrafe?0:(1.30+stage*0.020)), strafePhase:0,
         ringCd:0.78, spiralCd:0.22, spin:0, gunCd:0.52, gunLeft:0, gunGapCd:0,
         beamCd:0.48, beamPhase:0, summonCd:2.2});
     return;
@@ -1665,6 +1669,14 @@ function enemyShoot(e,ang,sMul=1,dMul=1,meta={}){
                   : cap;
   
     spd = Math.min(spd, kindCap);
+  }
+
+  // Stage 90/100 特調：你說的「不用移動、子彈慢一點」就用硬 cap 解決（不受 bulletSpeed 參數影響）
+  if(isBoss && stage===90 && kind==='harbinger'){
+    spd = Math.min(spd, 440);
+  }
+  if(isBoss && stage===100 && kind==='overlord'){
+    spd = Math.min(spd, 420);
   }
 
   const isBeam = !!meta.beam;
