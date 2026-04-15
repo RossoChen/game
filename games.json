@@ -29,9 +29,9 @@
     ],
     "new": true
   },
-  {
+{
   "title": "Dodger 2",
-  "href": "./games/dodger2/index.html",
+  "href": "./games/dodger2/index.html?v=20260415-1",
   "desc": "手機直向版，底部安全區，可買武器、升級、轉職。",
   "tags": [
     "手機",
