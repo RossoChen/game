@@ -112,10 +112,22 @@
     content:"";position:absolute;left:20%;right:20%;top:24%;bottom:24%;border-radius:50%;
     border:3px solid rgba(134,239,172,.7);animation:healPulse .45s ease;pointer-events:none;
   }
+  .heal-float{
+    position:absolute;
+    top:12px;
+    right:10px;
+    font-size:16px;
+    font-weight:1000;
+    color:var(--heal);
+    text-shadow:0 0 10px rgba(134,239,172,.35);
+    animation:healFloat .55s ease;
+    pointer-events:none;
+  }
   @keyframes flipIn{0%{transform:rotateY(90deg) scale(.88);opacity:.12}100%{transform:rotateY(0) scale(1);opacity:1}}
   @keyframes shieldPulse{0%{opacity:0;transform:scale(.92)}30%{opacity:1}100%{opacity:0;transform:scale(1.08)}}
   @keyframes slashFx{0%{opacity:0;transform:rotate(-18deg) scaleX(.2)}30%{opacity:1}100%{opacity:0;transform:rotate(-18deg) scaleX(1.15)}}
   @keyframes healPulse{0%{opacity:0;transform:scale(.8)}30%{opacity:1}100%{opacity:0;transform:scale(1.16)}}
+@keyframes healFloat{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
   .dead{border-radius:24px;border:2px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8d97bd;gap:6px}
   .dead .x{font-size:34px;font-weight:1000;line-height:1}
   .dead .t{font-size:12px;font-weight:900}
@@ -266,14 +278,14 @@
     </div>
   </div>
 
-  <div class="version-badge" id="versionBadge">v5.0.0</div>
+  <div class="version-badge" id="versionBadge">v5.0.3</div>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const saveKey = 'card_duel_progress_v5';
-  const GAME_VERSION = 'v5.0.0';
+  const GAME_VERSION = 'v5.0.3';
   const ROLE_MULT = {
     '劍士': 1.30,
     '弓箭手': 0.80,
@@ -491,6 +503,7 @@
       const dyingHere = anim.dying.some(x => x.side === side && x.index === idx);
       const shieldingHere = anim.shielding.some(x => x.side === side && x.index === idx);
       const healingHere = anim.healing.some(x => x.side === side && x.index === idx);
+      const healTextHere = anim.healTexts.find(x => x.side === side && x.index === idx);
 
       if (!card) {
         container.insertAdjacentHTML('beforeend', deadSlotHTML());
@@ -503,7 +516,7 @@
       d.dataset.index = idx;
 
       if (card.frozen > 0) d.classList.add('frozen');
-      if (side === 'player' && state.battle.turn === 'player' && !state.busy && !state.battle.over) {
+      if (side === 'player' && state.battle.turn === 'player' && !state.busy && !state.battle.over && card.frozen <= 0) {
         d.classList.add('selectable');
         if (state.selection === idx) d.classList.add('selected');
         d.addEventListener('click', () => {
@@ -527,6 +540,7 @@
         <div class="role">${card.role}</div>
         <div class="num">${card.value}</div>
         <div class="badges">${renderBadges(card)}</div>
+        ${healTextHere ? `<div class="heal-float">${healTextHere.text}</div>` : ``}
       `;
       container.appendChild(d);
     });
@@ -581,6 +595,7 @@
         await sleep(320);
         state.battle.animate.entering = [];
         state.battle.animate.shielding = [];
+        state.battle.animate.healTexts = [];
         refreshBattle();
       }
     }
@@ -596,8 +611,7 @@
 
   async function applyTurnStartSkills(side) {
     const field = [...getField(side)];
-    let anyHeal = false;
-    let healMarks = [];
+    let changed = false;
 
     for (let i = 0; i < field.length; i++) {
       const card = field[i];
@@ -607,23 +621,33 @@
         const targets = chooseHealTargets(side, i);
         if (!targets.length) continue;
         const healAmount = Math.max(1, Math.ceil(card.value * 0.15));
-        targets.forEach(ti => {
-          const target = { ...field[ti] };
-          target.value += healAmount;
-          field[ti] = target;
-          healMarks.push({ side, index: ti });
-        });
-        anyHeal = true;
-        showNote(`治療 +${healAmount}`);
+
+        for (const ti of targets) {
+          const before = field[ti].value;
+          const after = before + healAmount;
+
+          state.battle.animate.healing = [{ side, index: ti }];
+          state.battle.animate.healTexts = [{ side, index: ti, text: `+${healAmount}` }];
+          refreshBattle();
+          showNote(`${field[ti].role} ${before}→${after}`);
+          await sleep(220);
+
+          field[ti] = { ...field[ti], value: after };
+          setField(side, [...field]);
+          changed = true;
+          refreshBattle();
+          await sleep(520);
+
+          state.battle.animate.healing = [];
+          state.battle.animate.healTexts = [];
+          refreshBattle();
+          await sleep(120);
+        }
       }
     }
 
-    if (anyHeal) {
+    if (changed) {
       setField(side, field);
-      state.battle.animate.healing = healMarks;
-      refreshBattle();
-      await sleep(420);
-      state.battle.animate.healing = [];
       refreshBattle();
     }
   }
@@ -637,6 +661,10 @@
     setField(side, field);
   }
 
+  function sideHasAvailableAttacker(side) {
+    return getField(side).some(card => card && card.frozen <= 0);
+  }
+
   function endBattle(win) {
     state.battle.over = true;
     state.busy = false;
@@ -648,10 +676,10 @@
       const items = [`金幣 +${goldGain}`];
       if (Math.random() < 0.42) {
         const role = ROLES[Math.floor(Math.random() * ROLES.length)];
-        const base = Math.max(6, 6 + Math.floor(state.profile.stage * 0.55) + Math.floor(Math.random() * 2));
+        const base = Math.max(6, 6 + Math.floor(state.profile.stage * 1.0) + Math.floor(Math.random() * 3));
         const card = newOwnedCard(role, base);
         state.profile.owned.push(card);
-        items.push(`新卡：${card.role} ${cardPower(card)}`);
+        items.push(`新卡：${card.role} 基礎${card.base}／戰力${cardPower(card)}`);
       }
       state.profile.stage += 1;
       saveProfile();
@@ -683,6 +711,19 @@
     clearSelection();
     state.busy = true;
     await applyTurnStartSkills(side);
+
+    if (!sideHasAvailableAttacker(side)) {
+      refreshBattle();
+      showNote(side === 'player' ? '我方全員冰凍，跳過回合' : '對方全員冰凍，跳過回合');
+      await sleep(520);
+      decrementFrozenForSide(side);
+      state.busy = false;
+      refreshBattle();
+      if (judgeWinner()) return;
+      await startTurn(side === 'player' ? 'enemy' : 'player');
+      return;
+    }
+
     state.busy = false;
     refreshBattle();
 
@@ -721,6 +762,7 @@
     const attacker = clone(attackerField[attackerIndex]);
     const primary = clone(defenderField[primaryIndex]);
     if (!attacker || !primary) return;
+    if (attacker.frozen > 0) return;
 
     state.busy = true;
     clearSelection();
@@ -864,7 +906,8 @@
 
     const attackers = state.battle.enemyField
       .map((c, i) => c ? { i, c } : null)
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(x => x.c.frozen <= 0);
     const defenders = state.battle.playerField;
 
     const plans = [];
@@ -896,7 +939,7 @@
       enemyField: enemyFull.slice(0, 3),
       playerReserve: playerFull.slice(3),
       enemyReserve: enemyFull.slice(3),
-      animate: { lunge: null, hit: [], dying: [], entering: [], shielding: [], healing: [] },
+      animate: { lunge: null, hit: [], dying: [], entering: [], shielding: [], healing: [], healTexts: [] },
       turn: 'player',
       over: false
     };
@@ -908,6 +951,7 @@
       setTimeout(() => {
         if (!state.battle) return;
         state.battle.animate.shielding = [];
+        state.battle.animate.healTexts = [];
         refreshBattle();
       }, 420);
     }
