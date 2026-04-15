@@ -47,10 +47,14 @@
   .msg{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(6,10,18,.5);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;font-size:12px;line-height:1.35;min-height:auto;display:flex;align-items:center;pointer-events:none;opacity:.92;max-height:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:opacity .18s}
   .controls{display:grid;grid-template-columns:1.15fr 1fr;gap:8px;min-height:0}
   .pad,.actions{background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:20px;padding:10px;box-shadow:0 14px 34px rgba(0,0,0,.32);min-height:0}
-  .padGrid{display:grid;grid-template-columns:88px 88px 88px;grid-template-rows:52px 52px 52px;gap:10px;justify-content:center;align-items:center;height:100%}
-  .btn{border:none;border-radius:18px;color:#fff;font-size:22px;font-weight:900;background:#1a3457;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);user-select:none;min-height:52px;min-width:52px;touch-action:none}
+  .pad{display:flex;align-items:center;justify-content:center}
+  .joystickArea{position:relative;width:min(100%,190px);aspect-ratio:1/1;touch-action:none}
+  .joyBase{position:absolute;inset:0;margin:auto;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(96,165,250,.2), rgba(26,52,87,.88) 60%, rgba(10,20,34,.96));border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 -10px 24px rgba(0,0,0,.22)}
+  .joyRing{position:absolute;inset:18px;border-radius:50%;border:1px dashed rgba(255,255,255,.10);opacity:.6}
+  .joyStick{position:absolute;left:50%;top:50%;width:74px;height:74px;margin:-37px 0 0 -37px;border:none;border-radius:50%;background:radial-gradient(circle at 35% 30%, #7dd3fc, #2563eb 70%);box-shadow:0 10px 24px rgba(0,0,0,.34), inset 0 -8px 0 rgba(0,0,0,.18);touch-action:none;transform:translate(0,0)}
+  .joyText{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+  .btn{border:none;border-radius:18px;color:#fff;font-size:22px;font-weight:900;background:#1a3457;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);user-select:none;min-height:56px;min-width:56px;touch-action:none}
   .btn:active,.btn.active{transform:translateY(1px);filter:brightness(1.08)}
-  .up{grid-column:2;grid-row:1}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:3}.right{grid-column:3;grid-row:2}
   .actionsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
   .atk{background:#9f1239}.act{background:#1d4ed8}.pot{background:#15803d}.buy{background:#92400e}.job{background:#6d28d9}.wide{grid-column:1 / span 2}
   .hint{display:none}
@@ -69,8 +73,9 @@
   @media (max-width:420px){
     :root{--controlH:184px}
     .chip .v{font-size:14px}
-    .padGrid{grid-template-columns:72px 72px 72px;grid-template-rows:48px 48px 48px;gap:8px}
-    .btn{font-size:20px;min-height:48px}
+    .joyBase{width:148px;height:148px}
+    .joyStick{width:66px;height:66px;margin:-33px 0 0 -33px}
+    .btn{font-size:20px;min-height:50px}
   }
 </style>
 </head>
@@ -97,11 +102,12 @@
 
   <div class="controls">
     <div class="pad">
-      <div class="padGrid">
-        <button class="btn up" data-key="up">▲</button>
-        <button class="btn left" data-key="left">◀</button>
-        <button class="btn down" data-key="down">▼</button>
-        <button class="btn right" data-key="right">▶</button>
+      <div class="joystickArea" id="joystickArea">
+        <div class="joyBase">
+          <div class="joyRing"></div>
+          <button class="joyStick" id="joyStick" aria-label="虛擬搖桿"></button>
+        </div>
+        <div class="joyText">搖桿移動</div>
       </div>
     </div>
 
@@ -165,6 +171,7 @@
   const merchant = {x: 92, y: 702, r: 20};
   const healer = {x: 330, y: 700, r: 20};
   const keys = {up:false,down:false,left:false,right:false};
+  const joystick = {active:false,x:0,y:0,max:52,pointerId:null};
   let lastTime = 0;
   let msgTimer = 0;
   let particles = [];
@@ -495,6 +502,8 @@
     if (keys.right) mx += 1;
     if (keys.up) my -= 1;
     if (keys.down) my += 1;
+    mx += joystick.x;
+    my += joystick.y;
     if (mx || my) {
       const dir = angleNorm(mx,my);
       p.facingX = dir.x; p.facingY = dir.y;
@@ -784,20 +793,64 @@
     requestAnimationFrame(loop);
   }
 
-  function bindHoldButton(el, key){
-    const on = (e) => { e.preventDefault(); keys[key] = true; el.classList.add('active'); };
-    const off = (e) => { if (e) e.preventDefault(); keys[key] = false; el.classList.remove('active'); };
-    el.addEventListener('pointerdown', on, {passive:false});
-    el.addEventListener('pointerup', off, {passive:false});
-    el.addEventListener('pointercancel', off, {passive:false});
-    el.addEventListener('pointerleave', off, {passive:false});
+  function bindJoystick(){
+    const area = document.getElementById('joystickArea');
+    const stick = document.getElementById('joyStick');
+    const base = area.querySelector('.joyBase');
+
+    function resetStick(){
+      joystick.active = false;
+      joystick.pointerId = null;
+      joystick.x = 0;
+      joystick.y = 0;
+      stick.style.transform = 'translate(0px, 0px)';
+    }
+
+    function updateStick(clientX, clientY){
+      const rect = base.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = clientX - cx;
+      let dy = clientY - cy;
+      const d = Math.hypot(dx, dy);
+      if (d > joystick.max){
+        dx = dx / d * joystick.max;
+        dy = dy / d * joystick.max;
+      }
+      joystick.x = dx / joystick.max;
+      joystick.y = dy / joystick.max;
+      stick.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+
+    area.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      joystick.active = true;
+      joystick.pointerId = e.pointerId;
+      area.setPointerCapture(e.pointerId);
+      updateStick(e.clientX, e.clientY);
+    }, {passive:false});
+
+    area.addEventListener('pointermove', (e) => {
+      if (!joystick.active || e.pointerId !== joystick.pointerId) return;
+      e.preventDefault();
+      updateStick(e.clientX, e.clientY);
+    }, {passive:false});
+
+    const off = (e) => {
+      if (e && joystick.pointerId !== null && e.pointerId !== joystick.pointerId) return;
+      if (e) e.preventDefault();
+      resetStick();
+    };
+    area.addEventListener('pointerup', off, {passive:false});
+    area.addEventListener('pointercancel', off, {passive:false});
+    area.addEventListener('lostpointercapture', off, {passive:false});
   }
 
   function bindTapButton(el, fn){
     el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 90); }, {passive:false});
   }
 
-  document.querySelectorAll('[data-key]').forEach(btn => bindHoldButton(btn, btn.dataset.key));
+  bindJoystick();
   bindTapButton(document.getElementById('attackBtn'), doAttack);
   bindTapButton(document.getElementById('interactBtn'), interact);
   bindTapButton(document.getElementById('potionBtn'), usePotion);
