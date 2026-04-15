@@ -1,905 +1,704 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-<title>直向小怪練功場</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>3v3 卡牌對決 Demo v2</title>
 <style>
   :root{
-    --bg:#07111f;
-    --panel:#0d1b2f;
-    --panel2:#132742;
-    --line:rgba(255,255,255,.08);
-    --text:#f5f7fb;
-    --muted:#9fb2cf;
-    --safe:#264b35;
-    --field:#4c3152;
-    --danger:#fb7185;
-    --exp:#fbbf24;
-    --money:#fcd34d;
-    --ok:#4ade80;
-    --blue:#60a5fa;
-    --controlH: 190px;
+    --bg:#0d1020;
+    --panel:#171c31;
+    --panel2:#232947;
+    --line:#313a64;
+    --text:#eef2ff;
+    --muted:#a3add8;
+    --player:#7dd3fc;
+    --enemy:#f9a8d4;
+    --gold:#fcd34d;
+    --select:#a78bfa;
+    --empty:#8b95ba;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{
-    margin:0;width:100%;height:100%;overflow:hidden;
-    background:linear-gradient(180deg,#06101d,#0a1526 55%,#0b1320);
+    margin:0;height:100%;
+    background:linear-gradient(180deg,#101427,#0b0e19 60%,#080a11);
     color:var(--text);
-    font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;
-    touch-action:none;
+    font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
+    overflow:hidden;
   }
-  body{padding:0}
+  body{position:fixed; inset:0;}
   .app{
-    width:100vw;height:100dvh;max-width:480px;margin:0 auto;
-    padding:max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
-    display:grid;grid-template-rows:auto 1fr var(--controlH);gap:8px;overflow:hidden;
+    height:100dvh;
+    padding:
+      calc(env(safe-area-inset-top) + 10px)
+      calc(env(safe-area-inset-right) + 10px)
+      calc(env(safe-area-inset-bottom) + 10px)
+      calc(env(safe-area-inset-left) + 10px);
+    display:grid;
+    grid-template-rows:auto auto auto 1fr auto;
+    gap:8px;
+    max-width:560px;
+    margin:0 auto;
   }
-  .hud{background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:0 12px 30px rgba(0,0,0,.28);display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-  .toprow{display:contents}
-  .chip{background:rgba(19,39,66,.95);border:1px solid var(--line);border-radius:12px;padding:6px 8px;min-height:auto}
-  .chip .k{font-size:10px;color:var(--muted);margin-bottom:2px}
-  .chip .v{font-size:15px;font-weight:800;line-height:1.1}
-  .bars{display:none}
-  .stageWrap{position:relative;background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:20px;padding:6px;box-shadow:0 14px 34px rgba(0,0,0,.32);min-height:0;overflow:hidden}
-  canvas{display:block;width:100%;height:100%;border-radius:16px;background:#0a1322;image-rendering:pixelated;touch-action:none}
-  .stageLabel{display:none}
-  .msg{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(6,10,18,.5);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;font-size:12px;line-height:1.35;min-height:auto;display:flex;align-items:center;pointer-events:none;opacity:.92;max-height:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:opacity .18s}
-  .controls{display:grid;grid-template-columns:1.15fr 1fr;gap:8px;min-height:0}
-  .pad,.actions{background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:20px;padding:10px;box-shadow:0 14px 34px rgba(0,0,0,.32);min-height:0}
-  .pad{display:flex;align-items:center;justify-content:center}
-  .joystickArea{position:relative;width:min(100%,190px);aspect-ratio:1/1;touch-action:none}
-  .joyBase{position:absolute;inset:0;margin:auto;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(96,165,250,.2), rgba(26,52,87,.88) 60%, rgba(10,20,34,.96));border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 -10px 24px rgba(0,0,0,.22)}
-  .joyRing{position:absolute;inset:18px;border-radius:50%;border:1px dashed rgba(255,255,255,.10);opacity:.6}
-  .joyStick{position:absolute;left:50%;top:50%;width:74px;height:74px;margin:-37px 0 0 -37px;border:none;border-radius:50%;background:radial-gradient(circle at 35% 30%, #7dd3fc, #2563eb 70%);box-shadow:0 10px 24px rgba(0,0,0,.34), inset 0 -8px 0 rgba(0,0,0,.18);touch-action:none;transform:translate(0,0)}
-  .joyText{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
-  .btn{border:none;border-radius:18px;color:#fff;font-size:22px;font-weight:900;background:#1a3457;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);user-select:none;min-height:56px;min-width:56px;touch-action:none}
-  .btn:active,.btn.active{transform:translateY(1px);filter:brightness(1.08)}
-  .actionsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
-  .atk{background:#9f1239}.act{background:#1d4ed8}.pot{background:#15803d}.buy{background:#92400e}.job{background:#6d28d9}.wide{grid-column:1 / span 2}
-  .hint{display:none}
-  .overlay{position:fixed;inset:0;background:rgba(2,6,12,.6);display:none;align-items:center;justify-content:center;padding:14px;z-index:20}
-  .overlay.show{display:flex}
-  .sheet{width:min(430px,100%);max-height:72dvh;overflow:auto;background:linear-gradient(180deg,#0d1b2f,#101f36);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
-  .sheet h3{margin:0 0 6px;font-size:20px}
-  .sheet .sub{font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:10px}
-  .sheet .list{display:grid;gap:8px}
-  .item{border:1px solid var(--line);background:rgba(19,39,66,.88);border-radius:16px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
-  .item .name{font-weight:800}
-  .item .desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
-  .item button{border:none;border-radius:12px;padding:10px 12px;font-weight:800;color:#07111f;background:#fcd34d}
-  .closeRow{display:flex;justify-content:flex-end;margin-top:10px}
-  .ghost{background:#22344f;color:#dbe7f7;border:none;border-radius:12px;padding:10px 14px;font-weight:700}
-  @media (max-width:420px){
-    :root{--controlH:184px}
-    .chip .v{font-size:14px}
-    .joyBase{width:148px;height:148px}
-    .joyStick{width:66px;height:66px;margin:-33px 0 0 -33px}
-    .btn{font-size:20px;min-height:50px}
+  .box{
+    background:rgba(23,28,49,.94);
+    border:1px solid var(--line);
+    border-radius:18px;
   }
+  .topbar{
+    padding:12px 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .title{
+    font-size:20px;
+    font-weight:1000;
+    letter-spacing:.3px;
+  }
+  .sub{
+    margin-top:3px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .turn-pill{
+    min-width:114px;
+    text-align:center;
+    padding:10px 12px;
+    border-radius:999px;
+    background:rgba(125,211,252,.1);
+    border:1px solid rgba(125,211,252,.24);
+    font-size:13px;
+    font-weight:900;
+  }
+  .status{
+    padding:10px 12px;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    font-size:13px;
+    gap:10px;
+  }
+  .status b{font-size:15px}
+  .status .center{
+    text-align:center;
+    color:var(--gold);
+    font-weight:900;
+  }
+  .actionbar{
+    padding:12px 14px;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:15px;
+    font-weight:900;
+    letter-spacing:.2px;
+  }
+  .actionbar small{
+    display:block;
+    margin-top:4px;
+    font-size:12px;
+    color:var(--muted);
+    font-weight:700;
+  }
+  .board{
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto auto auto auto auto;
+    gap:8px;
+  }
+  .reserve-row{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:2px 2px 4px;
+    scrollbar-width:none;
+  }
+  .reserve-row::-webkit-scrollbar{display:none}
+  .chip{
+    flex:0 0 auto;
+    min-width:54px;
+    height:38px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:15px;
+    font-weight:1000;
+    border:1px solid var(--line);
+    background:rgba(35,41,71,.94);
+    color:#dde5ff;
+    transition:transform .22s ease, opacity .22s ease;
+  }
+  .chip.enemy{background:rgba(72,37,54,.92)}
+  .chip.player{background:rgba(27,60,72,.94)}
+  .chip.drawn{
+    transform:scale(1.15);
+    box-shadow:0 0 0 3px rgba(252,211,77,.22);
+  }
+  .field{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .midbar{
+    padding:8px 10px;
+    border-radius:16px;
+    border:1px dashed rgba(255,255,255,.12);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .midbar .big{
+    color:#e8ecff;
+    font-weight:900;
+  }
+  .card{
+    position:relative;
+    min-height:136px;
+    border-radius:20px;
+    border:2px solid var(--line);
+    background:
+      radial-gradient(circle at top, rgba(255,255,255,.08), transparent 40%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+      var(--panel);
+    box-shadow:0 10px 22px rgba(0,0,0,.24);
+    padding:10px 8px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    align-items:center;
+    transition:transform .28s ease, opacity .28s ease, border-color .18s ease, box-shadow .18s ease, filter .24s ease;
+    user-select:none;
+  }
+  .player-card{
+    background:
+      radial-gradient(circle at top, rgba(125,211,252,.14), transparent 40%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+      #17283a;
+  }
+  .enemy-card{
+    background:
+      radial-gradient(circle at top, rgba(249,168,212,.14), transparent 40%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
+      #2a1d2a;
+  }
+  .card.selectable{border-color:rgba(125,211,252,.45)}
+  .card.selected{
+    border-color:var(--select);
+    box-shadow:0 0 0 3px rgba(167,139,250,.25),0 10px 22px rgba(0,0,0,.24);
+  }
+  .card.targetable{
+    border-color:rgba(252,211,77,.55);
+    box-shadow:0 0 0 3px rgba(252,211,77,.18),0 10px 22px rgba(0,0,0,.24);
+  }
+  .card.attacking.player-card{ transform:translateY(-16px) scale(1.03); }
+  .card.attacking.enemy-card{ transform:translateY(16px) scale(1.03); }
+  .card.hit{
+    box-shadow:0 0 0 4px rgba(252,211,77,.25), 0 10px 22px rgba(0,0,0,.24);
+    filter:brightness(1.16);
+  }
+  .card.dying{
+    transform:scale(.84);
+    opacity:.08;
+    filter:grayscale(1);
+  }
+  .card.entering{
+    animation:flipIn .45s ease;
+    border-color:rgba(252,211,77,.5);
+  }
+  @keyframes flipIn{
+    0%{ transform:rotateY(90deg) scale(.9); opacity:.15; }
+    100%{ transform:rotateY(0) scale(1); opacity:1; }
+  }
+  .card .kind{
+    width:100%;
+    text-align:center;
+    font-size:11px;
+    color:var(--muted);
+    font-weight:800;
+  }
+  .card .power{
+    font-size:42px;
+    line-height:1;
+    font-weight:1000;
+    letter-spacing:.5px;
+  }
+  .meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    justify-content:center;
+  }
+  .tag{
+    padding:4px 8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:11px;
+    color:#d8e0ff;
+  }
+  .dead-slot{
+    min-height:136px;
+    border-radius:20px;
+    border:2px dashed rgba(255,255,255,.18);
+    background:rgba(255,255,255,.03);
+    color:var(--empty);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    opacity:.94;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .dead-slot .x{
+    font-size:34px;
+    font-weight:1000;
+    line-height:1;
+  }
+  .dead-slot .txt{
+    font-size:12px;
+    font-weight:800;
+  }
+  .toolbar{
+    padding:9px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  button{
+    appearance:none;border:none;
+    height:48px;border-radius:16px;
+    color:#eef2ff;
+    font-size:15px;font-weight:1000;
+    background:linear-gradient(180deg,#2c3459,#242a49);
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 10px 18px rgba(0,0,0,.18);
+  }
+  button:active{ transform:scale(.985); }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="hud">
-    <div class="toprow">
-      <div class="chip"><div class="k">Lv</div><div class="v" id="lvText">1</div></div>
-      <div class="chip"><div class="k">職業</div><div class="v" id="jobText">新手</div></div>
-      <div class="chip"><div class="k">武器</div><div class="v" id="weaponText">木棍</div></div>
-      <div class="chip"><div class="k">金錢 / HP</div><div class="v"><span id="moneyText">0</span> / <span id="hpText">48</span></div></div>
+  <div class="box topbar">
+    <div>
+      <div class="title">3v3 卡牌對決</div>
+      <div class="sub">先點我方一張，再點敵方一張。現在有明顯動作流程。</div>
     </div>
-    <div class="bars">
-      <div class="barrow"><div class="label">HP</div><div class="bar"><div class="fill hp" id="hpFill"></div></div><div class="num" id="hpText2">48 / 48</div></div>
-      <div class="barrow"><div class="label">EXP</div><div class="bar"><div class="fill exp" id="expFill"></div></div><div class="num" id="expText">0 / 12</div></div>
-      <div class="barrow"><div class="label">藥水</div><div class="bar"><div class="fill money" id="potFill"></div></div><div class="num" id="potText">1 瓶</div></div>
-    </div>
+    <div class="turn-pill" id="turnPill">你的回合</div>
   </div>
 
-  <div class="stageWrap">
-    <canvas id="game" width="420" height="760"></canvas>
-    <div class="msg" id="msgBox">下方安全區，上方刷怪。</div>
+  <div class="box status">
+    <div>我方牌堆：<b id="playerReserveCount">3</b></div>
+    <div class="center" id="roundText">第 1 回合</div>
+    <div style="text-align:right">敵方牌堆：<b id="enemyReserveCount">3</b></div>
   </div>
 
-  <div class="controls">
-    <div class="pad">
-      <div class="joystickArea" id="joystickArea">
-        <div class="joyBase">
-          <div class="joyRing"></div>
-          <button class="joyStick" id="joyStick" aria-label="虛擬搖桿"></button>
-        </div>
-        <div class="joyText">搖桿移動</div>
-      </div>
-    </div>
+  <div class="box actionbar" id="actionBar">先選你要攻擊的卡<small>這裡只顯示當前動作，不塞一大堆戰報。</small></div>
 
-    <div class="actions">
-      <div class="actionsGrid">
-        <button class="btn atk" id="attackBtn">攻擊</button>
-        <button class="btn act" id="interactBtn">互動</button>
-        <button class="btn pot" id="potionBtn">喝藥</button>
-        <button class="btn buy" id="shopBtn">商店</button>
-        <button class="btn job wide" id="jobBtn">轉職</button>
-      </div>
+  <div class="board">
+    <div class="reserve-row" id="enemyReserve"></div>
+    <div class="field" id="enemyField"></div>
+    <div class="midbar">
+      <span id="centerHint">等待出手</span>
+      <span class="big" id="scoreText">我方 6 vs 敵方 6</span>
     </div>
+    <div class="field" id="playerField"></div>
+    <div class="reserve-row" id="playerReserve"></div>
   </div>
-</div>
 
-<div class="overlay" id="sheetOverlay">
-  <div class="sheet">
-    <h3 id="sheetTitle">商店</h3>
-    <div class="sub" id="sheetSub">購買之後會立即裝備。</div>
-    <div class="list" id="sheetList"></div>
-    <div class="closeRow"><button class="ghost" id="closeSheetBtn">關閉</button></div>
+  <div class="box toolbar">
+    <button id="newPresetBtn">用範例牌組重開</button>
+    <button id="newRandomBtn">隨機牌組重開</button>
   </div>
 </div>
 
 <script>
 (() => {
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  let W = canvas.width, H = canvas.height;
-  let SAFE_Y = 610;
-  const ui = {
-    lv: document.getElementById('lvText'),
-    job: document.getElementById('jobText'),
-    weapon: document.getElementById('weaponText'),
-    money: document.getElementById('moneyText'),
-    hpFill: document.getElementById('hpFill'),
-    hpText: document.getElementById('hpText'),
-    expFill: document.getElementById('expFill'),
-    expText: document.getElementById('expText'),
-    potFill: document.getElementById('potFill'),
-    potText: document.getElementById('potText'),
-    msg: document.getElementById('msgBox'),
-    overlay: document.getElementById('sheetOverlay'),
-    sheetTitle: document.getElementById('sheetTitle'),
-    sheetSub: document.getElementById('sheetSub'),
-    sheetList: document.getElementById('sheetList'),
-  };
-
-  function resizeStage(){
-    const stage = document.querySelector('.stageWrap');
-    const rect = stage.getBoundingClientRect();
-    canvas.width = Math.max(320, Math.floor(rect.width - 12));
-    canvas.height = Math.max(360, Math.floor(rect.height - 12));
-    W = canvas.width; H = canvas.height; SAFE_Y = Math.floor(H * 0.76);
-    merchant.x = Math.floor(W * 0.22); merchant.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
-    trainer.x = Math.floor(W * 0.50); trainer.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.56);
-    healer.x = Math.floor(W * 0.78); healer.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
-  }
-
-  const trainer = {x: 210, y: 700, r: 20};
-  const merchant = {x: 92, y: 702, r: 20};
-  const healer = {x: 330, y: 700, r: 20};
-  const keys = {up:false,down:false,left:false,right:false};
-  const joystick = {active:false,x:0,y:0,max:52,pointerId:null};
-  let lastTime = 0;
-  let msgTimer = 0;
-  let particles = [];
-  let projectiles = [];
-  let monsters = [];
-  let loot = [];
-  let bestLv = Number(localStorage.getItem('mobile_rpg_best_lv') || 1);
-
-  const weapons = [
-    {id:'stick', name:'木棍', type:'melee', atk:8, range:38, cd:0.46, price:0, tier:0, desc:'初始武器，夠用但不體面。'},
-    {id:'sword', name:'鐵劍', type:'melee', atk:14, range:48, cd:0.38, price:80, tier:1, desc:'近戰穩定，手感比木棍像樣。'},
-    {id:'spear', name:'長槍', type:'melee', atk:20, range:64, cd:0.44, price:180, tier:2, desc:'距離更長，適合保守打法。'},
-    {id:'bow', name:'短弓', type:'bow', atk:12, range:0, cd:0.55, price:120, tier:1, desc:'遠距離輸出，清怪更安全。'},
-    {id:'hunter_bow', name:'獵弓', type:'bow', atk:18, range:0, cd:0.45, price:260, tier:2, desc:'更快更痛，走位空間更大。'},
-    {id:'staff', name:'木杖', type:'staff', atk:13, range:0, cd:0.62, price:120, tier:1, desc:'會發射魔法彈，小範圍爆裂。'},
-    {id:'fire_staff', name:'火杖', type:'staff', atk:20, range:0, cd:0.56, price:300, tier:2, desc:'爆裂範圍更大，收怪舒服。'},
-  ];
-  const weaponMap = Object.fromEntries(weapons.map(w => [w.id, w]));
-  const jobs = [
-    {id:'warrior', name:'戰士', desc:'血更厚，近戰傷害更高。'},
-    {id:'archer', name:'遊俠', desc:'移動更快，弓系武器更強。'},
-    {id:'mage', name:'術士', desc:'法杖爆裂範圍加大。'},
-  ];
+  const $ = id => document.getElementById(id);
 
   const state = {
-    player: {
-      x: W/2, y: 680, r: 14,
-      hp: 48, maxHp: 48,
-      level: 1, exp: 0, expNeed: 12,
-      money: 0, potions: 1,
-      job: '新手', jobId: 'novice',
-      weaponId: 'stick',
-      facingX: 0, facingY: -1,
-      speed: 112,
-      atkBase: 4,
-      attackCd: 0,
-      hitFlash: 0,
-      dead: false,
-    },
-    menuOpen: false,
+    playerField: [],
+    enemyField: [],
+    playerReserve: [],
+    enemyReserve: [],
+    turn: 'player',
+    selectedPlayerIndex: null,
+    busy: false,
+    winner: null,
+    round: 1,
+    animate: {
+      attacking: null,
+      hit: null,
+      dying: [],
+      entering: []
+    }
   };
 
-  function currentWeapon(){ return weaponMap[state.player.weaponId]; }
+  const el = {
+    turnPill: $('turnPill'),
+    roundText: $('roundText'),
+    actionBar: $('actionBar'),
+    centerHint: $('centerHint'),
+    scoreText: $('scoreText'),
+    playerReserveCount: $('playerReserveCount'),
+    enemyReserveCount: $('enemyReserveCount'),
+    playerReserve: $('playerReserve'),
+    enemyReserve: $('enemyReserve'),
+    playerField: $('playerField'),
+    enemyField: $('enemyField'),
+    newPresetBtn: $('newPresetBtn'),
+    newRandomBtn: $('newRandomBtn')
+  };
 
-  function setMessage(text, t = 1.6){
-    ui.msg.textContent = text;
-    msgTimer = t;
+  let nextId = 1;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function setAction(text, sub=''){
+    el.actionBar.innerHTML = sub ? `${text}<small>${sub}</small>` : text;
   }
 
-  function syncUI(){
-    const p = state.player, w = currentWeapon();
-    ui.lv.textContent = p.level;
-    ui.job.textContent = p.job;
-    ui.weapon.textContent = w.name;
-    ui.money.textContent = p.money;
-    if (ui.hpFill) ui.hpFill.style.width = (p.hp / p.maxHp * 100) + '%';
-    ui.hpText.textContent = `${Math.ceil(p.hp)}`;
-    const hpText2 = document.getElementById('hpText2'); if (hpText2) hpText2.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-    if (ui.expFill) ui.expFill.style.width = (p.exp / p.expNeed * 100) + '%';
-    ui.expText.textContent = `${p.exp} / ${p.expNeed}`;
-    if (ui.potFill) ui.potFill.style.width = Math.min(p.potions / 10, 1) * 100 + '%';
-    ui.potText.textContent = `${p.potions} 瓶`;
+  function makeCard(value, side, kind='一般'){
+    return { id: nextId++, value, base: value, side, kind };
   }
 
-  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
-  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-  function rand(a,b){ return Math.random() * (b-a) + a; }
-  function angleNorm(x,y){ const d = Math.hypot(x,y) || 1; return {x:x/d,y:y/d}; }
-  function inSafeZone(obj){ return obj.y >= SAFE_Y; }
-
-  function addParticle(x,y,text,color='#fff',life=0.8,vy=-24,size=16){
-    particles.push({x,y,text,color,life,maxLife:life,vy,size});
-  }
-
-  function spawnMonster(kind = 'slime'){
-    const types = {
-      slime: {color:'#f472b6', hp: 18 + state.player.level*2, speed: rand(18,28), exp:[4,6], money:[5,10], r: 18},
-      blue:  {color:'#60a5fa', hp: 26 + state.player.level*3, speed: rand(16,24), exp:[6,9], money:[8,14], r: 20},
-      horn:  {color:'#fb7185', hp: 34 + state.player.level*4, speed: rand(14,22), exp:[10,14], money:[12,20], r: 22},
+  function makePresetDecks(){
+    return {
+      player: [200,150,180,120,240,90],
+      enemy:  [300,100,130,170,220,140]
     };
-    const t = types[kind];
-    monsters.push({
-      kind, x: rand(36, W-36), y: rand(40, SAFE_Y-70), r: t.r,
-      hp: t.hp, maxHp: t.hp, speed: t.speed, dead:false,
-      wanderX: rand(-1,1), wanderY: rand(-1,1), wanderT: rand(0.4,1.8),
-      atkCd: rand(0.7,1.5), color: t.color, expMin:t.exp[0], expMax:t.exp[1], moneyMin:t.money[0], moneyMax:t.money[1],
-      knockX:0, knockY:0
+  }
+
+  function makeRandomDecks(){
+    const gen = () => Array.from({length:6}, () => Math.floor(Math.random() * 25) * 10 + 80);
+    return { player: gen(), enemy: gen() };
+  }
+
+  function sideName(side){ return side === 'player' ? '我方' : '敵方'; }
+  function getField(side){ return side === 'player' ? state.playerField : state.enemyField; }
+  function getReserve(side){ return side === 'player' ? state.playerReserve : state.enemyReserve; }
+  function setField(side, v){ side === 'player' ? state.playerField = v : state.enemyField = v; }
+  function setReserve(side, v){ side === 'player' ? state.playerReserve = v : state.enemyReserve = v; }
+
+  function totalAliveCount(side){
+    return getField(side).filter(Boolean).length + getReserve(side).length;
+  }
+
+  function clearSelection(){ state.selectedPlayerIndex = null; }
+
+  function judgeWinner(){
+    const p = totalAliveCount('player');
+    const e = totalAliveCount('enemy');
+
+    if(p <= 0 && e <= 0) state.winner = 'draw';
+    else if(p <= 0) state.winner = 'enemy';
+    else if(e <= 0) state.winner = 'player';
+
+    if(state.winner){
+      state.turn = null;
+      state.selectedPlayerIndex = null;
+      state.busy = true;
+      if(state.winner === 'draw'){
+        setAction('雙方同歸於盡，平手', '這把直接玉石俱焚。');
+      }else{
+        setAction(state.winner === 'player' ? '你贏了' : '你輸了', '可以直接重開一把。');
+      }
+    }
+  }
+
+  function renderReserve(container, cards, side){
+    container.innerHTML = '';
+    if(cards.length === 0){
+      const chip = document.createElement('div');
+      chip.className = `chip ${side}`;
+      chip.textContent = '空';
+      chip.style.opacity = '.55';
+      container.appendChild(chip);
+      return;
+    }
+    cards.forEach((card, idx) => {
+      const chip = document.createElement('div');
+      chip.className = `chip ${side}`;
+      chip.textContent = card.value;
+      chip.title = `${card.kind} ${card.value}`;
+      if(state.animate.entering.some(x => x.side === side && x.fromReserveIndex === idx)) chip.classList.add('drawn');
+      container.appendChild(chip);
     });
   }
 
-  function ensureMonsters(){
-    const wanted = 5 + Math.min(4, Math.floor(state.player.level / 2));
-    while (monsters.length < wanted) {
-      const roll = Math.random();
-      if (state.player.level >= 6 && roll > 0.85) spawnMonster('horn');
-      else if (state.player.level >= 3 && roll > 0.55) spawnMonster('blue');
-      else spawnMonster('slime');
-    }
+  function deadSlotHTML(){
+    return `<div class="dead-slot"><div class="x">✕</div><div class="txt">空位</div></div>`;
   }
 
-  function applyJob(jobId){
-    const p = state.player;
-    if (p.jobId !== 'novice') return setMessage('已轉職。');
-    const map = {
-      warrior: {name:'戰士', hp:16, speed:0},
-      archer: {name:'遊俠', hp:6, speed:16},
-      mage: {name:'術士', hp:8, speed:8},
-    };
-    const j = map[jobId];
-    p.jobId = jobId;
-    p.job = j.name;
-    p.maxHp += j.hp;
-    p.hp = p.maxHp;
-    p.speed += j.speed;
-    addParticle(p.x, p.y-24, '轉職!', '#fde68a', 1.1, -26, 22);
-    setMessage(`已轉職為 ${j.name}。`);
-    closeSheet();
-    syncUI();
-  }
+  function renderField(container, cards, side){
+    container.innerHTML = '';
 
-  function levelUp(){
-    const p = state.player;
-    while (p.exp >= p.expNeed) {
-      p.exp -= p.expNeed;
-      p.level += 1;
-      p.expNeed = Math.floor(p.expNeed * 1.38 + 6);
-      p.maxHp += 7;
-      p.hp = p.maxHp;
-      p.atkBase += 2;
-      addParticle(p.x, p.y-20, 'LEVEL UP', '#fde68a', 1.0, -28, 20);
-      setMessage(`Lv.${p.level}`);
-      if (p.level > bestLv) {
-        bestLv = p.level;
-        localStorage.setItem('mobile_rpg_best_lv', String(bestLv));
+    cards.forEach((card, idx) => {
+      const dyingHere = state.animate.dying.some(x => x.side === side && x.index === idx);
+
+      if(!card){
+        container.insertAdjacentHTML('beforeend', deadSlotHTML());
+        return;
       }
-    }
-  }
 
-  function playerDamageBase(){
-    const p = state.player, w = currentWeapon();
-    let d = p.atkBase + w.atk + Math.floor(p.level * 1.2);
-    if (p.jobId === 'warrior' && w.type === 'melee') d += 5;
-    if (p.jobId === 'archer' && w.type === 'bow') d += 5;
-    if (p.jobId === 'mage' && w.type === 'staff') d += 6;
-    return d;
-  }
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.className = `card ${side === 'player' ? 'player-card' : 'enemy-card'}`;
 
-  function doAttack(){
-    const p = state.player;
-    if (state.menuOpen) return;
-    if (p.dead) return;
-    if (p.attackCd > 0) return;
-    const w = currentWeapon();
-    let cd = w.cd;
-    if (p.jobId === 'warrior' && w.type === 'melee') cd -= 0.05;
-    if (p.jobId === 'archer' && w.type === 'bow') cd -= 0.07;
-    if (p.jobId === 'mage' && w.type === 'staff') cd -= 0.05;
-    p.attackCd = Math.max(0.18, cd);
+      const playerTurn = state.turn === 'player' && !state.busy && !state.winner;
 
-    if (w.type === 'melee') {
-      const range = w.range;
-      const front = {x: p.x + p.facingX * range * 0.65, y: p.y + p.facingY * range * 0.65};
-      addParticle(front.x, front.y, '斬', '#e2e8f0', 0.28, -6, 18);
-      for (const m of monsters) {
-        if (m.dead) continue;
-        const dx = m.x - p.x, dy = m.y - p.y;
-        const d = Math.hypot(dx,dy);
-        if (d > range + m.r) continue;
-        const dir = angleNorm(dx,dy);
-        const dot = dir.x * p.facingX + dir.y * p.facingY;
-        if (dot < 0.28) continue;
-        hitMonster(m, playerDamageBase(), p.facingX * 90, p.facingY * 90);
+      if(side === 'player' && playerTurn){
+        d.classList.add('selectable');
+        if(state.selectedPlayerIndex === idx) d.classList.add('selected');
+        d.addEventListener('click', () => {
+          state.selectedPlayerIndex = idx;
+          render();
+        });
       }
-    } else if (w.type === 'bow') {
-      const speed = p.jobId === 'archer' ? 420 : 360;
-      projectiles.push({kind:'arrow', x:p.x + p.facingX*18, y:p.y + p.facingY*18, vx:p.facingX*speed, vy:p.facingY*speed, life:1.5, r:4, dmg:playerDamageBase()});
-    } else if (w.type === 'staff') {
-      const speed = 300;
-      const splash = p.jobId === 'mage' ? 42 : 28;
-      projectiles.push({kind:'orb', x:p.x + p.facingX*18, y:p.y + p.facingY*18, vx:p.facingX*speed, vy:p.facingY*speed, life:1.6, r:7, dmg:playerDamageBase()+2, splash});
-    }
-  }
 
-  function hitMonster(m, dmg, kx=0, ky=0){
-    if (m.dead) return;
-    const dealt = Math.max(1, Math.floor(dmg + rand(-2,3)));
-    m.hp -= dealt;
-    m.knockX += kx * 0.01;
-    m.knockY += ky * 0.01;
-    addParticle(m.x, m.y - m.r - 8, String(dealt), '#fde68a', 0.65, -22, 16);
-    if (m.hp <= 0) killMonster(m);
-  }
+      if(side === 'enemy' && playerTurn && state.selectedPlayerIndex !== null){
+        d.classList.add('targetable');
+        d.addEventListener('click', () => {
+          if(state.selectedPlayerIndex === null) return;
+          resolveAttack('player', state.selectedPlayerIndex, idx);
+        });
+      }
 
-  function killMonster(m){
-    m.dead = true;
-    const p = state.player;
-    const exp = Math.floor(rand(m.expMin, m.expMax + 0.99));
-    const money = Math.floor(rand(m.moneyMin, m.moneyMax + 0.99));
-    p.exp += exp;
-    p.money += money;
-    addParticle(m.x, m.y - 18, `+${exp} EXP`, '#fbbf24', 0.9, -24, 15);
-    addParticle(m.x, m.y + 4, `+$${money}`, '#86efac', 0.9, -18, 15);
-    if (Math.random() < 0.24) {
-      loot.push({x:m.x, y:m.y, r:9, type:'potion'});
-      addParticle(m.x, m.y, '藥水', '#60a5fa', 0.8, -14, 14);
-    }
-    levelUp();
-  }
+      if(state.animate.attacking && state.animate.attacking.side === side && state.animate.attacking.index === idx){
+        d.classList.add('attacking');
+      }
+      if(state.animate.hit && state.animate.hit.side === side && state.animate.hit.index === idx){
+        d.classList.add('hit');
+      }
+      if(dyingHere){
+        d.classList.add('dying');
+      }
+      if(state.animate.entering.some(x => x.side === side && x.index === idx)){
+        d.classList.add('entering');
+      }
 
-  function healAtSafeZone(){
-    const p = state.player;
-    if (dist(p, healer) > 42 || !inSafeZone(p)) {
-      return setMessage('先靠近治療點。');
-    }
-    p.hp = p.maxHp;
-    addParticle(healer.x, healer.y - 26, '補滿', '#86efac', 0.9, -18, 18);
-    setMessage('補血完成。');
-  }
-
-  function usePotion(){
-    const p = state.player;
-    if (p.dead) return;
-    if (p.potions <= 0) return setMessage('藥水沒了。');
-    if (p.hp >= p.maxHp) return setMessage('血量已滿。');
-    p.potions -= 1;
-    p.hp = clamp(p.hp + 28, 0, p.maxHp);
-    addParticle(p.x, p.y - 20, '+28', '#86efac', 0.8, -22, 18);
-    setMessage('已喝藥水。');
-    syncUI();
-  }
-
-  function takeDamage(dmg){
-    const p = state.player;
-    if (p.dead) return;
-    p.hp -= dmg;
-    p.hitFlash = 0.12;
-    addParticle(p.x, p.y - 22, '-' + dmg, '#fb7185', 0.7, -18, 16);
-    if (p.hp <= 0) {
-      p.hp = 0;
-      p.dead = true;
-      setMessage('你倒了。');
-      setTimeout(() => {
-        p.dead = false;
-        p.x = W/2; p.y = 686;
-        p.hp = Math.ceil(p.maxHp * 0.7);
-        setMessage('已回到安全區。');
-      }, 3000);
-    }
-  }
-
-  function buyWeapon(id){
-    const p = state.player;
-    const w = weaponMap[id];
-    if (!w) return;
-    if (p.money < w.price) return setMessage('錢不夠。');
-    if (p.weaponId === id) return setMessage('這把已經裝著了。');
-    p.money -= w.price;
-    p.weaponId = id;
-    closeSheet();
-    setMessage(`已裝備 ${w.name}。`);
-    syncUI();
-  }
-
-  function openSheet(title, sub, items, onPick){
-    state.menuOpen = true;
-    ui.sheetTitle.textContent = title;
-    ui.sheetSub.textContent = sub;
-    ui.sheetList.innerHTML = items.map(item => `
-      <div class="item">
-        <div>
-          <div class="name">${item.name}</div>
-          <div class="desc">${item.desc}</div>
+      d.innerHTML = `
+        <div class="kind">${card.kind}</div>
+        <div class="power">${card.value}</div>
+        <div class="meta">
+          <span class="tag">攻擊 = 血量</span>
+          <span class="tag">原始 ${card.base}</span>
         </div>
-        <button data-id="${item.id}">${item.cta || '選擇'}</button>
-      </div>
-    `).join('');
-    ui.overlay.classList.add('show');
-    ui.sheetList.querySelectorAll('button').forEach(btn => {
-      btn.onclick = () => onPick(btn.dataset.id);
+      `;
+      container.appendChild(d);
     });
   }
 
-  function closeSheet(){
-    state.menuOpen = false;
-    ui.overlay.classList.remove('show');
-  }
+  function render(){
+    el.playerReserveCount.textContent = state.playerReserve.length;
+    el.enemyReserveCount.textContent = state.enemyReserve.length;
+    el.roundText.textContent = `第 ${state.round} 回合`;
 
-  function tryOpenShop(force=false){
-    const p = state.player;
-    if (!force && (dist(p, merchant) > 44 || !inSafeZone(p))) {
-      return setMessage('商店在安全區。');
+    const playerTotal = totalAliveCount('player');
+    const enemyTotal = totalAliveCount('enemy');
+    el.scoreText.textContent = `我方 ${playerTotal} vs 敵方 ${enemyTotal}`;
+
+    if(state.winner === 'player') el.turnPill.textContent = '你贏了';
+    else if(state.winner === 'enemy') el.turnPill.textContent = '你輸了';
+    else if(state.winner === 'draw') el.turnPill.textContent = '平手';
+    else el.turnPill.textContent = state.turn === 'player' ? '你的回合' : '對方回合';
+
+    if(state.winner){
+      el.centerHint.textContent = '對局結束';
+    }else if(state.turn === 'enemy'){
+      el.centerHint.textContent = '對方出手中';
+    }else if(state.selectedPlayerIndex === null){
+      el.centerHint.textContent = '先選我方卡';
+    }else{
+      el.centerHint.textContent = '再選敵方目標';
     }
-    openSheet('武器商店', '購買後立即裝備。', weapons.map(w => ({
-      id:w.id, name:`${w.name}｜${w.price}`, desc:`${w.desc}　ATK ${w.atk}｜${w.type === 'melee' ? '近戰' : w.type === 'bow' ? '遠程' : '法術'}`
-    })), buyWeapon);
+
+    renderReserve(el.enemyReserve, state.enemyReserve, 'enemy');
+    renderReserve(el.playerReserve, state.playerReserve, 'player');
+    renderField(el.enemyField, state.enemyField, 'enemy');
+    renderField(el.playerField, state.playerField, 'player');
   }
 
-  function tryOpenJob(force=false){
-    const p = state.player;
-    if (p.jobId !== 'novice') return setMessage('已轉職。');
-    if (p.level < 5) return setMessage('Lv.5 才能轉職。');
-    if (!force && (dist(p, trainer) > 44 || !inSafeZone(p))) {
-      return setMessage('轉職師在安全區。');
+  function setupGame(randomMode){
+    nextId = 1;
+    state.turn = 'player';
+    state.selectedPlayerIndex = null;
+    state.busy = false;
+    state.winner = null;
+    state.round = 1;
+    state.animate = { attacking:null, hit:null, dying:[], entering:[] };
+
+    const decks = randomMode ? makeRandomDecks() : makePresetDecks();
+    const p = decks.player.map(v => makeCard(v, 'player'));
+    const e = decks.enemy.map(v => makeCard(v, 'enemy'));
+
+    state.playerField = p.slice(0, 3);
+    state.enemyField = e.slice(0, 3);
+    state.playerReserve = p.slice(3);
+    state.enemyReserve = e.slice(3);
+
+    setAction('新對局開始', `我方：${decks.player.join(' / ')}　敵方：${decks.enemy.join(' / ')}`);
+    render();
+  }
+
+  async function refillSideAnimated(side){
+    const field = [...getField(side)];
+    const reserve = [...getReserve(side)];
+
+    for(let i = 0; i < field.length; i++){
+      if(!field[i] && reserve.length > 0){
+        const idx = Math.floor(Math.random() * reserve.length);
+        const drawn = reserve[idx];
+        state.animate.entering = [{ side, index:i, fromReserveIndex:idx }];
+        setAction(`${sideName(side)} 從牌堆補位`, `翻出 ${drawn.value} 上場。`);
+        render();
+        await sleep(260);
+        reserve.splice(idx, 1);
+        field[i] = drawn;
+        setField(side, field);
+        setReserve(side, reserve);
+        render();
+        await sleep(320);
+        state.animate.entering = [];
+        render();
+      }
     }
-    openSheet('轉職', '選一個方向強化。', jobs.map(j => ({
-      id:j.id, name:j.name, desc:j.desc, cta:'轉職'
-    })), applyJob);
   }
 
-  function interact(){
-    const p = state.player;
-    if (!inSafeZone(p)) return setMessage('互動點在安全區。');
-    const dShop = dist(p, merchant), dTrainer = dist(p, trainer), dHealer = dist(p, healer);
-    const min = Math.min(dShop, dTrainer, dHealer);
-    if (min === dShop) return tryOpenShop();
-    if (min === dTrainer) return tryOpenJob();
-    return healAtSafeZone();
-  }
+  async function postResolveCleanup(){
+    await refillSideAnimated('player');
+    await refillSideAnimated('enemy');
 
-  function updatePlayer(dt){
-    const p = state.player;
-    p.attackCd = Math.max(0, p.attackCd - dt);
-    p.hitFlash = Math.max(0, p.hitFlash - dt);
-    if (p.dead || state.menuOpen) return;
+    judgeWinner();
+    render();
+    if(state.winner) return;
 
-    let mx = 0, my = 0;
-    if (keys.left) mx -= 1;
-    if (keys.right) mx += 1;
-    if (keys.up) my -= 1;
-    if (keys.down) my += 1;
-    mx += joystick.x;
-    my += joystick.y;
-    if (mx || my) {
-      const dir = angleNorm(mx,my);
-      p.facingX = dir.x; p.facingY = dir.y;
-      p.x += dir.x * p.speed * dt;
-      p.y += dir.y * p.speed * dt;
+    state.turn = state.turn === 'player' ? 'enemy' : 'player';
+    clearSelection();
+    if(state.turn === 'player') state.round += 1;
+
+    if(state.turn === 'player'){
+      setAction('輪到你了', '先點我方一張，再點敵方一張。');
+    }else{
+      setAction('輪到對方', '正在選目標。');
     }
-    p.x = clamp(p.x, 18, W-18);
-    p.y = clamp(p.y, 18, H-18);
+    state.busy = false;
+    render();
 
-    for (let i = loot.length - 1; i >= 0; i--) {
-      const d = loot[i];
-      if (dist(p, d) < p.r + d.r + 4) {
-        if (d.type === 'potion') {
-          p.potions += 1;
-          addParticle(d.x, d.y - 14, '+藥水', '#60a5fa', 0.8, -18, 14);
+    if(state.turn === 'enemy'){
+      await sleep(650);
+      aiTurn();
+    }
+  }
+
+  async function resolveAttack(side, attackerIndex, defenderIndex){
+    if(state.busy || state.winner) return;
+
+    const attackerField = [...getField(side)];
+    const defenderSide = side === 'player' ? 'enemy' : 'player';
+    const defenderField = [...getField(defenderSide)];
+
+    const attacker = attackerField[attackerIndex];
+    const defender = defenderField[defenderIndex];
+    if(!attacker || !defender) return;
+
+    state.busy = true;
+    clearSelection();
+
+    state.animate.attacking = { side, index: attackerIndex };
+    state.animate.hit = null;
+    state.animate.dying = [];
+    render();
+    setAction(`${sideName(side)} ${attacker.value} 發動攻擊`, `目標：${sideName(defenderSide)} ${defender.value}`);
+    await sleep(260);
+
+    state.animate.hit = { side: defenderSide, index: defenderIndex };
+    render();
+    await sleep(220);
+
+    const aBefore = attacker.value;
+    const dBefore = defender.value;
+    const aAfter = Math.max(0, aBefore - dBefore);
+    const dAfter = Math.max(0, dBefore - aBefore);
+
+    attackerField[attackerIndex] = aAfter > 0 ? {...attacker, value:aAfter} : attacker;
+    defenderField[defenderIndex] = dAfter > 0 ? {...defender, value:dAfter} : defender;
+    setField(side, attackerField);
+    setField(defenderSide, defenderField);
+
+    if(aAfter <= 0) state.animate.dying.push({ side, index: attackerIndex });
+    if(dAfter <= 0) state.animate.dying.push({ side: defenderSide, index: defenderIndex });
+
+    if(aAfter <= 0 && dAfter <= 0){
+      setAction('雙方互砍後都倒下', `${aBefore} ↔ ${dBefore}`);
+    }else if(aAfter <= 0){
+      setAction(`${sideName(side)} ${aBefore} 倒下`, `${sideName(defenderSide)} 剩 ${dAfter}`);
+    }else if(dAfter <= 0){
+      setAction(`${sideName(defenderSide)} ${dBefore} 倒下`, `${sideName(side)} 剩 ${aAfter}`);
+    }else{
+      setAction('雙方都存活', `${sideName(side)} 剩 ${aAfter}，${sideName(defenderSide)} 剩 ${dAfter}`);
+    }
+
+    render();
+    await sleep(380);
+
+    if(aAfter <= 0) attackerField[attackerIndex] = null;
+    if(dAfter <= 0) defenderField[defenderIndex] = null;
+
+    setField(side, attackerField);
+    setField(defenderSide, defenderField);
+
+    state.animate.attacking = null;
+    state.animate.hit = null;
+    state.animate.dying = [];
+    render();
+    await sleep(260);
+
+    await postResolveCleanup();
+  }
+
+  function aiTurn(){
+    if(state.winner) return;
+
+    const attackers = state.enemyField.map((card, idx) => card ? {idx, card} : null).filter(Boolean);
+    const targets = state.playerField.map((card, idx) => card ? {idx, card} : null).filter(Boolean);
+
+    if(attackers.length === 0 || targets.length === 0){
+      judgeWinner();
+      render();
+      return;
+    }
+
+    let best = null;
+    for(const a of attackers){
+      for(const t of targets){
+        const aAfter = a.card.value - t.card.value;
+        const tAfter = t.card.value - a.card.value;
+        let score = 0;
+        if(tAfter <= 0) score += 1200 + t.card.value;
+        if(aAfter > 0) score += 420 + aAfter;
+        if(aAfter <= 0) score -= Math.floor(a.card.value * 0.6);
+        score += t.card.value * 0.1;
+        score += Math.abs(a.card.value - t.card.value) < 30 ? 20 : 0;
+        if(!best || score > best.score){
+          best = { attackerIndex:a.idx, defenderIndex:t.idx, score };
         }
-        loot.splice(i, 1);
-      }
-    }
-  }
-
-  function updateProjectiles(dt){
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-      const pr = projectiles[i];
-      pr.x += pr.vx * dt;
-      pr.y += pr.vy * dt;
-      pr.life -= dt;
-
-      let remove = pr.life <= 0 || pr.x < -20 || pr.x > W+20 || pr.y < -20 || pr.y > H+20;
-      if (!remove) {
-        for (const m of monsters) {
-          if (m.dead) continue;
-          if (dist(pr, m) <= pr.r + m.r) {
-            if (pr.kind === 'arrow') {
-              hitMonster(m, pr.dmg, pr.vx * 0.2, pr.vy * 0.2);
-            } else {
-              addParticle(pr.x, pr.y, '爆', '#fda4af', 0.4, -8, 18);
-              for (const t of monsters) {
-                if (t.dead) continue;
-                const dd = dist(pr, t);
-                if (dd <= (pr.splash + t.r)) {
-                  const scale = dd < 1 ? 1 : (1 - dd / (pr.splash + t.r) * 0.4);
-                  hitMonster(t, pr.dmg * scale, pr.vx * 0.1, pr.vy * 0.1);
-                }
-              }
-            }
-            remove = true;
-            break;
-          }
-        }
-      }
-      if (remove) projectiles.splice(i, 1);
-    }
-  }
-
-  function updateMonsters(dt){
-    const p = state.player;
-    ensureMonsters();
-    for (const m of monsters) {
-      if (m.dead) continue;
-      m.wanderT -= dt;
-      if (m.wanderT <= 0) {
-        const dir = angleNorm(rand(-1,1), rand(-1,1));
-        m.wanderX = dir.x; m.wanderY = dir.y;
-        m.wanderT = rand(0.8, 1.8);
-      }
-
-      const d = dist(m, p);
-      let vx = m.wanderX * m.speed * 0.35;
-      let vy = m.wanderY * m.speed * 0.35;
-
-      if (!p.dead && p.y < SAFE_Y - 24 && d < 180) {
-        const dir = angleNorm(p.x - m.x, p.y - m.y);
-        vx = dir.x * m.speed;
-        vy = dir.y * m.speed;
-        m.atkCd -= dt;
-        if (d < m.r + p.r + 4 && m.atkCd <= 0) {
-          m.atkCd = rand(0.95, 1.5);
-          takeDamage(Math.floor(rand(4, 8)));
-          const knock = angleNorm(p.x - m.x, p.y - m.y);
-          p.x += knock.x * 6; p.y += knock.y * 6;
-        }
-      } else {
-        m.atkCd = Math.max(m.atkCd - dt * 0.25, 0);
-      }
-
-      m.x += (vx + m.knockX) * dt;
-      m.y += (vy + m.knockY) * dt;
-      m.knockX *= 0.78;
-      m.knockY *= 0.78;
-
-      m.x = clamp(m.x, 20, W - 20);
-      m.y = clamp(m.y, 24, SAFE_Y - 34);
-    }
-
-    for (let i = monsters.length - 1; i >= 0; i--) {
-      if (monsters[i].dead) monsters.splice(i, 1);
-    }
-  }
-
-  function updateParticles(dt){
-    for (let i = particles.length - 1; i >= 0; i--) {
-      const p = particles[i];
-      p.y += p.vy * dt;
-      p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
-    }
-  }
-
-  function drawRoundRect(x,y,w,h,r,color){
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  function drawMap(){
-    ctx.clearRect(0,0,W,H);
-
-    drawRoundRect(0,0,W,SAFE_Y,20,'#56385c');
-    drawRoundRect(0,SAFE_Y,W,H-SAFE_Y,0,'#274734');
-
-    for (let y = 0; y < SAFE_Y; y += 28) {
-      for (let x = 0; x < W; x += 28) {
-        ctx.fillStyle = ((x + y) / 28) % 2 ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.04)';
-        ctx.fillRect(x,y,28,28);
-      }
-    }
-    for (let y = SAFE_Y; y < H; y += 24) {
-      for (let x = 0; x < W; x += 24) {
-        ctx.fillStyle = ((x + y) / 24) % 2 ? 'rgba(255,255,255,.045)' : 'rgba(0,0,0,.045)';
-        ctx.fillRect(x,y,24,24);
       }
     }
 
-    ctx.fillStyle = '#7c5a39';
-    ctx.fillRect(0, SAFE_Y - 6, W, 12);
-    ctx.strokeStyle = 'rgba(255,255,255,.09)';
-    ctx.beginPath();
-    ctx.moveTo(0, SAFE_Y - 1); ctx.lineTo(W, SAFE_Y - 1);
-    ctx.stroke();
-
-    drawRoundRect(48, 646, 76, 58, 14, '#f8fafc');
-    drawRoundRect(56, 668, 26, 28, 8, '#92400e');
-    drawRoundRect(90, 658, 26, 20, 8, '#93c5fd');
-    ctx.fillStyle = '#7f1d1d';
-    ctx.beginPath();
-    ctx.moveTo(42,650); ctx.lineTo(86,622); ctx.lineTo(130,650); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 12px Microsoft JhengHei';
-    ctx.fillText('商店', 62, 640);
-
-    drawRoundRect(176, 648, 68, 54, 14, '#dbeafe');
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(188, 662, 16, 30);
-    ctx.fillRect(214, 662, 16, 30);
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText('轉職', 191, 640);
-
-    drawRoundRect(294, 650, 78, 52, 14, '#ccfbf1');
-    drawRoundRect(324, 662, 18, 26, 8, '#0ea5e9');
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText('治療', 314, 640);
-
-    drawNpc(merchant.x, merchant.y, '#f59e0b');
-    drawNpc(trainer.x, trainer.y, '#8b5cf6');
-    drawNpc(healer.x, healer.y, '#22c55e');
-
-    ctx.fillStyle = 'rgba(255,255,255,.7)';
-    ctx.font = '13px Microsoft JhengHei';
-    ctx.fillText('野外', 18, 26);
-    ctx.fillText('安全區', 18, H - 20);
+    resolveAttack('enemy', best.attackerIndex, best.defenderIndex);
   }
 
-  function drawNpc(x,y,body){
-    ctx.fillStyle = '#fde68a';
-    ctx.beginPath(); ctx.arc(x, y - 10, 8, 0, Math.PI*2); ctx.fill();
-    drawRoundRect(x - 10, y - 2, 20, 22, 8, body);
-  }
+  el.newPresetBtn.addEventListener('click', () => setupGame(false));
+  el.newRandomBtn.addEventListener('click', () => setupGame(true));
 
-  function drawPlayer(){
-    const p = state.player;
-    ctx.fillStyle = '#fef3c7';
-    ctx.beginPath(); ctx.arc(p.x, p.y - 10, 9, 0, Math.PI*2); ctx.fill();
-    drawRoundRect(p.x - 11, p.y - 1, 22, 22, 8, p.hitFlash > 0 ? '#fb7185' : '#e5e7eb');
-    ctx.strokeStyle = currentWeapon().type === 'staff' ? '#fb7185' : currentWeapon().type === 'bow' ? '#fbbf24' : '#7dd3fc';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y + 6);
-    ctx.lineTo(p.x + p.facingX * 18, p.y + 6 + p.facingY * 18);
-    ctx.stroke();
-  }
-
-  function drawMonsters(){
-    for (const m of monsters) {
-      drawRoundRect(m.x - m.r, m.y - m.r, m.r * 2, m.r * 2, m.r, m.color);
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath(); ctx.arc(m.x - 5, m.y - 3, 2, 0, Math.PI*2); ctx.arc(m.x + 5, m.y - 3, 2, 0, Math.PI*2); ctx.fill();
-      ctx.strokeStyle = '#831843';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(m.x, m.y + 2, 7, 0.15, Math.PI - 0.15); ctx.stroke();
-      drawRoundRect(m.x - 18, m.y - m.r - 11, 36, 5, 3, 'rgba(15,23,42,.8)');
-      drawRoundRect(m.x - 18, m.y - m.r - 11, 36 * (m.hp / m.maxHp), 5, 3, '#22c55e');
-    }
-  }
-
-  function drawLoot(){
-    for (const d of loot) {
-      ctx.fillStyle = '#60a5fa';
-      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
-      ctx.strokeStyle = '#dbeafe'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(d.x, d.y - 4); ctx.lineTo(d.x, d.y + 4);
-      ctx.moveTo(d.x - 4, d.y); ctx.lineTo(d.x + 4, d.y);
-      ctx.stroke();
-    }
-  }
-
-  function drawProjectiles(){
-    for (const pr of projectiles) {
-      ctx.fillStyle = pr.kind === 'arrow' ? '#fcd34d' : '#fda4af';
-      ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI*2); ctx.fill();
-      if (pr.kind === 'arrow') {
-        ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(pr.x - pr.vx * 0.015, pr.y - pr.vy * 0.015); ctx.lineTo(pr.x, pr.y); ctx.stroke();
-      }
-    }
-  }
-
-  function drawParticles(){
-    ctx.textAlign = 'center';
-    for (const p of particles) {
-      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-      ctx.fillStyle = p.color;
-      ctx.font = `bold ${p.size}px Microsoft JhengHei`;
-      ctx.fillText(p.text, p.x, p.y);
-    }
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'left';
-  }
-
-  function drawPrompt(){
-    const p = state.player;
-    if (inSafeZone(p)) {
-      let txt = '';
-      if (dist(p, merchant) < 48) txt = '商店';
-      else if (dist(p, trainer) < 48) txt = p.level >= 5 ? '可轉職' : 'Lv.5';
-      else if (dist(p, healer) < 48) txt = '治療';
-      if (txt) {
-        drawRoundRect(W/2 - 40, H - 110, 80, 26, 10, 'rgba(5,10,18,.55)');
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Microsoft JhengHei';
-        ctx.fillText(txt, W/2 - 18, H - 92);
-      }
-    }
-    if (state.player.dead) {
-      drawRoundRect(W/2 - 68, H/2 - 26, 136, 52, 16, 'rgba(5,10,18,.68)');
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 22px Microsoft JhengHei';
-      ctx.fillText('倒下了', W/2 - 28, H/2 + 8);
-    }
-  }
-
-  function loop(ts){
-    if (!lastTime) lastTime = ts;
-    const dt = Math.min((ts - lastTime) / 1000, 0.033);
-    lastTime = ts;
-
-    if (msgTimer > 0) { msgTimer -= dt; ui.msg.style.opacity = '0.92'; } else { ui.msg.style.opacity = '0'; }
-    updatePlayer(dt);
-    updateProjectiles(dt);
-    updateMonsters(dt);
-    updateParticles(dt);
-    drawMap();
-    drawLoot();
-    drawMonsters();
-    drawProjectiles();
-    drawPlayer();
-    drawParticles();
-    drawPrompt();
-    syncUI();
-    requestAnimationFrame(loop);
-  }
-
-  function bindJoystick(){
-    const area = document.getElementById('joystickArea');
-    const stick = document.getElementById('joyStick');
-    const base = area.querySelector('.joyBase');
-
-    function resetStick(){
-      joystick.active = false;
-      joystick.pointerId = null;
-      joystick.x = 0;
-      joystick.y = 0;
-      stick.style.transform = 'translate(0px, 0px)';
-    }
-
-    function updateStick(clientX, clientY){
-      const rect = base.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      let dx = clientX - cx;
-      let dy = clientY - cy;
-      const d = Math.hypot(dx, dy);
-      if (d > joystick.max){
-        dx = dx / d * joystick.max;
-        dy = dy / d * joystick.max;
-      }
-      joystick.x = dx / joystick.max;
-      joystick.y = dy / joystick.max;
-      stick.style.transform = `translate(${dx}px, ${dy}px)`;
-    }
-
-    area.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      joystick.active = true;
-      joystick.pointerId = e.pointerId;
-      area.setPointerCapture(e.pointerId);
-      updateStick(e.clientX, e.clientY);
-    }, {passive:false});
-
-    area.addEventListener('pointermove', (e) => {
-      if (!joystick.active || e.pointerId !== joystick.pointerId) return;
-      e.preventDefault();
-      updateStick(e.clientX, e.clientY);
-    }, {passive:false});
-
-    const off = (e) => {
-      if (e && joystick.pointerId !== null && e.pointerId !== joystick.pointerId) return;
-      if (e) e.preventDefault();
-      resetStick();
-    };
-    area.addEventListener('pointerup', off, {passive:false});
-    area.addEventListener('pointercancel', off, {passive:false});
-    area.addEventListener('lostpointercapture', off, {passive:false});
-  }
-
-  function bindTapButton(el, fn){
-    el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 90); }, {passive:false});
-  }
-
-  bindJoystick();
-  bindTapButton(document.getElementById('attackBtn'), doAttack);
-  bindTapButton(document.getElementById('interactBtn'), interact);
-  bindTapButton(document.getElementById('potionBtn'), usePotion);
-  bindTapButton(document.getElementById('shopBtn'), () => tryOpenShop(true));
-  bindTapButton(document.getElementById('jobBtn'), () => tryOpenJob(true));
-  document.getElementById('closeSheetBtn').onclick = closeSheet;
-  ui.overlay.addEventListener('click', (e) => { if (e.target === ui.overlay) closeSheet(); });
-
-  window.addEventListener('keydown', e => {
-    const k = e.key.toLowerCase();
-    if (k === 'arrowup' || k === 'w') keys.up = true;
-    if (k === 'arrowdown' || k === 's') keys.down = true;
-    if (k === 'arrowleft' || k === 'a') keys.left = true;
-    if (k === 'arrowright' || k === 'd') keys.right = true;
-    if (k === 'j' || e.code === 'Space') { e.preventDefault(); doAttack(); }
-    if (k === 'e') interact();
-    if (k === 'u' || k === 'z') usePotion();
-    if (k === 'b') tryOpenShop(true);
-    if (k === 't') tryOpenJob(true);
-  });
-  window.addEventListener('keyup', e => {
-    const k = e.key.toLowerCase();
-    if (k === 'arrowup' || k === 'w') keys.up = false;
-    if (k === 'arrowdown' || k === 's') keys.down = false;
-    if (k === 'arrowleft' || k === 'a') keys.left = false;
-    if (k === 'arrowright' || k === 'd') keys.right = false;
-  });
-
-  canvas.addEventListener('touchstart', e => {
-    if (state.menuOpen) return;
-    const rect = canvas.getBoundingClientRect();
-    const t = e.touches[0];
-    const tx = (t.clientX - rect.left) / rect.width * W;
-    const ty = (t.clientY - rect.top) / rect.height * H;
-    const p = state.player;
-    const d = angleNorm(tx - p.x, ty - p.y);
-    p.facingX = d.x; p.facingY = d.y;
-  }, {passive:true});
-
-  resizeStage();
-  state.player.x = W/2; state.player.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
-  window.addEventListener('resize', resizeStage);
-  setMessage('下方安全區，上方刷怪。');
-  spawnMonster('slime');
-  spawnMonster('slime');
-  spawnMonster('blue');
-  ensureMonsters();
-  syncUI();
-  requestAnimationFrame(loop);
+  setupGame(false);
 })();
 </script>
 </body>
