@@ -28,5 +28,17 @@
       "Boss"
     ],
     "new": true
-  }
+  },
+  {
+  "title": "Dodger 2",
+  "href": "./games/dodger2/index.html",
+  "desc": "手機直向版，底部安全區，可買武器、升級、轉職。",
+  "tags": [
+    "手機",
+    "直向",
+    "升級",
+    "轉職"
+  ],
+  "new": true
+}
 ]
