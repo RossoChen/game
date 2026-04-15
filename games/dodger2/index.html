@@ -19,155 +19,58 @@
     --money:#fcd34d;
     --ok:#4ade80;
     --blue:#60a5fa;
+    --controlH: 190px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;background:linear-gradient(180deg,#06101d,#0a1526 55%,#0b1320);color:var(--text);font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif}
-  body{min-height:100vh;padding:10px}
-  .app{max-width:460px;margin:0 auto}
-  .hud{
-    background:rgba(9,20,36,.96);
-    border:1px solid var(--line);
-    border-radius:22px;
-    padding:12px;
-    box-shadow:0 16px 40px rgba(0,0,0,.35);
-    margin-bottom:10px;
-  }
-  .toprow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
-  .chip{background:rgba(19,39,66,.95);border:1px solid var(--line);border-radius:16px;padding:8px 10px;min-height:58px}
-  .chip .k{font-size:11px;color:var(--muted);margin-bottom:4px}
-  .chip .v{font-size:18px;font-weight:800;line-height:1.1}
-  .bars{display:grid;gap:8px}
-  .barrow{display:grid;grid-template-columns:44px 1fr 70px;gap:8px;align-items:center}
-  .barrow .label{font-size:12px;color:var(--muted);font-weight:700}
-  .barrow .num{text-align:right;font-size:12px}
-  .bar{height:10px;background:#24344f;border-radius:999px;overflow:hidden}
-  .fill{height:100%;width:0%;transition:width .12s linear}
-  .hp{background:linear-gradient(90deg,#fb7185,#ef4444)}
-  .exp{background:linear-gradient(90deg,#fcd34d,#f59e0b)}
-  .money{background:linear-gradient(90deg,#fde68a,#fbbf24)}
-
-  .stageWrap{
-    position:relative;
-    background:rgba(9,20,36,.96);
-    border:1px solid var(--line);
-    border-radius:24px;
-    padding:8px;
-    box-shadow:0 16px 40px rgba(0,0,0,.35);
-  }
-  canvas{
-    display:block;
-    width:100%;
-    height:auto;
-    border-radius:18px;
-    background:#0a1322;
-    image-rendering:pixelated;
+  html,body{
+    margin:0;width:100%;height:100%;overflow:hidden;
+    background:linear-gradient(180deg,#06101d,#0a1526 55%,#0b1320);
+    color:var(--text);
+    font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif;
     touch-action:none;
   }
-  .stageLabel{
-    position:absolute;left:18px;top:18px;
-    background:rgba(5,10,18,.58);
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:14px;
-    padding:8px 10px;
-    font-size:12px;
-    line-height:1.45;
-    pointer-events:none;
-    backdrop-filter:blur(4px);
+  body{padding:0}
+  .app{
+    width:100vw;height:100dvh;max-width:480px;margin:0 auto;
+    padding:max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) 8px;
+    display:grid;grid-template-rows:auto 1fr var(--controlH);gap:8px;overflow:hidden;
   }
-  .msg{
-    position:absolute;left:12px;right:12px;bottom:12px;
-    background:rgba(6,10,18,.76);
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:14px;
-    padding:10px 12px;
-    font-size:13px;
-    line-height:1.45;
-    min-height:48px;
-    display:flex;align-items:center;
-  }
-
-  .controls{
-    margin-top:10px;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  .pad,.actions{
-    background:rgba(9,20,36,.96);
-    border:1px solid var(--line);
-    border-radius:22px;
-    padding:10px;
-    box-shadow:0 16px 40px rgba(0,0,0,.35);
-  }
-  .padGrid{
-    display:grid;
-    grid-template-columns:64px 64px 64px;
-    grid-template-rows:64px 64px 64px;
-    gap:8px;
-    justify-content:center;
-    align-items:center;
-  }
-  .btn{
-    border:none;
-    border-radius:18px;
-    color:#fff;
-    font-size:18px;
-    font-weight:800;
-    background:#1a3457;
-    box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);
-    user-select:none;
-  }
-  .btn.small{font-size:14px}
+  .hud{background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:0 12px 30px rgba(0,0,0,.28);display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .toprow{display:contents}
+  .chip{background:rgba(19,39,66,.95);border:1px solid var(--line);border-radius:12px;padding:6px 8px;min-height:auto}
+  .chip .k{font-size:10px;color:var(--muted);margin-bottom:2px}
+  .chip .v{font-size:15px;font-weight:800;line-height:1.1}
+  .bars{display:none}
+  .stageWrap{position:relative;background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:20px;padding:6px;box-shadow:0 14px 34px rgba(0,0,0,.32);min-height:0;overflow:hidden}
+  canvas{display:block;width:100%;height:100%;border-radius:16px;background:#0a1322;image-rendering:pixelated;touch-action:none}
+  .stageLabel{display:none}
+  .msg{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(6,10,18,.5);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;font-size:12px;line-height:1.35;min-height:auto;display:flex;align-items:center;pointer-events:none;opacity:.92;max-height:34px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:opacity .18s}
+  .controls{display:grid;grid-template-columns:1.15fr 1fr;gap:8px;min-height:0}
+  .pad,.actions{background:rgba(9,20,36,.96);border:1px solid var(--line);border-radius:20px;padding:10px;box-shadow:0 14px 34px rgba(0,0,0,.32);min-height:0}
+  .padGrid{display:grid;grid-template-columns:88px 88px 88px;grid-template-rows:52px 52px 52px;gap:10px;justify-content:center;align-items:center;height:100%}
+  .btn{border:none;border-radius:18px;color:#fff;font-size:22px;font-weight:900;background:#1a3457;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);user-select:none;min-height:52px;min-width:52px;touch-action:none}
   .btn:active,.btn.active{transform:translateY(1px);filter:brightness(1.08)}
-  .up{grid-column:2;grid-row:1}
-  .left{grid-column:1;grid-row:2}
-  .down{grid-column:2;grid-row:3}
-  .right{grid-column:3;grid-row:2}
-  .actionsGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .atk{background:#9f1239}
-  .act{background:#1d4ed8}
-  .pot{background:#15803d}
-  .buy{background:#92400e}
-  .job{background:#6d28d9}
-  .wide{grid-column:1 / span 2}
-  .hint{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5}
-
-  .overlay{
-    position:fixed;inset:0;
-    background:rgba(2,6,12,.6);
-    display:none;align-items:center;justify-content:center;
-    padding:14px;z-index:20;
-  }
+  .up{grid-column:2;grid-row:1}.left{grid-column:1;grid-row:2}.down{grid-column:2;grid-row:3}.right{grid-column:3;grid-row:2}
+  .actionsGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+  .atk{background:#9f1239}.act{background:#1d4ed8}.pot{background:#15803d}.buy{background:#92400e}.job{background:#6d28d9}.wide{grid-column:1 / span 2}
+  .hint{display:none}
+  .overlay{position:fixed;inset:0;background:rgba(2,6,12,.6);display:none;align-items:center;justify-content:center;padding:14px;z-index:20}
   .overlay.show{display:flex}
-  .sheet{
-    width:min(430px,100%);
-    background:linear-gradient(180deg,#0d1b2f,#101f36);
-    border:1px solid var(--line);
-    border-radius:24px;
-    padding:14px;
-    box-shadow:0 20px 50px rgba(0,0,0,.45);
-  }
+  .sheet{width:min(430px,100%);max-height:72dvh;overflow:auto;background:linear-gradient(180deg,#0d1b2f,#101f36);border:1px solid var(--line);border-radius:24px;padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
   .sheet h3{margin:0 0 6px;font-size:20px}
-  .sheet .sub{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:10px}
+  .sheet .sub{font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:10px}
   .sheet .list{display:grid;gap:8px}
-  .item{
-    border:1px solid var(--line);
-    background:rgba(19,39,66,.88);
-    border-radius:16px;
-    padding:10px;
-    display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
-  }
+  .item{border:1px solid var(--line);background:rgba(19,39,66,.88);border-radius:16px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
   .item .name{font-weight:800}
-  .item .desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
-  .item button{
-    border:none;border-radius:12px;padding:10px 12px;font-weight:800;color:#07111f;background:#fcd34d
-  }
+  .item .desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .item button{border:none;border-radius:12px;padding:10px 12px;font-weight:800;color:#07111f;background:#fcd34d}
   .closeRow{display:flex;justify-content:flex-end;margin-top:10px}
   .ghost{background:#22344f;color:#dbe7f7;border:none;border-radius:12px;padding:10px 14px;font-weight:700}
-
-  @media (max-width:380px){
-    .toprow{grid-template-columns:repeat(2,1fr)}
-    .padGrid{grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px 56px}
+  @media (max-width:420px){
+    :root{--controlH:184px}
+    .chip .v{font-size:14px}
+    .padGrid{grid-template-columns:72px 72px 72px;grid-template-rows:48px 48px 48px;gap:8px}
+    .btn{font-size:20px;min-height:48px}
   }
 </style>
 </head>
@@ -175,13 +78,13 @@
 <div class="app">
   <div class="hud">
     <div class="toprow">
-      <div class="chip"><div class="k">等級</div><div class="v" id="lvText">1</div></div>
+      <div class="chip"><div class="k">Lv</div><div class="v" id="lvText">1</div></div>
       <div class="chip"><div class="k">職業</div><div class="v" id="jobText">新手</div></div>
       <div class="chip"><div class="k">武器</div><div class="v" id="weaponText">木棍</div></div>
-      <div class="chip"><div class="k">金錢</div><div class="v" id="moneyText">0</div></div>
+      <div class="chip"><div class="k">金錢 / HP</div><div class="v"><span id="moneyText">0</span> / <span id="hpText">48</span></div></div>
     </div>
     <div class="bars">
-      <div class="barrow"><div class="label">HP</div><div class="bar"><div class="fill hp" id="hpFill"></div></div><div class="num" id="hpText">48 / 48</div></div>
+      <div class="barrow"><div class="label">HP</div><div class="bar"><div class="fill hp" id="hpFill"></div></div><div class="num" id="hpText2">48 / 48</div></div>
       <div class="barrow"><div class="label">EXP</div><div class="bar"><div class="fill exp" id="expFill"></div></div><div class="num" id="expText">0 / 12</div></div>
       <div class="barrow"><div class="label">藥水</div><div class="bar"><div class="fill money" id="potFill"></div></div><div class="num" id="potText">1 瓶</div></div>
     </div>
@@ -189,11 +92,7 @@
 
   <div class="stageWrap">
     <canvas id="game" width="420" height="760"></canvas>
-    <div class="stageLabel">
-      <div><b>直向練功場</b></div>
-      <div>下方安全區｜上方野外</div>
-    </div>
-    <div class="msg" id="msgBox">移動先熟悉節奏。怪物速度已經刻意降下來，不會再像瞬移碰瓷。</div>
+    <div class="msg" id="msgBox">下方安全區，上方刷怪。</div>
   </div>
 
   <div class="controls">
@@ -204,7 +103,6 @@
         <button class="btn down" data-key="down">▼</button>
         <button class="btn right" data-key="right">▶</button>
       </div>
-      <div class="hint">方向操作。手機按住即可持續移動。</div>
     </div>
 
     <div class="actions">
@@ -215,7 +113,6 @@
         <button class="btn buy" id="shopBtn">商店</button>
         <button class="btn job wide" id="jobBtn">轉職</button>
       </div>
-      <div class="hint">轉職需要 Lv.5。商店可買武器。安全區在最下方，補給跟轉職都放這裡。</div>
     </div>
   </div>
 </div>
@@ -233,8 +130,8 @@
 (() => {
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const SAFE_Y = 610;
+  let W = canvas.width, H = canvas.height;
+  let SAFE_Y = 610;
   const ui = {
     lv: document.getElementById('lvText'),
     job: document.getElementById('jobText'),
@@ -252,6 +149,17 @@
     sheetSub: document.getElementById('sheetSub'),
     sheetList: document.getElementById('sheetList'),
   };
+
+  function resizeStage(){
+    const stage = document.querySelector('.stageWrap');
+    const rect = stage.getBoundingClientRect();
+    canvas.width = Math.max(320, Math.floor(rect.width - 12));
+    canvas.height = Math.max(360, Math.floor(rect.height - 12));
+    W = canvas.width; H = canvas.height; SAFE_Y = Math.floor(H * 0.76);
+    merchant.x = Math.floor(W * 0.22); merchant.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
+    trainer.x = Math.floor(W * 0.50); trainer.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.56);
+    healer.x = Math.floor(W * 0.78); healer.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
+  }
 
   const trainer = {x: 210, y: 700, r: 20};
   const merchant = {x: 92, y: 702, r: 20};
@@ -301,7 +209,7 @@
 
   function currentWeapon(){ return weaponMap[state.player.weaponId]; }
 
-  function setMessage(text, t = 2.6){
+  function setMessage(text, t = 1.6){
     ui.msg.textContent = text;
     msgTimer = t;
   }
@@ -312,11 +220,12 @@
     ui.job.textContent = p.job;
     ui.weapon.textContent = w.name;
     ui.money.textContent = p.money;
-    ui.hpFill.style.width = (p.hp / p.maxHp * 100) + '%';
-    ui.hpText.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-    ui.expFill.style.width = (p.exp / p.expNeed * 100) + '%';
+    if (ui.hpFill) ui.hpFill.style.width = (p.hp / p.maxHp * 100) + '%';
+    ui.hpText.textContent = `${Math.ceil(p.hp)}`;
+    const hpText2 = document.getElementById('hpText2'); if (hpText2) hpText2.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    if (ui.expFill) ui.expFill.style.width = (p.exp / p.expNeed * 100) + '%';
     ui.expText.textContent = `${p.exp} / ${p.expNeed}`;
-    ui.potFill.style.width = Math.min(p.potions / 10, 1) * 100 + '%';
+    if (ui.potFill) ui.potFill.style.width = Math.min(p.potions / 10, 1) * 100 + '%';
     ui.potText.textContent = `${p.potions} 瓶`;
   }
 
@@ -358,7 +267,7 @@
 
   function applyJob(jobId){
     const p = state.player;
-    if (p.jobId !== 'novice') return setMessage('已經轉職過了，先這樣跑版本。');
+    if (p.jobId !== 'novice') return setMessage('已轉職。');
     const map = {
       warrior: {name:'戰士', hp:16, speed:0},
       archer: {name:'遊俠', hp:6, speed:16},
@@ -371,7 +280,7 @@
     p.hp = p.maxHp;
     p.speed += j.speed;
     addParticle(p.x, p.y-24, '轉職!', '#fde68a', 1.1, -26, 22);
-    setMessage(`已轉職為 ${j.name}。這本質上就是強化與改變輸出節奏。`);
+    setMessage(`已轉職為 ${j.name}。`);
     closeSheet();
     syncUI();
   }
@@ -386,7 +295,7 @@
       p.hp = p.maxHp;
       p.atkBase += 2;
       addParticle(p.x, p.y-20, 'LEVEL UP', '#fde68a', 1.0, -28, 20);
-      setMessage(`升到 Lv.${p.level}。現在可以更兇一點。`);
+      setMessage(`Lv.${p.level}`);
       if (p.level > bestLv) {
         bestLv = p.level;
         localStorage.setItem('mobile_rpg_best_lv', String(bestLv));
@@ -468,18 +377,18 @@
   function healAtSafeZone(){
     const p = state.player;
     if (dist(p, healer) > 42 || !inSafeZone(p)) {
-      return setMessage('先站到下方安全區的治療點附近。');
+      return setMessage('先靠近治療點。');
     }
     p.hp = p.maxHp;
     addParticle(healer.x, healer.y - 26, '補滿', '#86efac', 0.9, -18, 18);
-    setMessage('補血完成。野外打不贏就先回來，不丟臉。');
+    setMessage('補血完成。');
   }
 
   function usePotion(){
     const p = state.player;
     if (p.dead) return;
-    if (p.potions <= 0) return setMessage('藥水沒了。先賺錢或等掉落。');
-    if (p.hp >= p.maxHp) return setMessage('血量已滿，現在喝是財務黑洞。');
+    if (p.potions <= 0) return setMessage('藥水沒了。');
+    if (p.hp >= p.maxHp) return setMessage('血量已滿。');
     p.potions -= 1;
     p.hp = clamp(p.hp + 28, 0, p.maxHp);
     addParticle(p.x, p.y - 20, '+28', '#86efac', 0.8, -22, 18);
@@ -496,12 +405,12 @@
     if (p.hp <= 0) {
       p.hp = 0;
       p.dead = true;
-      setMessage('你倒了。3 秒後拉回安全區。');
+      setMessage('你倒了。');
       setTimeout(() => {
         p.dead = false;
         p.x = W/2; p.y = 686;
         p.hp = Math.ceil(p.maxHp * 0.7);
-        setMessage('已回到安全區。先整補，再上。');
+        setMessage('已回到安全區。');
       }, 3000);
     }
   }
@@ -510,12 +419,12 @@
     const p = state.player;
     const w = weaponMap[id];
     if (!w) return;
-    if (p.money < w.price) return setMessage('錢不夠。先上去刷怪。');
+    if (p.money < w.price) return setMessage('錢不夠。');
     if (p.weaponId === id) return setMessage('這把已經裝著了。');
     p.money -= w.price;
     p.weaponId = id;
     closeSheet();
-    setMessage(`已購買並裝備 ${w.name}。輸出方式會跟著改。`);
+    setMessage(`已裝備 ${w.name}。`);
     syncUI();
   }
 
@@ -546,28 +455,28 @@
   function tryOpenShop(force=false){
     const p = state.player;
     if (!force && (dist(p, merchant) > 44 || !inSafeZone(p))) {
-      return setMessage('商店在下方安全區。先回去再買。');
+      return setMessage('商店在安全區。');
     }
-    openSheet('武器商店', '購買後立即裝備。金錢直接寫金錢，不玩名詞 cosplay。', weapons.map(w => ({
+    openSheet('武器商店', '購買後立即裝備。', weapons.map(w => ({
       id:w.id, name:`${w.name}｜${w.price}`, desc:`${w.desc}　ATK ${w.atk}｜${w.type === 'melee' ? '近戰' : w.type === 'bow' ? '遠程' : '法術'}`
     })), buyWeapon);
   }
 
   function tryOpenJob(force=false){
     const p = state.player;
-    if (p.jobId !== 'novice') return setMessage('已經轉職過了，先把這條線玩完。');
-    if (p.level < 5) return setMessage('Lv.5 才能轉職。先去上面刷。');
+    if (p.jobId !== 'novice') return setMessage('已轉職。');
+    if (p.level < 5) return setMessage('Lv.5 才能轉職。');
     if (!force && (dist(p, trainer) > 44 || !inSafeZone(p))) {
-      return setMessage('轉職師在下方安全區。');
+      return setMessage('轉職師在安全區。');
     }
-    openSheet('轉職', '只是名目沒錯，但名目後面是數值與攻擊節奏改變。', jobs.map(j => ({
+    openSheet('轉職', '選一個方向強化。', jobs.map(j => ({
       id:j.id, name:j.name, desc:j.desc, cta:'轉職'
     })), applyJob);
   }
 
   function interact(){
     const p = state.player;
-    if (!inSafeZone(p)) return setMessage('互動點都在下方安全區。');
+    if (!inSafeZone(p)) return setMessage('互動點在安全區。');
     const dShop = dist(p, merchant), dTrainer = dist(p, trainer), dHealer = dist(p, healer);
     const min = Math.min(dShop, dTrainer, dHealer);
     if (min === dShop) return tryOpenShop();
@@ -836,23 +745,21 @@
     const p = state.player;
     if (inSafeZone(p)) {
       let txt = '';
-      if (dist(p, merchant) < 48) txt = '互動或商店鍵：買武器';
-      else if (dist(p, trainer) < 48) txt = p.level >= 5 ? '互動或轉職鍵：可轉職' : 'Lv.5 才能轉職';
-      else if (dist(p, healer) < 48) txt = '互動：補血';
+      if (dist(p, merchant) < 48) txt = '商店';
+      else if (dist(p, trainer) < 48) txt = p.level >= 5 ? '可轉職' : 'Lv.5';
+      else if (dist(p, healer) < 48) txt = '治療';
       if (txt) {
-        drawRoundRect(98, H - 116, 224, 34, 12, 'rgba(5,10,18,.62)');
+        drawRoundRect(W/2 - 40, H - 110, 80, 26, 10, 'rgba(5,10,18,.55)');
         ctx.fillStyle = '#fff';
-        ctx.font = '13px Microsoft JhengHei';
-        ctx.fillText(txt, 114, H - 94);
+        ctx.font = '12px Microsoft JhengHei';
+        ctx.fillText(txt, W/2 - 18, H - 92);
       }
     }
     if (state.player.dead) {
-      drawRoundRect(84, 286, 252, 74, 16, 'rgba(5,10,18,.74)');
+      drawRoundRect(W/2 - 68, H/2 - 26, 136, 52, 16, 'rgba(5,10,18,.68)');
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 26px Microsoft JhengHei';
-      ctx.fillText('倒下了', 165, 318);
-      ctx.font = '14px Microsoft JhengHei';
-      ctx.fillText('3 秒後回到安全區', 145, 344);
+      ctx.font = 'bold 22px Microsoft JhengHei';
+      ctx.fillText('倒下了', W/2 - 28, H/2 + 8);
     }
   }
 
@@ -861,7 +768,7 @@
     const dt = Math.min((ts - lastTime) / 1000, 0.033);
     lastTime = ts;
 
-    if (msgTimer > 0) msgTimer -= dt;
+    if (msgTimer > 0) { msgTimer -= dt; ui.msg.style.opacity = '0.92'; } else { ui.msg.style.opacity = '0'; }
     updatePlayer(dt);
     updateProjectiles(dt);
     updateMonsters(dt);
@@ -880,16 +787,22 @@
   function bindHoldButton(el, key){
     const on = (e) => { e.preventDefault(); keys[key] = true; el.classList.add('active'); };
     const off = (e) => { if (e) e.preventDefault(); keys[key] = false; el.classList.remove('active'); };
-    ['pointerdown','touchstart','mousedown'].forEach(evt => el.addEventListener(evt, on, {passive:false}));
-    ['pointerup','pointercancel','pointerleave','touchend','touchcancel','mouseup','mouseleave'].forEach(evt => el.addEventListener(evt, off, {passive:false}));
+    el.addEventListener('pointerdown', on, {passive:false});
+    el.addEventListener('pointerup', off, {passive:false});
+    el.addEventListener('pointercancel', off, {passive:false});
+    el.addEventListener('pointerleave', off, {passive:false});
+  }
+
+  function bindTapButton(el, fn){
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); el.classList.add('active'); setTimeout(() => el.classList.remove('active'), 90); }, {passive:false});
   }
 
   document.querySelectorAll('[data-key]').forEach(btn => bindHoldButton(btn, btn.dataset.key));
-  document.getElementById('attackBtn').onclick = doAttack;
-  document.getElementById('interactBtn').onclick = interact;
-  document.getElementById('potionBtn').onclick = usePotion;
-  document.getElementById('shopBtn').onclick = () => tryOpenShop(true);
-  document.getElementById('jobBtn').onclick = () => tryOpenJob(true);
+  bindTapButton(document.getElementById('attackBtn'), doAttack);
+  bindTapButton(document.getElementById('interactBtn'), interact);
+  bindTapButton(document.getElementById('potionBtn'), usePotion);
+  bindTapButton(document.getElementById('shopBtn'), () => tryOpenShop(true));
+  bindTapButton(document.getElementById('jobBtn'), () => tryOpenJob(true));
   document.getElementById('closeSheetBtn').onclick = closeSheet;
   ui.overlay.addEventListener('click', (e) => { if (e.target === ui.overlay) closeSheet(); });
 
@@ -924,7 +837,10 @@
     p.facingX = d.x; p.facingY = d.y;
   }, {passive:true});
 
-  setMessage('新版改成手機直向，下方安全區，金錢可買武器，Lv.5 可轉職。怪物速度也放慢了。');
+  resizeStage();
+  state.player.x = W/2; state.player.y = SAFE_Y + Math.floor((H - SAFE_Y) * 0.55);
+  window.addEventListener('resize', resizeStage);
+  setMessage('下方安全區，上方刷怪。');
   spawnMonster('slime');
   spawnMonster('slime');
   spawnMonster('blue');
