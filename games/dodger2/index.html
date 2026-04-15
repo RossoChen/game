@@ -516,15 +516,49 @@
     for(let i=0;i<6;i++){
       const role = roles[Math.floor(Math.random() * roleCount)];
       const base = Math.max(3, 4 + Math.floor((stage - 1) * 0.6) + Math.floor(Math.random() * 3));
-      deck.push({ refId:`e_${stage}_${i}`, role, value:base, side:'enemy', shield:0, frozen:0 });
+      deck.push({ refId:`e_${stage}_${i}`, role, value:base, side:'enemy', shield:0, frozen:0, entryShielded:false });
     }
     return deck;
   }
 
+  function shuffle(arr){
+    const a = [...arr];
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random() * (i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function applyEntryShield(card){
+    if(card && card.role === '盾衛' && !card.entryShielded){
+      card.shield = 1;
+      card.entryShielded = true;
+      return true;
+    }
+    return false;
+  }
+
+  function applyEntryShieldsForSide(side){
+    const field = [...getField(side)];
+    let changed = false;
+    for(let i=0;i<field.length;i++){
+      if(field[i]){
+        const c = { ...field[i] };
+        if(applyEntryShield(c)){
+          field[i] = c;
+          changed = true;
+        }
+      }
+    }
+    if(changed) setField(side, field);
+    return changed;
+  }
+
   function startBattle(){
     if(state.profile.deck.length !== 6) return;
-    const playerFull = makeBattleDeckFromIds(state.profile.deck, 'player');
-    const enemyFull = enemyDeckForStage(state.profile.stage);
+    const playerFull = shuffle(makeBattleDeckFromIds(state.profile.deck, 'player')).map(c => ({...c, entryShielded:false}));
+    const enemyFull = shuffle(enemyDeckForStage(state.profile.stage));
     state.battle = {
       playerField: playerFull.slice(0,3),
       enemyField: enemyFull.slice(0,3),
@@ -534,6 +568,8 @@
       turn: 'player',
       over: false
     };
+    applyEntryShieldsForSide('player');
+    applyEntryShieldsForSide('enemy');
     state.selection = null;
     state.busy = false;
     refreshBattle();
@@ -680,12 +716,18 @@
         refreshBattle();
         await sleep(220);
         reserve.splice(idx, 1);
-        field[i] = drawn;
+        const nextCard = { ...drawn };
+        const hadEntryShield = applyEntryShield(nextCard);
+        field[i] = nextCard;
         setField(side, field);
         setReserve(side, reserve);
+        if(hadEntryShield){
+          state.battle.animate.shielding = [{ side, index:i }];
+        }
         refreshBattle();
         await sleep(260);
         state.battle.animate.entering = [];
+        state.battle.animate.shielding = [];
         refreshBattle();
       }
     }
@@ -750,28 +792,6 @@
 
     state.busy = true;
     clearSelection();
-
-    // 盾衛上盾
-    state.battle.animate.shielding = [];
-    if(attacker.role === '盾衛'){
-      attacker.shield = 1;
-      state.battle.animate.shielding.push({ side, index:attackerIndex });
-
-      const allyIdx = chooseShieldAlly(side, attackerIndex);
-      if(allyIdx !== null){
-        const ally = clone(attackerField[allyIdx]);
-        ally.shield = 1;
-        attackerField[allyIdx] = ally;
-        state.battle.animate.shielding.push({ side, index:allyIdx });
-      }
-      attackerField[attackerIndex] = attacker;
-      setField(side, attackerField);
-      refreshBattle();
-      showNote('盾衛上盾');
-      await sleep(340);
-      state.battle.animate.shielding = [];
-      refreshBattle();
-    }
 
     // 出手位移
     const aCenter = getCardCenter(side, attackerIndex);
@@ -890,7 +910,7 @@
       .map((c,i) => c ? {i,c} : null)
       .filter(Boolean);
 
-    let best = null;
+    const plans = [];
     for(const a of attackers){
       for(const t of targets){
         let score = 0;
@@ -901,16 +921,21 @@
         if(a.c.role === '盾衛') score += 90;
         if(t.c.shield > 0) score -= 150;
         score += t.c.value * 0.18;
-        if(!best || score > best.score) best = {ai:a.i, ti:t.i};
+        score += Math.random() * 60;
+        plans.push({ai:a.i, ti:t.i, score});
       }
     }
-    if(best) resolveAttack('enemy', best.ai, best.ti);
+    plans.sort((a,b) => b.score - a.score);
+    const top = plans.slice(0, Math.min(3, plans.length));
+    const pick = top[Math.floor(Math.random() * top.length)];
+    if(pick) resolveAttack('enemy', pick.ai, pick.ti);
   }
 
   function renderDeckEditor(){
     ui.deckCountPill.textContent = `已選 ${state.profile.deck.length} / 6`;
     ui.deckGrid.innerHTML = state.profile.owned.map(card => {
       const selected = state.profile.deck.includes(card.id);
+      const sellPrice = Math.max(1, Math.floor((card.base + card.level) / 2));
       return `
         <div class="owned ${selected ? 'sel' : ''}">
           <div class="owned-top">
@@ -924,6 +949,7 @@
             <button class="tiny-btn" data-toggle="${card.id}">${selected ? '移出牌組' : '加入牌組'}</button>
             <div class="lv">基礎 ${card.base}</div>
           </div>
+          ${selected ? '' : `<div class="owned-btns"><button class="tiny-btn" data-sell="${card.id}">賣出 ${sellPrice}</button><div class="lv">倉庫</div></div>`}
         </div>
       `;
     }).join('');
@@ -942,6 +968,23 @@
         saveProfile();
         refreshMeta();
         renderDeckEditor();
+      });
+    });
+
+    ui.deckGrid.querySelectorAll('[data-sell]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.sell);
+        if(state.profile.deck.includes(id)) return;
+        const card = ownedById(id);
+        if(!card) return;
+        const price = Math.max(1, Math.floor((card.base + card.level) / 2));
+        state.profile.gold += price;
+        state.profile.owned = state.profile.owned.filter(c => c.id !== id);
+        saveProfile();
+        refreshMeta();
+        renderDeckEditor();
+        renderUpgradeEditor();
+        showNote(`賣出 ${card.role} +${price} 金幣`);
       });
     });
   }
