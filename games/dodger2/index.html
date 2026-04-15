@@ -266,14 +266,14 @@
     </div>
   </div>
 
-  <div class="version-badge" id="versionBadge">v5.0.1</div>
+  <div class="version-badge" id="versionBadge">v5.0.0</div>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const saveKey = 'card_duel_progress_v5';
-  const GAME_VERSION = 'v5.0.1';
+  const GAME_VERSION = 'v5.0.0';
   const ROLE_MULT = {
     '劍士': 1.30,
     '弓箭手': 0.80,
@@ -882,6 +882,40 @@
     const pickPool = plans.slice(0, Math.min(3, plans.length));
     const pick = pickPool[Math.floor(Math.random() * pickPool.length)];
     if (pick) resolveAttack('enemy', pick.ai, pick.ti);
+  }
+
+
+  function startBattle() {
+    if (state.profile.deck.length !== 6) return;
+
+    const playerFull = shuffle(makeBattleDeckFromIds(state.profile.deck, 'player'));
+    const enemyFull = shuffle(enemyDeckForStage(state.profile.stage));
+
+    state.battle = {
+      playerField: playerFull.slice(0, 3),
+      enemyField: enemyFull.slice(0, 3),
+      playerReserve: playerFull.slice(3),
+      enemyReserve: enemyFull.slice(3),
+      animate: { lunge: null, hit: [], dying: [], entering: [], shielding: [], healing: [] },
+      turn: 'player',
+      over: false
+    };
+
+    applyEntryShieldsForStart();
+    refreshBattle();
+    if (state.battle.animate.shielding.length) {
+      showNote('盾衛出場上盾');
+      setTimeout(() => {
+        if (!state.battle) return;
+        state.battle.animate.shielding = [];
+        refreshBattle();
+      }, 420);
+    }
+
+    state.selection = null;
+    state.busy = false;
+    showOverlay(null);
+    startTurn('player');
   }
 
   function renderDeckEditor() {
