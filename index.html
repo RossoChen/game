@@ -180,7 +180,21 @@
 
   // 可選：如果你有 sw.js，就會自動註冊；沒有也不會炸
   if ('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    let reloading = false;
+  
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      reg.update();
+  
+      setInterval(() => {
+        reg.update();
+      }, 15000);
+  
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      });
+    }).catch(() => {});
   }
 
   load();
