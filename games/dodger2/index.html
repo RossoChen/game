@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>直向小怪練功場</title>
+<style>
+  :root{
+    --bg:#07111f;
+    --panel:#0d1b2f;
+    --panel2:#132742;
+    --line:rgba(255,255,255,.08);
+    --text:#f5f7fb;
+    --muted:#9fb2cf;
+    --safe:#264b35;
+    --field:#4c3152;
+    --danger:#fb7185;
+    --exp:#fbbf24;
+    --money:#fcd34d;
+    --ok:#4ade80;
+    --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:linear-gradient(180deg,#06101d,#0a1526 55%,#0b1320);color:var(--text);font-family:"Microsoft JhengHei","Noto Sans TC",sans-serif}
+  body{min-height:100vh;padding:10px}
+  .app{max-width:460px;margin:0 auto}
+  .hud{
+    background:rgba(9,20,36,.96);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:12px;
+    box-shadow:0 16px 40px rgba(0,0,0,.35);
+    margin-bottom:10px;
+  }
+  .toprow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .chip{background:rgba(19,39,66,.95);border:1px solid var(--line);border-radius:16px;padding:8px 10px;min-height:58px}
+  .chip .k{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .chip .v{font-size:18px;font-weight:800;line-height:1.1}
+  .bars{display:grid;gap:8px}
+  .barrow{display:grid;grid-template-columns:44px 1fr 70px;gap:8px;align-items:center}
+  .barrow .label{font-size:12px;color:var(--muted);font-weight:700}
+  .barrow .num{text-align:right;font-size:12px}
+  .bar{height:10px;background:#24344f;border-radius:999px;overflow:hidden}
+  .fill{height:100%;width:0%;transition:width .12s linear}
+  .hp{background:linear-gradient(90deg,#fb7185,#ef4444)}
+  .exp{background:linear-gradient(90deg,#fcd34d,#f59e0b)}
+  .money{background:linear-gradient(90deg,#fde68a,#fbbf24)}
+
+  .stageWrap{
+    position:relative;
+    background:rgba(9,20,36,.96);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:8px;
+    box-shadow:0 16px 40px rgba(0,0,0,.35);
+  }
+  canvas{
+    display:block;
+    width:100%;
+    height:auto;
+    border-radius:18px;
+    background:#0a1322;
+    image-rendering:pixelated;
+    touch-action:none;
+  }
+  .stageLabel{
+    position:absolute;left:18px;top:18px;
+    background:rgba(5,10,18,.58);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:8px 10px;
+    font-size:12px;
+    line-height:1.45;
+    pointer-events:none;
+    backdrop-filter:blur(4px);
+  }
+  .msg{
+    position:absolute;left:12px;right:12px;bottom:12px;
+    background:rgba(6,10,18,.76);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    padding:10px 12px;
+    font-size:13px;
+    line-height:1.45;
+    min-height:48px;
+    display:flex;align-items:center;
+  }
+
+  .controls{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .pad,.actions{
+    background:rgba(9,20,36,.96);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:10px;
+    box-shadow:0 16px 40px rgba(0,0,0,.35);
+  }
+  .padGrid{
+    display:grid;
+    grid-template-columns:64px 64px 64px;
+    grid-template-rows:64px 64px 64px;
+    gap:8px;
+    justify-content:center;
+    align-items:center;
+  }
+  .btn{
+    border:none;
+    border-radius:18px;
+    color:#fff;
+    font-size:18px;
+    font-weight:800;
+    background:#1a3457;
+    box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);
+    user-select:none;
+  }
+  .btn.small{font-size:14px}
+  .btn:active,.btn.active{transform:translateY(1px);filter:brightness(1.08)}
+  .up{grid-column:2;grid-row:1}
+  .left{grid-column:1;grid-row:2}
+  .down{grid-column:2;grid-row:3}
+  .right{grid-column:3;grid-row:2}
+  .actionsGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .atk{background:#9f1239}
+  .act{background:#1d4ed8}
+  .pot{background:#15803d}
+  .buy{background:#92400e}
+  .job{background:#6d28d9}
+  .wide{grid-column:1 / span 2}
+  .hint{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5}
+
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(2,6,12,.6);
+    display:none;align-items:center;justify-content:center;
+    padding:14px;z-index:20;
+  }
+  .overlay.show{display:flex}
+  .sheet{
+    width:min(430px,100%);
+    background:linear-gradient(180deg,#0d1b2f,#101f36);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:14px;
+    box-shadow:0 20px 50px rgba(0,0,0,.45);
+  }
+  .sheet h3{margin:0 0 6px;font-size:20px}
+  .sheet .sub{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:10px}
+  .sheet .list{display:grid;gap:8px}
+  .item{
+    border:1px solid var(--line);
+    background:rgba(19,39,66,.88);
+    border-radius:16px;
+    padding:10px;
+    display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;
+  }
+  .item .name{font-weight:800}
+  .item .desc{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+  .item button{
+    border:none;border-radius:12px;padding:10px 12px;font-weight:800;color:#07111f;background:#fcd34d
+  }
+  .closeRow{display:flex;justify-content:flex-end;margin-top:10px}
+  .ghost{background:#22344f;color:#dbe7f7;border:none;border-radius:12px;padding:10px 14px;font-weight:700}
+
+  @media (max-width:380px){
+    .toprow{grid-template-columns:repeat(2,1fr)}
+    .padGrid{grid-template-columns:56px 56px 56px;grid-template-rows:56px 56px 56px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hud">
+    <div class="toprow">
+      <div class="chip"><div class="k">等級</div><div class="v" id="lvText">1</div></div>
+      <div class="chip"><div class="k">職業</div><div class="v" id="jobText">新手</div></div>
+      <div class="chip"><div class="k">武器</div><div class="v" id="weaponText">木棍</div></div>
+      <div class="chip"><div class="k">金錢</div><div class="v" id="moneyText">0</div></div>
+    </div>
+    <div class="bars">
+      <div class="barrow"><div class="label">HP</div><div class="bar"><div class="fill hp" id="hpFill"></div></div><div class="num" id="hpText">48 / 48</div></div>
+      <div class="barrow"><div class="label">EXP</div><div class="bar"><div class="fill exp" id="expFill"></div></div><div class="num" id="expText">0 / 12</div></div>
+      <div class="barrow"><div class="label">藥水</div><div class="bar"><div class="fill money" id="potFill"></div></div><div class="num" id="potText">1 瓶</div></div>
+    </div>
+  </div>
+
+  <div class="stageWrap">
+    <canvas id="game" width="420" height="760"></canvas>
+    <div class="stageLabel">
+      <div><b>直向練功場</b></div>
+      <div>下方安全區｜上方野外</div>
+    </div>
+    <div class="msg" id="msgBox">移動先熟悉節奏。怪物速度已經刻意降下來，不會再像瞬移碰瓷。</div>
+  </div>
+
+  <div class="controls">
+    <div class="pad">
+      <div class="padGrid">
+        <button class="btn up" data-key="up">▲</button>
+        <button class="btn left" data-key="left">◀</button>
+        <button class="btn down" data-key="down">▼</button>
+        <button class="btn right" data-key="right">▶</button>
+      </div>
+      <div class="hint">方向操作。手機按住即可持續移動。</div>
+    </div>
+
+    <div class="actions">
+      <div class="actionsGrid">
+        <button class="btn atk" id="attackBtn">攻擊</button>
+        <button class="btn act" id="interactBtn">互動</button>
+        <button class="btn pot" id="potionBtn">喝藥</button>
+        <button class="btn buy" id="shopBtn">商店</button>
+        <button class="btn job wide" id="jobBtn">轉職</button>
+      </div>
+      <div class="hint">轉職需要 Lv.5。商店可買武器。安全區在最下方，補給跟轉職都放這裡。</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sheetOverlay">
+  <div class="sheet">
+    <h3 id="sheetTitle">商店</h3>
+    <div class="sub" id="sheetSub">購買之後會立即裝備。</div>
+    <div class="list" id="sheetList"></div>
+    <div class="closeRow"><button class="ghost" id="closeSheetBtn">關閉</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const SAFE_Y = 610;
+  const ui = {
+    lv: document.getElementById('lvText'),
+    job: document.getElementById('jobText'),
+    weapon: document.getElementById('weaponText'),
+    money: document.getElementById('moneyText'),
+    hpFill: document.getElementById('hpFill'),
+    hpText: document.getElementById('hpText'),
+    expFill: document.getElementById('expFill'),
+    expText: document.getElementById('expText'),
+    potFill: document.getElementById('potFill'),
+    potText: document.getElementById('potText'),
+    msg: document.getElementById('msgBox'),
+    overlay: document.getElementById('sheetOverlay'),
+    sheetTitle: document.getElementById('sheetTitle'),
+    sheetSub: document.getElementById('sheetSub'),
+    sheetList: document.getElementById('sheetList'),
+  };
+
+  const trainer = {x: 210, y: 700, r: 20};
+  const merchant = {x: 92, y: 702, r: 20};
+  const healer = {x: 330, y: 700, r: 20};
+  const keys = {up:false,down:false,left:false,right:false};
+  let lastTime = 0;
+  let msgTimer = 0;
+  let particles = [];
+  let projectiles = [];
+  let monsters = [];
+  let loot = [];
+  let bestLv = Number(localStorage.getItem('mobile_rpg_best_lv') || 1);
+
+  const weapons = [
+    {id:'stick', name:'木棍', type:'melee', atk:8, range:38, cd:0.46, price:0, tier:0, desc:'初始武器，夠用但不體面。'},
+    {id:'sword', name:'鐵劍', type:'melee', atk:14, range:48, cd:0.38, price:80, tier:1, desc:'近戰穩定，手感比木棍像樣。'},
+    {id:'spear', name:'長槍', type:'melee', atk:20, range:64, cd:0.44, price:180, tier:2, desc:'距離更長，適合保守打法。'},
+    {id:'bow', name:'短弓', type:'bow', atk:12, range:0, cd:0.55, price:120, tier:1, desc:'遠距離輸出，清怪更安全。'},
+    {id:'hunter_bow', name:'獵弓', type:'bow', atk:18, range:0, cd:0.45, price:260, tier:2, desc:'更快更痛，走位空間更大。'},
+    {id:'staff', name:'木杖', type:'staff', atk:13, range:0, cd:0.62, price:120, tier:1, desc:'會發射魔法彈，小範圍爆裂。'},
+    {id:'fire_staff', name:'火杖', type:'staff', atk:20, range:0, cd:0.56, price:300, tier:2, desc:'爆裂範圍更大，收怪舒服。'},
+  ];
+  const weaponMap = Object.fromEntries(weapons.map(w => [w.id, w]));
+  const jobs = [
+    {id:'warrior', name:'戰士', desc:'血更厚，近戰傷害更高。'},
+    {id:'archer', name:'遊俠', desc:'移動更快，弓系武器更強。'},
+    {id:'mage', name:'術士', desc:'法杖爆裂範圍加大。'},
+  ];
+
+  const state = {
+    player: {
+      x: W/2, y: 680, r: 14,
+      hp: 48, maxHp: 48,
+      level: 1, exp: 0, expNeed: 12,
+      money: 0, potions: 1,
+      job: '新手', jobId: 'novice',
+      weaponId: 'stick',
+      facingX: 0, facingY: -1,
+      speed: 112,
+      atkBase: 4,
+      attackCd: 0,
+      hitFlash: 0,
+      dead: false,
+    },
+    menuOpen: false,
+  };
+
+  function currentWeapon(){ return weaponMap[state.player.weaponId]; }
+
+  function setMessage(text, t = 2.6){
+    ui.msg.textContent = text;
+    msgTimer = t;
+  }
+
+  function syncUI(){
+    const p = state.player, w = currentWeapon();
+    ui.lv.textContent = p.level;
+    ui.job.textContent = p.job;
+    ui.weapon.textContent = w.name;
+    ui.money.textContent = p.money;
+    ui.hpFill.style.width = (p.hp / p.maxHp * 100) + '%';
+    ui.hpText.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    ui.expFill.style.width = (p.exp / p.expNeed * 100) + '%';
+    ui.expText.textContent = `${p.exp} / ${p.expNeed}`;
+    ui.potFill.style.width = Math.min(p.potions / 10, 1) * 100 + '%';
+    ui.potText.textContent = `${p.potions} 瓶`;
+  }
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+  function rand(a,b){ return Math.random() * (b-a) + a; }
+  function angleNorm(x,y){ const d = Math.hypot(x,y) || 1; return {x:x/d,y:y/d}; }
+  function inSafeZone(obj){ return obj.y >= SAFE_Y; }
+
+  function addParticle(x,y,text,color='#fff',life=0.8,vy=-24,size=16){
+    particles.push({x,y,text,color,life,maxLife:life,vy,size});
+  }
+
+  function spawnMonster(kind = 'slime'){
+    const types = {
+      slime: {color:'#f472b6', hp: 18 + state.player.level*2, speed: rand(18,28), exp:[4,6], money:[5,10], r: 18},
+      blue:  {color:'#60a5fa', hp: 26 + state.player.level*3, speed: rand(16,24), exp:[6,9], money:[8,14], r: 20},
+      horn:  {color:'#fb7185', hp: 34 + state.player.level*4, speed: rand(14,22), exp:[10,14], money:[12,20], r: 22},
+    };
+    const t = types[kind];
+    monsters.push({
+      kind, x: rand(36, W-36), y: rand(40, SAFE_Y-70), r: t.r,
+      hp: t.hp, maxHp: t.hp, speed: t.speed, dead:false,
+      wanderX: rand(-1,1), wanderY: rand(-1,1), wanderT: rand(0.4,1.8),
+      atkCd: rand(0.7,1.5), color: t.color, expMin:t.exp[0], expMax:t.exp[1], moneyMin:t.money[0], moneyMax:t.money[1],
+      knockX:0, knockY:0
+    });
+  }
+
+  function ensureMonsters(){
+    const wanted = 5 + Math.min(4, Math.floor(state.player.level / 2));
+    while (monsters.length < wanted) {
+      const roll = Math.random();
+      if (state.player.level >= 6 && roll > 0.85) spawnMonster('horn');
+      else if (state.player.level >= 3 && roll > 0.55) spawnMonster('blue');
+      else spawnMonster('slime');
+    }
+  }
+
+  function applyJob(jobId){
+    const p = state.player;
+    if (p.jobId !== 'novice') return setMessage('已經轉職過了，先這樣跑版本。');
+    const map = {
+      warrior: {name:'戰士', hp:16, speed:0},
+      archer: {name:'遊俠', hp:6, speed:16},
+      mage: {name:'術士', hp:8, speed:8},
+    };
+    const j = map[jobId];
+    p.jobId = jobId;
+    p.job = j.name;
+    p.maxHp += j.hp;
+    p.hp = p.maxHp;
+    p.speed += j.speed;
+    addParticle(p.x, p.y-24, '轉職!', '#fde68a', 1.1, -26, 22);
+    setMessage(`已轉職為 ${j.name}。這本質上就是強化與改變輸出節奏。`);
+    closeSheet();
+    syncUI();
+  }
+
+  function levelUp(){
+    const p = state.player;
+    while (p.exp >= p.expNeed) {
+      p.exp -= p.expNeed;
+      p.level += 1;
+      p.expNeed = Math.floor(p.expNeed * 1.38 + 6);
+      p.maxHp += 7;
+      p.hp = p.maxHp;
+      p.atkBase += 2;
+      addParticle(p.x, p.y-20, 'LEVEL UP', '#fde68a', 1.0, -28, 20);
+      setMessage(`升到 Lv.${p.level}。現在可以更兇一點。`);
+      if (p.level > bestLv) {
+        bestLv = p.level;
+        localStorage.setItem('mobile_rpg_best_lv', String(bestLv));
+      }
+    }
+  }
+
+  function playerDamageBase(){
+    const p = state.player, w = currentWeapon();
+    let d = p.atkBase + w.atk + Math.floor(p.level * 1.2);
+    if (p.jobId === 'warrior' && w.type === 'melee') d += 5;
+    if (p.jobId === 'archer' && w.type === 'bow') d += 5;
+    if (p.jobId === 'mage' && w.type === 'staff') d += 6;
+    return d;
+  }
+
+  function doAttack(){
+    const p = state.player;
+    if (state.menuOpen) return;
+    if (p.dead) return;
+    if (p.attackCd > 0) return;
+    const w = currentWeapon();
+    let cd = w.cd;
+    if (p.jobId === 'warrior' && w.type === 'melee') cd -= 0.05;
+    if (p.jobId === 'archer' && w.type === 'bow') cd -= 0.07;
+    if (p.jobId === 'mage' && w.type === 'staff') cd -= 0.05;
+    p.attackCd = Math.max(0.18, cd);
+
+    if (w.type === 'melee') {
+      const range = w.range;
+      const front = {x: p.x + p.facingX * range * 0.65, y: p.y + p.facingY * range * 0.65};
+      addParticle(front.x, front.y, '斬', '#e2e8f0', 0.28, -6, 18);
+      for (const m of monsters) {
+        if (m.dead) continue;
+        const dx = m.x - p.x, dy = m.y - p.y;
+        const d = Math.hypot(dx,dy);
+        if (d > range + m.r) continue;
+        const dir = angleNorm(dx,dy);
+        const dot = dir.x * p.facingX + dir.y * p.facingY;
+        if (dot < 0.28) continue;
+        hitMonster(m, playerDamageBase(), p.facingX * 90, p.facingY * 90);
+      }
+    } else if (w.type === 'bow') {
+      const speed = p.jobId === 'archer' ? 420 : 360;
+      projectiles.push({kind:'arrow', x:p.x + p.facingX*18, y:p.y + p.facingY*18, vx:p.facingX*speed, vy:p.facingY*speed, life:1.5, r:4, dmg:playerDamageBase()});
+    } else if (w.type === 'staff') {
+      const speed = 300;
+      const splash = p.jobId === 'mage' ? 42 : 28;
+      projectiles.push({kind:'orb', x:p.x + p.facingX*18, y:p.y + p.facingY*18, vx:p.facingX*speed, vy:p.facingY*speed, life:1.6, r:7, dmg:playerDamageBase()+2, splash});
+    }
+  }
+
+  function hitMonster(m, dmg, kx=0, ky=0){
+    if (m.dead) return;
+    const dealt = Math.max(1, Math.floor(dmg + rand(-2,3)));
+    m.hp -= dealt;
+    m.knockX += kx * 0.01;
+    m.knockY += ky * 0.01;
+    addParticle(m.x, m.y - m.r - 8, String(dealt), '#fde68a', 0.65, -22, 16);
+    if (m.hp <= 0) killMonster(m);
+  }
+
+  function killMonster(m){
+    m.dead = true;
+    const p = state.player;
+    const exp = Math.floor(rand(m.expMin, m.expMax + 0.99));
+    const money = Math.floor(rand(m.moneyMin, m.moneyMax + 0.99));
+    p.exp += exp;
+    p.money += money;
+    addParticle(m.x, m.y - 18, `+${exp} EXP`, '#fbbf24', 0.9, -24, 15);
+    addParticle(m.x, m.y + 4, `+$${money}`, '#86efac', 0.9, -18, 15);
+    if (Math.random() < 0.24) {
+      loot.push({x:m.x, y:m.y, r:9, type:'potion'});
+      addParticle(m.x, m.y, '藥水', '#60a5fa', 0.8, -14, 14);
+    }
+    levelUp();
+  }
+
+  function healAtSafeZone(){
+    const p = state.player;
+    if (dist(p, healer) > 42 || !inSafeZone(p)) {
+      return setMessage('先站到下方安全區的治療點附近。');
+    }
+    p.hp = p.maxHp;
+    addParticle(healer.x, healer.y - 26, '補滿', '#86efac', 0.9, -18, 18);
+    setMessage('補血完成。野外打不贏就先回來，不丟臉。');
+  }
+
+  function usePotion(){
+    const p = state.player;
+    if (p.dead) return;
+    if (p.potions <= 0) return setMessage('藥水沒了。先賺錢或等掉落。');
+    if (p.hp >= p.maxHp) return setMessage('血量已滿，現在喝是財務黑洞。');
+    p.potions -= 1;
+    p.hp = clamp(p.hp + 28, 0, p.maxHp);
+    addParticle(p.x, p.y - 20, '+28', '#86efac', 0.8, -22, 18);
+    setMessage('已喝藥水。');
+    syncUI();
+  }
+
+  function takeDamage(dmg){
+    const p = state.player;
+    if (p.dead) return;
+    p.hp -= dmg;
+    p.hitFlash = 0.12;
+    addParticle(p.x, p.y - 22, '-' + dmg, '#fb7185', 0.7, -18, 16);
+    if (p.hp <= 0) {
+      p.hp = 0;
+      p.dead = true;
+      setMessage('你倒了。3 秒後拉回安全區。');
+      setTimeout(() => {
+        p.dead = false;
+        p.x = W/2; p.y = 686;
+        p.hp = Math.ceil(p.maxHp * 0.7);
+        setMessage('已回到安全區。先整補，再上。');
+      }, 3000);
+    }
+  }
+
+  function buyWeapon(id){
+    const p = state.player;
+    const w = weaponMap[id];
+    if (!w) return;
+    if (p.money < w.price) return setMessage('錢不夠。先上去刷怪。');
+    if (p.weaponId === id) return setMessage('這把已經裝著了。');
+    p.money -= w.price;
+    p.weaponId = id;
+    closeSheet();
+    setMessage(`已購買並裝備 ${w.name}。輸出方式會跟著改。`);
+    syncUI();
+  }
+
+  function openSheet(title, sub, items, onPick){
+    state.menuOpen = true;
+    ui.sheetTitle.textContent = title;
+    ui.sheetSub.textContent = sub;
+    ui.sheetList.innerHTML = items.map(item => `
+      <div class="item">
+        <div>
+          <div class="name">${item.name}</div>
+          <div class="desc">${item.desc}</div>
+        </div>
+        <button data-id="${item.id}">${item.cta || '選擇'}</button>
+      </div>
+    `).join('');
+    ui.overlay.classList.add('show');
+    ui.sheetList.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => onPick(btn.dataset.id);
+    });
+  }
+
+  function closeSheet(){
+    state.menuOpen = false;
+    ui.overlay.classList.remove('show');
+  }
+
+  function tryOpenShop(force=false){
+    const p = state.player;
+    if (!force && (dist(p, merchant) > 44 || !inSafeZone(p))) {
+      return setMessage('商店在下方安全區。先回去再買。');
+    }
+    openSheet('武器商店', '購買後立即裝備。金錢直接寫金錢，不玩名詞 cosplay。', weapons.map(w => ({
+      id:w.id, name:`${w.name}｜${w.price}`, desc:`${w.desc}　ATK ${w.atk}｜${w.type === 'melee' ? '近戰' : w.type === 'bow' ? '遠程' : '法術'}`
+    })), buyWeapon);
+  }
+
+  function tryOpenJob(force=false){
+    const p = state.player;
+    if (p.jobId !== 'novice') return setMessage('已經轉職過了，先把這條線玩完。');
+    if (p.level < 5) return setMessage('Lv.5 才能轉職。先去上面刷。');
+    if (!force && (dist(p, trainer) > 44 || !inSafeZone(p))) {
+      return setMessage('轉職師在下方安全區。');
+    }
+    openSheet('轉職', '只是名目沒錯，但名目後面是數值與攻擊節奏改變。', jobs.map(j => ({
+      id:j.id, name:j.name, desc:j.desc, cta:'轉職'
+    })), applyJob);
+  }
+
+  function interact(){
+    const p = state.player;
+    if (!inSafeZone(p)) return setMessage('互動點都在下方安全區。');
+    const dShop = dist(p, merchant), dTrainer = dist(p, trainer), dHealer = dist(p, healer);
+    const min = Math.min(dShop, dTrainer, dHealer);
+    if (min === dShop) return tryOpenShop();
+    if (min === dTrainer) return tryOpenJob();
+    return healAtSafeZone();
+  }
+
+  function updatePlayer(dt){
+    const p = state.player;
+    p.attackCd = Math.max(0, p.attackCd - dt);
+    p.hitFlash = Math.max(0, p.hitFlash - dt);
+    if (p.dead || state.menuOpen) return;
+
+    let mx = 0, my = 0;
+    if (keys.left) mx -= 1;
+    if (keys.right) mx += 1;
+    if (keys.up) my -= 1;
+    if (keys.down) my += 1;
+    if (mx || my) {
+      const dir = angleNorm(mx,my);
+      p.facingX = dir.x; p.facingY = dir.y;
+      p.x += dir.x * p.speed * dt;
+      p.y += dir.y * p.speed * dt;
+    }
+    p.x = clamp(p.x, 18, W-18);
+    p.y = clamp(p.y, 18, H-18);
+
+    for (let i = loot.length - 1; i >= 0; i--) {
+      const d = loot[i];
+      if (dist(p, d) < p.r + d.r + 4) {
+        if (d.type === 'potion') {
+          p.potions += 1;
+          addParticle(d.x, d.y - 14, '+藥水', '#60a5fa', 0.8, -18, 14);
+        }
+        loot.splice(i, 1);
+      }
+    }
+  }
+
+  function updateProjectiles(dt){
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const pr = projectiles[i];
+      pr.x += pr.vx * dt;
+      pr.y += pr.vy * dt;
+      pr.life -= dt;
+
+      let remove = pr.life <= 0 || pr.x < -20 || pr.x > W+20 || pr.y < -20 || pr.y > H+20;
+      if (!remove) {
+        for (const m of monsters) {
+          if (m.dead) continue;
+          if (dist(pr, m) <= pr.r + m.r) {
+            if (pr.kind === 'arrow') {
+              hitMonster(m, pr.dmg, pr.vx * 0.2, pr.vy * 0.2);
+            } else {
+              addParticle(pr.x, pr.y, '爆', '#fda4af', 0.4, -8, 18);
+              for (const t of monsters) {
+                if (t.dead) continue;
+                const dd = dist(pr, t);
+                if (dd <= (pr.splash + t.r)) {
+                  const scale = dd < 1 ? 1 : (1 - dd / (pr.splash + t.r) * 0.4);
+                  hitMonster(t, pr.dmg * scale, pr.vx * 0.1, pr.vy * 0.1);
+                }
+              }
+            }
+            remove = true;
+            break;
+          }
+        }
+      }
+      if (remove) projectiles.splice(i, 1);
+    }
+  }
+
+  function updateMonsters(dt){
+    const p = state.player;
+    ensureMonsters();
+    for (const m of monsters) {
+      if (m.dead) continue;
+      m.wanderT -= dt;
+      if (m.wanderT <= 0) {
+        const dir = angleNorm(rand(-1,1), rand(-1,1));
+        m.wanderX = dir.x; m.wanderY = dir.y;
+        m.wanderT = rand(0.8, 1.8);
+      }
+
+      const d = dist(m, p);
+      let vx = m.wanderX * m.speed * 0.35;
+      let vy = m.wanderY * m.speed * 0.35;
+
+      if (!p.dead && p.y < SAFE_Y - 24 && d < 180) {
+        const dir = angleNorm(p.x - m.x, p.y - m.y);
+        vx = dir.x * m.speed;
+        vy = dir.y * m.speed;
+        m.atkCd -= dt;
+        if (d < m.r + p.r + 4 && m.atkCd <= 0) {
+          m.atkCd = rand(0.95, 1.5);
+          takeDamage(Math.floor(rand(4, 8)));
+          const knock = angleNorm(p.x - m.x, p.y - m.y);
+          p.x += knock.x * 6; p.y += knock.y * 6;
+        }
+      } else {
+        m.atkCd = Math.max(m.atkCd - dt * 0.25, 0);
+      }
+
+      m.x += (vx + m.knockX) * dt;
+      m.y += (vy + m.knockY) * dt;
+      m.knockX *= 0.78;
+      m.knockY *= 0.78;
+
+      m.x = clamp(m.x, 20, W - 20);
+      m.y = clamp(m.y, 24, SAFE_Y - 34);
+    }
+
+    for (let i = monsters.length - 1; i >= 0; i--) {
+      if (monsters[i].dead) monsters.splice(i, 1);
+    }
+  }
+
+  function updateParticles(dt){
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function drawRoundRect(x,y,w,h,r,color){
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawMap(){
+    ctx.clearRect(0,0,W,H);
+
+    drawRoundRect(0,0,W,SAFE_Y,20,'#56385c');
+    drawRoundRect(0,SAFE_Y,W,H-SAFE_Y,0,'#274734');
+
+    for (let y = 0; y < SAFE_Y; y += 28) {
+      for (let x = 0; x < W; x += 28) {
+        ctx.fillStyle = ((x + y) / 28) % 2 ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.04)';
+        ctx.fillRect(x,y,28,28);
+      }
+    }
+    for (let y = SAFE_Y; y < H; y += 24) {
+      for (let x = 0; x < W; x += 24) {
+        ctx.fillStyle = ((x + y) / 24) % 2 ? 'rgba(255,255,255,.045)' : 'rgba(0,0,0,.045)';
+        ctx.fillRect(x,y,24,24);
+      }
+    }
+
+    ctx.fillStyle = '#7c5a39';
+    ctx.fillRect(0, SAFE_Y - 6, W, 12);
+    ctx.strokeStyle = 'rgba(255,255,255,.09)';
+    ctx.beginPath();
+    ctx.moveTo(0, SAFE_Y - 1); ctx.lineTo(W, SAFE_Y - 1);
+    ctx.stroke();
+
+    drawRoundRect(48, 646, 76, 58, 14, '#f8fafc');
+    drawRoundRect(56, 668, 26, 28, 8, '#92400e');
+    drawRoundRect(90, 658, 26, 20, 8, '#93c5fd');
+    ctx.fillStyle = '#7f1d1d';
+    ctx.beginPath();
+    ctx.moveTo(42,650); ctx.lineTo(86,622); ctx.lineTo(130,650); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 12px Microsoft JhengHei';
+    ctx.fillText('商店', 62, 640);
+
+    drawRoundRect(176, 648, 68, 54, 14, '#dbeafe');
+    ctx.fillStyle = '#374151';
+    ctx.fillRect(188, 662, 16, 30);
+    ctx.fillRect(214, 662, 16, 30);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('轉職', 191, 640);
+
+    drawRoundRect(294, 650, 78, 52, 14, '#ccfbf1');
+    drawRoundRect(324, 662, 18, 26, 8, '#0ea5e9');
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText('治療', 314, 640);
+
+    drawNpc(merchant.x, merchant.y, '#f59e0b');
+    drawNpc(trainer.x, trainer.y, '#8b5cf6');
+    drawNpc(healer.x, healer.y, '#22c55e');
+
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.font = '13px Microsoft JhengHei';
+    ctx.fillText('野外', 18, 26);
+    ctx.fillText('安全區', 18, H - 20);
+  }
+
+  function drawNpc(x,y,body){
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath(); ctx.arc(x, y - 10, 8, 0, Math.PI*2); ctx.fill();
+    drawRoundRect(x - 10, y - 2, 20, 22, 8, body);
+  }
+
+  function drawPlayer(){
+    const p = state.player;
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath(); ctx.arc(p.x, p.y - 10, 9, 0, Math.PI*2); ctx.fill();
+    drawRoundRect(p.x - 11, p.y - 1, 22, 22, 8, p.hitFlash > 0 ? '#fb7185' : '#e5e7eb');
+    ctx.strokeStyle = currentWeapon().type === 'staff' ? '#fb7185' : currentWeapon().type === 'bow' ? '#fbbf24' : '#7dd3fc';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y + 6);
+    ctx.lineTo(p.x + p.facingX * 18, p.y + 6 + p.facingY * 18);
+    ctx.stroke();
+  }
+
+  function drawMonsters(){
+    for (const m of monsters) {
+      drawRoundRect(m.x - m.r, m.y - m.r, m.r * 2, m.r * 2, m.r, m.color);
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(m.x - 5, m.y - 3, 2, 0, Math.PI*2); ctx.arc(m.x + 5, m.y - 3, 2, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#831843';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(m.x, m.y + 2, 7, 0.15, Math.PI - 0.15); ctx.stroke();
+      drawRoundRect(m.x - 18, m.y - m.r - 11, 36, 5, 3, 'rgba(15,23,42,.8)');
+      drawRoundRect(m.x - 18, m.y - m.r - 11, 36 * (m.hp / m.maxHp), 5, 3, '#22c55e');
+    }
+  }
+
+  function drawLoot(){
+    for (const d of loot) {
+      ctx.fillStyle = '#60a5fa';
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#dbeafe'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y - 4); ctx.lineTo(d.x, d.y + 4);
+      ctx.moveTo(d.x - 4, d.y); ctx.lineTo(d.x + 4, d.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawProjectiles(){
+    for (const pr of projectiles) {
+      ctx.fillStyle = pr.kind === 'arrow' ? '#fcd34d' : '#fda4af';
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI*2); ctx.fill();
+      if (pr.kind === 'arrow') {
+        ctx.strokeStyle = '#fef3c7'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pr.x - pr.vx * 0.015, pr.y - pr.vy * 0.015); ctx.lineTo(pr.x, pr.y); ctx.stroke();
+      }
+    }
+  }
+
+  function drawParticles(){
+    ctx.textAlign = 'center';
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      ctx.fillStyle = p.color;
+      ctx.font = `bold ${p.size}px Microsoft JhengHei`;
+      ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+  }
+
+  function drawPrompt(){
+    const p = state.player;
+    if (inSafeZone(p)) {
+      let txt = '';
+      if (dist(p, merchant) < 48) txt = '互動或商店鍵：買武器';
+      else if (dist(p, trainer) < 48) txt = p.level >= 5 ? '互動或轉職鍵：可轉職' : 'Lv.5 才能轉職';
+      else if (dist(p, healer) < 48) txt = '互動：補血';
+      if (txt) {
+        drawRoundRect(98, H - 116, 224, 34, 12, 'rgba(5,10,18,.62)');
+        ctx.fillStyle = '#fff';
+        ctx.font = '13px Microsoft JhengHei';
+        ctx.fillText(txt, 114, H - 94);
+      }
+    }
+    if (state.player.dead) {
+      drawRoundRect(84, 286, 252, 74, 16, 'rgba(5,10,18,.74)');
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 26px Microsoft JhengHei';
+      ctx.fillText('倒下了', 165, 318);
+      ctx.font = '14px Microsoft JhengHei';
+      ctx.fillText('3 秒後回到安全區', 145, 344);
+    }
+  }
+
+  function loop(ts){
+    if (!lastTime) lastTime = ts;
+    const dt = Math.min((ts - lastTime) / 1000, 0.033);
+    lastTime = ts;
+
+    if (msgTimer > 0) msgTimer -= dt;
+    updatePlayer(dt);
+    updateProjectiles(dt);
+    updateMonsters(dt);
+    updateParticles(dt);
+    drawMap();
+    drawLoot();
+    drawMonsters();
+    drawProjectiles();
+    drawPlayer();
+    drawParticles();
+    drawPrompt();
+    syncUI();
+    requestAnimationFrame(loop);
+  }
+
+  function bindHoldButton(el, key){
+    const on = (e) => { e.preventDefault(); keys[key] = true; el.classList.add('active'); };
+    const off = (e) => { if (e) e.preventDefault(); keys[key] = false; el.classList.remove('active'); };
+    ['pointerdown','touchstart','mousedown'].forEach(evt => el.addEventListener(evt, on, {passive:false}));
+    ['pointerup','pointercancel','pointerleave','touchend','touchcancel','mouseup','mouseleave'].forEach(evt => el.addEventListener(evt, off, {passive:false}));
+  }
+
+  document.querySelectorAll('[data-key]').forEach(btn => bindHoldButton(btn, btn.dataset.key));
+  document.getElementById('attackBtn').onclick = doAttack;
+  document.getElementById('interactBtn').onclick = interact;
+  document.getElementById('potionBtn').onclick = usePotion;
+  document.getElementById('shopBtn').onclick = () => tryOpenShop(true);
+  document.getElementById('jobBtn').onclick = () => tryOpenJob(true);
+  document.getElementById('closeSheetBtn').onclick = closeSheet;
+  ui.overlay.addEventListener('click', (e) => { if (e.target === ui.overlay) closeSheet(); });
+
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') keys.up = true;
+    if (k === 'arrowdown' || k === 's') keys.down = true;
+    if (k === 'arrowleft' || k === 'a') keys.left = true;
+    if (k === 'arrowright' || k === 'd') keys.right = true;
+    if (k === 'j' || e.code === 'Space') { e.preventDefault(); doAttack(); }
+    if (k === 'e') interact();
+    if (k === 'u' || k === 'z') usePotion();
+    if (k === 'b') tryOpenShop(true);
+    if (k === 't') tryOpenJob(true);
+  });
+  window.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'arrowup' || k === 'w') keys.up = false;
+    if (k === 'arrowdown' || k === 's') keys.down = false;
+    if (k === 'arrowleft' || k === 'a') keys.left = false;
+    if (k === 'arrowright' || k === 'd') keys.right = false;
+  });
+
+  canvas.addEventListener('touchstart', e => {
+    if (state.menuOpen) return;
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const tx = (t.clientX - rect.left) / rect.width * W;
+    const ty = (t.clientY - rect.top) / rect.height * H;
+    const p = state.player;
+    const d = angleNorm(tx - p.x, ty - p.y);
+    p.facingX = d.x; p.facingY = d.y;
+  }, {passive:true});
+
+  setMessage('新版改成手機直向，下方安全區，金錢可買武器，Lv.5 可轉職。怪物速度也放慢了。');
+  spawnMonster('slime');
+  spawnMonster('slime');
+  spawnMonster('blue');
+  ensureMonsters();
+  syncUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
