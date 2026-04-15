@@ -3,623 +3,848 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no" />
-<title>3v3 卡牌對決 Demo v2</title>
+<title>卡牌對決</title>
 <style>
   :root{
-    --bg:#0d1020;
-    --panel:#171c31;
-    --panel2:#232947;
-    --line:#313a64;
+    --bg:#0b0d16;
+    --panel:#131827;
+    --panel2:#1a2032;
+    --line:#2a324b;
     --text:#eef2ff;
-    --muted:#a3add8;
+    --muted:#98a2c9;
     --player:#7dd3fc;
     --enemy:#f9a8d4;
     --gold:#fcd34d;
+    --good:#86efac;
+    --bad:#fca5a5;
     --select:#a78bfa;
-    --empty:#8b95ba;
+    --shadow:0 18px 40px rgba(0,0,0,.28);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{
     margin:0;height:100%;
-    background:linear-gradient(180deg,#101427,#0b0e19 60%,#080a11);
+    background:linear-gradient(180deg,#101427,#090b12 55%,#06070d);
     color:var(--text);
     font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
     overflow:hidden;
   }
-  body{position:fixed; inset:0;}
+  body{position:fixed; inset:0}
   .app{
     height:100dvh;
-    padding:
-      calc(env(safe-area-inset-top) + 10px)
-      calc(env(safe-area-inset-right) + 10px)
-      calc(env(safe-area-inset-bottom) + 10px)
-      calc(env(safe-area-inset-left) + 10px);
-    display:grid;
-    grid-template-rows:auto auto auto 1fr auto;
-    gap:8px;
-    max-width:560px;
+    width:100%;
+    max-width:540px;
     margin:0 auto;
+    padding:
+      calc(env(safe-area-inset-top) + 8px)
+      calc(env(safe-area-inset-right) + 8px)
+      calc(env(safe-area-inset-bottom) + 8px)
+      calc(env(safe-area-inset-left) + 8px);
+    position:relative;
   }
-  .box{
-    background:rgba(23,28,49,.94);
-    border:1px solid var(--line);
-    border-radius:18px;
+  .battle-screen{
+    height:100%;
+    display:grid;
+    grid-template-rows:28px auto 1fr auto 1fr auto 44px;
+    gap:8px;
   }
-  .topbar{
-    padding:12px 14px;
+  .corner-row{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    gap:10px;
-  }
-  .title{
-    font-size:20px;
-    font-weight:1000;
-    letter-spacing:.3px;
-  }
-  .sub{
-    margin-top:3px;
     font-size:12px;
     color:var(--muted);
+    padding:0 2px;
   }
-  .turn-pill{
-    min-width:114px;
-    text-align:center;
-    padding:10px 12px;
+  .tiny{
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.07);
     border-radius:999px;
-    background:rgba(125,211,252,.1);
-    border:1px solid rgba(125,211,252,.24);
-    font-size:13px;
-    font-weight:900;
-  }
-  .status{
-    padding:10px 12px;
-    display:grid;
-    grid-template-columns:1fr auto 1fr;
-    align-items:center;
-    font-size:13px;
-    gap:10px;
-  }
-  .status b{font-size:15px}
-  .status .center{
-    text-align:center;
-    color:var(--gold);
-    font-weight:900;
-  }
-  .actionbar{
-    padding:12px 14px;
-    min-height:64px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    font-size:15px;
-    font-weight:900;
-    letter-spacing:.2px;
-  }
-  .actionbar small{
-    display:block;
-    margin-top:4px;
-    font-size:12px;
-    color:var(--muted);
-    font-weight:700;
-  }
-  .board{
-    min-height:0;
-    display:grid;
-    grid-template-rows:auto auto auto auto auto;
-    gap:8px;
-  }
-  .reserve-row{
-    display:flex;
-    gap:8px;
-    overflow-x:auto;
-    padding:2px 2px 4px;
-    scrollbar-width:none;
-  }
-  .reserve-row::-webkit-scrollbar{display:none}
-  .chip{
-    flex:0 0 auto;
+    padding:5px 10px;
     min-width:54px;
-    height:38px;
-    border-radius:14px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:15px;
-    font-weight:1000;
-    border:1px solid var(--line);
-    background:rgba(35,41,71,.94);
+    text-align:center;
+    font-weight:900;
     color:#dde5ff;
-    transition:transform .22s ease, opacity .22s ease;
-  }
-  .chip.enemy{background:rgba(72,37,54,.92)}
-  .chip.player{background:rgba(27,60,72,.94)}
-  .chip.drawn{
-    transform:scale(1.15);
-    box-shadow:0 0 0 3px rgba(252,211,77,.22);
   }
   .field{
     display:grid;
     grid-template-columns:repeat(3,1fr);
-    gap:8px;
+    gap:10px;
+    min-height:0;
   }
-  .midbar{
-    padding:8px 10px;
-    border-radius:16px;
-    border:1px dashed rgba(255,255,255,.12);
+  .mid-status{
     display:flex;
-    justify-content:space-between;
     align-items:center;
-    font-size:12px;
-    color:var(--muted);
+    justify-content:center;
+    padding:4px 8px;
   }
-  .midbar .big{
-    color:#e8ecff;
+  .toast{
+    min-height:34px;
+    padding:8px 14px;
+    border-radius:999px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    color:#dbe4ff;
+    font-size:13px;
     font-weight:900;
+    text-align:center;
+    max-width:100%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .card{
-    position:relative;
-    min-height:136px;
-    border-radius:20px;
+    min-height:100%;
+    border-radius:22px;
     border:2px solid var(--line);
     background:
-      radial-gradient(circle at top, rgba(255,255,255,.08), transparent 40%),
+      radial-gradient(circle at top, rgba(255,255,255,.08), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
       var(--panel);
-    box-shadow:0 10px 22px rgba(0,0,0,.24);
-    padding:10px 8px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
     display:flex;
-    flex-direction:column;
-    justify-content:space-between;
     align-items:center;
-    transition:transform .28s ease, opacity .28s ease, border-color .18s ease, box-shadow .18s ease, filter .24s ease;
+    justify-content:center;
     user-select:none;
+    transition:
+      transform .28s ease,
+      opacity .28s ease,
+      filter .22s ease,
+      box-shadow .18s ease,
+      border-color .18s ease;
   }
   .player-card{
     background:
-      radial-gradient(circle at top, rgba(125,211,252,.14), transparent 40%),
+      radial-gradient(circle at top, rgba(125,211,252,.16), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
-      #17283a;
+      #152435;
   }
   .enemy-card{
     background:
-      radial-gradient(circle at top, rgba(249,168,212,.14), transparent 40%),
+      radial-gradient(circle at top, rgba(249,168,212,.16), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
-      #2a1d2a;
+      #291d2b;
   }
-  .card.selectable{border-color:rgba(125,211,252,.45)}
+  .card .num{
+    font-size:44px;
+    line-height:1;
+    font-weight:1000;
+    letter-spacing:.6px;
+  }
+  .card.selectable{border-color:rgba(125,211,252,.42)}
   .card.selected{
     border-color:var(--select);
-    box-shadow:0 0 0 3px rgba(167,139,250,.25),0 10px 22px rgba(0,0,0,.24);
+    box-shadow:0 0 0 3px rgba(167,139,250,.24), var(--shadow);
   }
   .card.targetable{
-    border-color:rgba(252,211,77,.55);
-    box-shadow:0 0 0 3px rgba(252,211,77,.18),0 10px 22px rgba(0,0,0,.24);
+    border-color:rgba(252,211,77,.56);
+    box-shadow:0 0 0 3px rgba(252,211,77,.18), var(--shadow);
   }
-  .card.attacking.player-card{ transform:translateY(-16px) scale(1.03); }
-  .card.attacking.enemy-card{ transform:translateY(16px) scale(1.03); }
+  .card.attacking.player-card{ transform:translateY(-12px) scale(1.04); }
+  .card.attacking.enemy-card{ transform:translateY(12px) scale(1.04); }
   .card.hit{
-    box-shadow:0 0 0 4px rgba(252,211,77,.25), 0 10px 22px rgba(0,0,0,.24);
-    filter:brightness(1.16);
+    box-shadow:0 0 0 4px rgba(252,211,77,.22), var(--shadow);
+    filter:brightness(1.18);
   }
   .card.dying{
-    transform:scale(.84);
-    opacity:.08;
+    transform:scale(.82);
+    opacity:.06;
     filter:grayscale(1);
   }
   .card.entering{
-    animation:flipIn .45s ease;
-    border-color:rgba(252,211,77,.5);
+    animation:flipIn .44s ease;
+    border-color:rgba(252,211,77,.55);
   }
   @keyframes flipIn{
-    0%{ transform:rotateY(90deg) scale(.9); opacity:.15; }
+    0%{ transform:rotateY(90deg) scale(.88); opacity:.12; }
     100%{ transform:rotateY(0) scale(1); opacity:1; }
   }
-  .card .kind{
-    width:100%;
-    text-align:center;
-    font-size:11px;
-    color:var(--muted);
-    font-weight:800;
-  }
-  .card .power{
-    font-size:42px;
-    line-height:1;
-    font-weight:1000;
-    letter-spacing:.5px;
-  }
-  .meta{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-    justify-content:center;
-  }
-  .tag{
-    padding:4px 8px;
-    border-radius:999px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.08);
-    font-size:11px;
-    color:#d8e0ff;
-  }
   .dead-slot{
-    min-height:136px;
-    border-radius:20px;
-    border:2px dashed rgba(255,255,255,.18);
+    border-radius:22px;
+    border:2px dashed rgba(255,255,255,.16);
     background:rgba(255,255,255,.03);
-    color:var(--empty);
     display:flex;
     flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    color:#8d97bd;
+    gap:6px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  .dead-slot .x{font-size:34px;font-weight:1000;line-height:1}
+  .dead-slot .t{font-size:12px;font-weight:800}
+  .bottom-actions{
+    display:flex;
     justify-content:center;
     align-items:center;
     gap:8px;
-    opacity:.94;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
   }
-  .dead-slot .x{
-    font-size:34px;
-    font-weight:1000;
-    line-height:1;
-  }
-  .dead-slot .txt{
-    font-size:12px;
-    font-weight:800;
-  }
-  .toolbar{
-    padding:9px;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-  }
-  button{
-    appearance:none;border:none;
-    height:48px;border-radius:16px;
+  .mini-btn{
+    height:44px;
+    min-width:88px;
+    border:none;
+    border-radius:16px;
+    background:linear-gradient(180deg,#2c345a,#242949);
+    border:1px solid rgba(255,255,255,.07);
     color:#eef2ff;
-    font-size:15px;font-weight:1000;
-    background:linear-gradient(180deg,#2c3459,#242a49);
-    border:1px solid rgba(255,255,255,.08);
+    font-size:14px;
+    font-weight:1000;
     box-shadow:0 10px 18px rgba(0,0,0,.18);
   }
-  button:active{ transform:scale(.985); }
+  .mini-btn:active{transform:scale(.985)}
+  .overlay{
+    position:absolute;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(4,6,12,.58);
+    backdrop-filter:blur(10px);
+    z-index:10;
+    padding:14px;
+  }
+  .overlay.show{display:flex}
+  .sheet{
+    width:100%;
+    max-height:100%;
+    background:rgba(19,24,39,.97);
+    border:1px solid var(--line);
+    border-radius:28px;
+    box-shadow:0 24px 70px rgba(0,0,0,.36);
+    display:grid;
+    grid-template-rows:auto auto 1fr auto;
+    overflow:hidden;
+  }
+  .sheet.slim{
+    grid-template-rows:auto 1fr auto;
+    max-width:430px;
+  }
+  .sheet-hd{
+    padding:18px 18px 10px;
+  }
+  .sheet-ttl{
+    font-size:28px;
+    font-weight:1000;
+    letter-spacing:.4px;
+  }
+  .sheet-sub{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.6;
+  }
+  .resource-bar{
+    padding:0 18px 12px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:8px 12px;
+    border-radius:999px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.07);
+    font-size:13px;
+    font-weight:900;
+  }
+  .pill.gold{color:var(--gold)}
+  .sheet-bd{
+    padding:0 18px 18px;
+    overflow:auto;
+  }
+  .menu-actions{
+    display:grid;
+    gap:10px;
+  }
+  .main-btn{
+    height:56px;
+    border:none;
+    border-radius:18px;
+    background:linear-gradient(180deg,#334076,#29305a);
+    color:#eef2ff;
+    font-size:16px;
+    font-weight:1000;
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 14px 22px rgba(0,0,0,.18);
+  }
+  .main-btn.alt{
+    background:linear-gradient(180deg,#29314e,#212743);
+  }
+  .main-btn:active{transform:scale(.986)}
+  .small-note{
+    margin-top:10px;
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.6;
+  }
+  .deck-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+  .info-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .owned-card{
+    border-radius:18px;
+    border:1px solid var(--line);
+    background:rgba(255,255,255,.04);
+    padding:12px;
+    display:grid;
+    gap:10px;
+  }
+  .owned-card.sel{
+    border-color:rgba(125,211,252,.45);
+    box-shadow:0 0 0 3px rgba(125,211,252,.14);
+  }
+  .owned-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:8px;
+  }
+  .role{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:900;
+  }
+  .power-big{
+    font-size:30px;
+    line-height:1;
+    font-weight:1000;
+  }
+  .lv{
+    font-size:12px;
+    color:#dce4ff;
+    padding:5px 8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.07);
+    font-weight:900;
+  }
+  .owned-btns{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:8px;
+  }
+  .tiny-btn{
+    height:36px;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(180deg,#2d355a,#252b49);
+    color:#eef2ff;
+    font-size:13px;
+    font-weight:1000;
+    border:1px solid rgba(255,255,255,.07);
+  }
+  .tiny-btn:disabled{
+    opacity:.45;
+  }
+  .sheet-ft{
+    padding:12px 18px 18px;
+    display:flex;
+    gap:10px;
+  }
+  .sheet-ft .main-btn{flex:1}
+  .reward-box{
+    padding:18px;
+    text-align:center;
+  }
+  .reward-title{
+    font-size:26px;
+    font-weight:1000;
+    margin-bottom:8px;
+  }
+  .reward-items{
+    margin-top:12px;
+    display:grid;
+    gap:10px;
+  }
+  .reward-item{
+    padding:12px 14px;
+    border-radius:18px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.07);
+    font-size:15px;
+    font-weight:900;
+  }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="box topbar">
-    <div>
-      <div class="title">3v3 卡牌對決</div>
-      <div class="sub">先點我方一張，再點敵方一張。現在有明顯動作流程。</div>
+  <div class="battle-screen">
+    <div class="corner-row">
+      <div class="tiny" id="enemyReserve">3</div>
+      <div class="tiny" id="stageTiny">1-1</div>
     </div>
-    <div class="turn-pill" id="turnPill">你的回合</div>
-  </div>
 
-  <div class="box status">
-    <div>我方牌堆：<b id="playerReserveCount">3</b></div>
-    <div class="center" id="roundText">第 1 回合</div>
-    <div style="text-align:right">敵方牌堆：<b id="enemyReserveCount">3</b></div>
-  </div>
-
-  <div class="box actionbar" id="actionBar">先選你要攻擊的卡<small>這裡只顯示當前動作，不塞一大堆戰報。</small></div>
-
-  <div class="board">
-    <div class="reserve-row" id="enemyReserve"></div>
     <div class="field" id="enemyField"></div>
-    <div class="midbar">
-      <span id="centerHint">等待出手</span>
-      <span class="big" id="scoreText">我方 6 vs 敵方 6</span>
+
+    <div class="mid-status">
+      <div class="toast" id="battleToast">先選我方一張牌</div>
     </div>
+
     <div class="field" id="playerField"></div>
-    <div class="reserve-row" id="playerReserve"></div>
+
+    <div class="corner-row">
+      <div class="tiny" id="playerReserve">3</div>
+      <div class="tiny" id="goldTiny">金幣 0</div>
+    </div>
+
+    <div></div>
+
+    <div class="bottom-actions">
+      <button class="mini-btn" id="menuBtn">主頁</button>
+    </div>
   </div>
 
-  <div class="box toolbar">
-    <button id="newPresetBtn">用範例牌組重開</button>
-    <button id="newRandomBtn">隨機牌組重開</button>
+  <div class="overlay show" id="menuOverlay">
+    <div class="sheet slim">
+      <div class="sheet-hd">
+        <div class="sheet-ttl">卡牌對決</div>
+        <div class="sheet-sub">戰鬥畫面只留必要資訊。編隊、升級、獎勵都收在外層，不擋對戰。</div>
+      </div>
+      <div class="resource-bar">
+        <div class="pill gold" id="menuGold">金幣 0</div>
+        <div class="pill" id="menuStage">關卡 1</div>
+        <div class="pill" id="menuDeck">牌組 6 / 6</div>
+      </div>
+      <div class="sheet-bd">
+        <div class="menu-actions">
+          <button class="main-btn" id="startBattleBtn">開始戰鬥</button>
+          <button class="main-btn alt" id="editDeckBtn">編輯牌組</button>
+          <button class="main-btn alt" id="upgradeBtn">升級卡牌</button>
+          <button class="main-btn alt" id="resetBtn">重置進度</button>
+        </div>
+        <div class="small-note">
+          規則：雙方各帶 6 張，場上 3 張。數字同時是攻擊與血量。互砍後留下差值，死亡卡位會補下一張。
+        </div>
+      </div>
+      <div class="sheet-ft">
+        <button class="main-btn alt" id="closeMenuBtn">回戰場</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="deckOverlay">
+    <div class="sheet">
+      <div class="sheet-hd">
+        <div class="sheet-ttl">編輯牌組</div>
+        <div class="sheet-sub">帶 6 張上場。戰鬥中只顯示數字，職業定位在這裡看就夠了。</div>
+      </div>
+      <div class="resource-bar">
+        <div class="pill" id="deckCountPill">已選 6 / 6</div>
+      </div>
+      <div class="sheet-bd">
+        <div class="deck-grid" id="deckGrid"></div>
+      </div>
+      <div class="sheet-ft">
+        <button class="main-btn alt" id="deckBackBtn">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="upgradeOverlay">
+    <div class="sheet">
+      <div class="sheet-hd">
+        <div class="sheet-ttl">升級卡牌</div>
+        <div class="sheet-sub">每升 1 級，卡牌基礎值 +1。前期就從個位數慢慢養，不玩一開始就 200、300 那套。</div>
+      </div>
+      <div class="resource-bar">
+        <div class="pill gold" id="upgradeGold">金幣 0</div>
+      </div>
+      <div class="sheet-bd">
+        <div class="deck-grid" id="upgradeGrid"></div>
+      </div>
+      <div class="sheet-ft">
+        <button class="main-btn alt" id="upgradeBackBtn">返回</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="rewardOverlay">
+    <div class="sheet slim">
+      <div class="reward-box">
+        <div class="reward-title" id="rewardTitle">獲勝</div>
+        <div class="sheet-sub" id="rewardSub">這關過了。</div>
+        <div class="reward-items" id="rewardItems"></div>
+      </div>
+      <div class="sheet-ft">
+        <button class="main-btn" id="nextStageBtn">下一關</button>
+        <button class="main-btn alt" id="rewardMenuBtn">回主頁</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  const saveKey = 'card_duel_progress_v1';
+  const roles = ['劍士','弓箭手','魔法師','盾衛'];
+
+  const ui = {
+    enemyReserve: $('enemyReserve'),
+    playerReserve: $('playerReserve'),
+    stageTiny: $('stageTiny'),
+    goldTiny: $('goldTiny'),
+    enemyField: $('enemyField'),
+    playerField: $('playerField'),
+    battleToast: $('battleToast'),
+    menuOverlay: $('menuOverlay'),
+    deckOverlay: $('deckOverlay'),
+    upgradeOverlay: $('upgradeOverlay'),
+    rewardOverlay: $('rewardOverlay'),
+    menuGold: $('menuGold'),
+    menuStage: $('menuStage'),
+    menuDeck: $('menuDeck'),
+    deckCountPill: $('deckCountPill'),
+    deckGrid: $('deckGrid'),
+    upgradeGrid: $('upgradeGrid'),
+    upgradeGold: $('upgradeGold'),
+    rewardTitle: $('rewardTitle'),
+    rewardSub: $('rewardSub'),
+    rewardItems: $('rewardItems'),
+  };
 
   const state = {
-    playerField: [],
-    enemyField: [],
-    playerReserve: [],
-    enemyReserve: [],
-    turn: 'player',
-    selectedPlayerIndex: null,
+    profile: null,
+    battle: null,
+    selection: null,
     busy: false,
-    winner: null,
-    round: 1,
-    animate: {
-      attacking: null,
-      hit: null,
-      dying: [],
-      entering: []
-    }
+    rewardData: null,
   };
 
-  const el = {
-    turnPill: $('turnPill'),
-    roundText: $('roundText'),
-    actionBar: $('actionBar'),
-    centerHint: $('centerHint'),
-    scoreText: $('scoreText'),
-    playerReserveCount: $('playerReserveCount'),
-    enemyReserveCount: $('enemyReserveCount'),
-    playerReserve: $('playerReserve'),
-    enemyReserve: $('enemyReserve'),
-    playerField: $('playerField'),
-    enemyField: $('enemyField'),
-    newPresetBtn: $('newPresetBtn'),
-    newRandomBtn: $('newRandomBtn')
-  };
-
-  let nextId = 1;
+  let nextCardId = 1;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-  function setAction(text, sub=''){
-    el.actionBar.innerHTML = sub ? `${text}<small>${sub}</small>` : text;
+  function newOwnedCard(role, base, level=1){
+    return { id: nextCardId++, role, base, level };
   }
 
-  function makeCard(value, side, kind='一般'){
-    return { id: nextId++, value, base: value, side, kind };
+  function cardPower(card){
+    return card.base + card.level - 1;
   }
 
-  function makePresetDecks(){
+  function defaultProfile(){
+    const owned = [
+      newOwnedCard('劍士', 5),
+      newOwnedCard('劍士', 6),
+      newOwnedCard('劍士', 6),
+      newOwnedCard('弓箭手', 4),
+      newOwnedCard('弓箭手', 5),
+      newOwnedCard('魔法師', 5),
+      newOwnedCard('盾衛', 7),
+      newOwnedCard('劍士', 8),
+    ];
     return {
-      player: [200,150,180,120,240,90],
-      enemy:  [300,100,130,170,220,140]
+      gold: 12,
+      stage: 1,
+      owned,
+      deck: owned.slice(0,6).map(c => c.id),
     };
   }
 
-  function makeRandomDecks(){
-    const gen = () => Array.from({length:6}, () => Math.floor(Math.random() * 25) * 10 + 80);
-    return { player: gen(), enemy: gen() };
+  function saveProfile(){
+    localStorage.setItem(saveKey, JSON.stringify(state.profile));
   }
 
-  function sideName(side){ return side === 'player' ? '我方' : '敵方'; }
-  function getField(side){ return side === 'player' ? state.playerField : state.enemyField; }
-  function getReserve(side){ return side === 'player' ? state.playerReserve : state.enemyReserve; }
-  function setField(side, v){ side === 'player' ? state.playerField = v : state.enemyField = v; }
-  function setReserve(side, v){ side === 'player' ? state.playerReserve = v : state.enemyReserve = v; }
-
-  function totalAliveCount(side){
-    return getField(side).filter(Boolean).length + getReserve(side).length;
-  }
-
-  function clearSelection(){ state.selectedPlayerIndex = null; }
-
-  function judgeWinner(){
-    const p = totalAliveCount('player');
-    const e = totalAliveCount('enemy');
-
-    if(p <= 0 && e <= 0) state.winner = 'draw';
-    else if(p <= 0) state.winner = 'enemy';
-    else if(e <= 0) state.winner = 'player';
-
-    if(state.winner){
-      state.turn = null;
-      state.selectedPlayerIndex = null;
-      state.busy = true;
-      if(state.winner === 'draw'){
-        setAction('雙方同歸於盡，平手', '這把直接玉石俱焚。');
-      }else{
-        setAction(state.winner === 'player' ? '你贏了' : '你輸了', '可以直接重開一把。');
-      }
-    }
-  }
-
-  function renderReserve(container, cards, side){
-    container.innerHTML = '';
-    if(cards.length === 0){
-      const chip = document.createElement('div');
-      chip.className = `chip ${side}`;
-      chip.textContent = '空';
-      chip.style.opacity = '.55';
-      container.appendChild(chip);
+  function loadProfile(){
+    const raw = localStorage.getItem(saveKey);
+    if(!raw){
+      state.profile = defaultProfile();
+      saveProfile();
       return;
     }
-    cards.forEach((card, idx) => {
-      const chip = document.createElement('div');
-      chip.className = `chip ${side}`;
-      chip.textContent = card.value;
-      chip.title = `${card.kind} ${card.value}`;
-      if(state.animate.entering.some(x => x.side === side && x.fromReserveIndex === idx)) chip.classList.add('drawn');
-      container.appendChild(chip);
+    try{
+      const data = JSON.parse(raw);
+      state.profile = data;
+      nextCardId = Math.max(1, ...state.profile.owned.map(c => c.id)) + 1;
+    }catch{
+      state.profile = defaultProfile();
+      saveProfile();
+    }
+  }
+
+  function showOverlay(which){
+    [ui.menuOverlay, ui.deckOverlay, ui.upgradeOverlay, ui.rewardOverlay].forEach(el => el.classList.remove('show'));
+    if(which) which.classList.add('show');
+  }
+
+  function setToast(text){
+    ui.battleToast.textContent = text;
+  }
+
+  function refreshMeta(){
+    ui.menuGold.textContent = `金幣 ${state.profile.gold}`;
+    ui.menuStage.textContent = `關卡 ${state.profile.stage}`;
+    ui.menuDeck.textContent = `牌組 ${state.profile.deck.length} / 6`;
+    ui.upgradeGold.textContent = `金幣 ${state.profile.gold}`;
+    ui.deckCountPill.textContent = `已選 ${state.profile.deck.length} / 6`;
+    ui.goldTiny.textContent = `金幣 ${state.profile.gold}`;
+    ui.stageTiny.textContent = `${state.profile.stage}-1`;
+  }
+
+  function ownedById(id){
+    return state.profile.owned.find(c => c.id === id);
+  }
+
+  function makeBattleDeckFromIds(ids, side){
+    return ids.map(id => {
+      const owned = ownedById(id);
+      return {
+        refId: owned.id,
+        role: owned.role,
+        value: cardPower(owned),
+        side
+      };
     });
   }
 
-  function deadSlotHTML(){
-    return `<div class="dead-slot"><div class="x">✕</div><div class="txt">空位</div></div>`;
+  function enemyDeckForStage(stage){
+    const pool = [];
+    const count = Math.min(4, 1 + Math.floor((stage - 1) / 3));
+    for(let i=0;i<6;i++){
+      const role = roles[Math.floor(Math.random() * count)];
+      const base = Math.max(3, 4 + Math.floor((stage - 1) * 0.7) + Math.floor(Math.random() * 4));
+      pool.push({
+        refId: 'e' + stage + '_' + i,
+        role,
+        value: base,
+        side:'enemy'
+      });
+    }
+    return pool;
   }
 
-  function renderField(container, cards, side){
-    container.innerHTML = '';
+  function startBattle(){
+    if(state.profile.deck.length !== 6){
+      setToast('牌組要先選滿 6 張');
+      return;
+    }
 
-    cards.forEach((card, idx) => {
-      const dyingHere = state.animate.dying.some(x => x.side === side && x.index === idx);
+    const playerDeck = makeBattleDeckFromIds(state.profile.deck, 'player');
+    const enemyDeck = enemyDeckForStage(state.profile.stage);
+
+    state.battle = {
+      playerField: playerDeck.slice(0,3),
+      enemyField: enemyDeck.slice(0,3),
+      playerReserve: playerDeck.slice(3),
+      enemyReserve: enemyDeck.slice(3),
+      animate: { attacking:null, hit:null, dying:[], entering:[] },
+      turn: 'player',
+      over: false
+    };
+    state.selection = null;
+    state.busy = false;
+    refreshBattle();
+    setToast('先選我方一張牌');
+    showOverlay(null);
+  }
+
+  function totalRemaining(side){
+    const b = state.battle;
+    return (side === 'player' ? b.playerField : b.enemyField).filter(Boolean).length
+      + (side === 'player' ? b.playerReserve : b.enemyReserve).length;
+  }
+
+  function clearSelection(){
+    state.selection = null;
+  }
+
+  function deadSlotHTML(){
+    return `<div class="dead-slot"><div class="x">✕</div><div class="t">空位</div></div>`;
+  }
+
+  function renderField(container, list, side){
+    container.innerHTML = '';
+    list.forEach((card, idx) => {
+      const anim = state.battle.animate;
+      const dyingHere = anim.dying.some(x => x.side === side && x.index === idx);
 
       if(!card){
         container.insertAdjacentHTML('beforeend', deadSlotHTML());
         return;
       }
 
-      const d = document.createElement('button');
-      d.type = 'button';
+      const d = document.createElement('div');
       d.className = `card ${side === 'player' ? 'player-card' : 'enemy-card'}`;
 
-      const playerTurn = state.turn === 'player' && !state.busy && !state.winner;
-
-      if(side === 'player' && playerTurn){
+      if(side === 'player' && state.battle.turn === 'player' && !state.busy && !state.battle.over){
         d.classList.add('selectable');
-        if(state.selectedPlayerIndex === idx) d.classList.add('selected');
+        if(state.selection === idx) d.classList.add('selected');
         d.addEventListener('click', () => {
-          state.selectedPlayerIndex = idx;
-          render();
+          state.selection = idx;
+          refreshBattle();
+          setToast('再點敵方一張牌');
         });
       }
 
-      if(side === 'enemy' && playerTurn && state.selectedPlayerIndex !== null){
+      if(side === 'enemy' && state.battle.turn === 'player' && state.selection !== null && !state.busy && !state.battle.over){
         d.classList.add('targetable');
         d.addEventListener('click', () => {
-          if(state.selectedPlayerIndex === null) return;
-          resolveAttack('player', state.selectedPlayerIndex, idx);
+          resolveAttack('player', state.selection, idx);
         });
       }
 
-      if(state.animate.attacking && state.animate.attacking.side === side && state.animate.attacking.index === idx){
-        d.classList.add('attacking');
-      }
-      if(state.animate.hit && state.animate.hit.side === side && state.animate.hit.index === idx){
-        d.classList.add('hit');
-      }
-      if(dyingHere){
-        d.classList.add('dying');
-      }
-      if(state.animate.entering.some(x => x.side === side && x.index === idx)){
-        d.classList.add('entering');
-      }
+      if(anim.attacking && anim.attacking.side === side && anim.attacking.index === idx) d.classList.add('attacking');
+      if(anim.hit && anim.hit.side === side && anim.hit.index === idx) d.classList.add('hit');
+      if(dyingHere) d.classList.add('dying');
+      if(anim.entering.some(x => x.side === side && x.index === idx)) d.classList.add('entering');
 
-      d.innerHTML = `
-        <div class="kind">${card.kind}</div>
-        <div class="power">${card.value}</div>
-        <div class="meta">
-          <span class="tag">攻擊 = 血量</span>
-          <span class="tag">原始 ${card.base}</span>
-        </div>
-      `;
+      d.innerHTML = `<div class="num">${card.value}</div>`;
       container.appendChild(d);
     });
   }
 
-  function render(){
-    el.playerReserveCount.textContent = state.playerReserve.length;
-    el.enemyReserveCount.textContent = state.enemyReserve.length;
-    el.roundText.textContent = `第 ${state.round} 回合`;
-
-    const playerTotal = totalAliveCount('player');
-    const enemyTotal = totalAliveCount('enemy');
-    el.scoreText.textContent = `我方 ${playerTotal} vs 敵方 ${enemyTotal}`;
-
-    if(state.winner === 'player') el.turnPill.textContent = '你贏了';
-    else if(state.winner === 'enemy') el.turnPill.textContent = '你輸了';
-    else if(state.winner === 'draw') el.turnPill.textContent = '平手';
-    else el.turnPill.textContent = state.turn === 'player' ? '你的回合' : '對方回合';
-
-    if(state.winner){
-      el.centerHint.textContent = '對局結束';
-    }else if(state.turn === 'enemy'){
-      el.centerHint.textContent = '對方出手中';
-    }else if(state.selectedPlayerIndex === null){
-      el.centerHint.textContent = '先選我方卡';
-    }else{
-      el.centerHint.textContent = '再選敵方目標';
-    }
-
-    renderReserve(el.enemyReserve, state.enemyReserve, 'enemy');
-    renderReserve(el.playerReserve, state.playerReserve, 'player');
-    renderField(el.enemyField, state.enemyField, 'enemy');
-    renderField(el.playerField, state.playerField, 'player');
-  }
-
-  function setupGame(randomMode){
-    nextId = 1;
-    state.turn = 'player';
-    state.selectedPlayerIndex = null;
-    state.busy = false;
-    state.winner = null;
-    state.round = 1;
-    state.animate = { attacking:null, hit:null, dying:[], entering:[] };
-
-    const decks = randomMode ? makeRandomDecks() : makePresetDecks();
-    const p = decks.player.map(v => makeCard(v, 'player'));
-    const e = decks.enemy.map(v => makeCard(v, 'enemy'));
-
-    state.playerField = p.slice(0, 3);
-    state.enemyField = e.slice(0, 3);
-    state.playerReserve = p.slice(3);
-    state.enemyReserve = e.slice(3);
-
-    setAction('新對局開始', `我方：${decks.player.join(' / ')}　敵方：${decks.enemy.join(' / ')}`);
-    render();
+  function refreshBattle(){
+    if(!state.battle) return;
+    ui.enemyReserve.textContent = state.battle.enemyReserve.length;
+    ui.playerReserve.textContent = state.battle.playerReserve.length;
+    renderField(ui.enemyField, state.battle.enemyField, 'enemy');
+    renderField(ui.playerField, state.battle.playerField, 'player');
+    refreshMeta();
   }
 
   async function refillSideAnimated(side){
-    const field = [...getField(side)];
-    const reserve = [...getReserve(side)];
+    const b = state.battle;
+    const fieldKey = side === 'player' ? 'playerField' : 'enemyField';
+    const reserveKey = side === 'player' ? 'playerReserve' : 'enemyReserve';
+    const field = [...b[fieldKey]];
+    const reserve = [...b[reserveKey]];
 
-    for(let i = 0; i < field.length; i++){
+    for(let i=0;i<field.length;i++){
       if(!field[i] && reserve.length > 0){
         const idx = Math.floor(Math.random() * reserve.length);
         const drawn = reserve[idx];
-        state.animate.entering = [{ side, index:i, fromReserveIndex:idx }];
-        setAction(`${sideName(side)} 從牌堆補位`, `翻出 ${drawn.value} 上場。`);
-        render();
+        b.animate.entering = [{ side, index:i, fromReserveIndex:idx }];
+        setToast(`${side === 'player' ? '我方' : '對方'}補上 ${drawn.value}`);
+        refreshBattle();
         await sleep(260);
-        reserve.splice(idx, 1);
+        reserve.splice(idx,1);
         field[i] = drawn;
-        setField(side, field);
-        setReserve(side, reserve);
-        render();
-        await sleep(320);
-        state.animate.entering = [];
-        render();
+        b[fieldKey] = field;
+        b[reserveKey] = reserve;
+        refreshBattle();
+        await sleep(300);
+        b.animate.entering = [];
+        refreshBattle();
       }
     }
   }
 
-  async function postResolveCleanup(){
+  function endBattle(win){
+    state.battle.over = true;
+    clearSelection();
+    state.busy = false;
+
+    if(win){
+      const goldGain = 5 + state.profile.stage * 2;
+      state.profile.gold += goldGain;
+      const items = [`金幣 +${goldGain}`];
+      let gotNew = null;
+
+      if(Math.random() < 0.45){
+        const role = roles[Math.floor(Math.random() * roles.length)];
+        const base = Math.max(4, Math.min(14, 4 + Math.floor(state.profile.stage * 0.55) + Math.floor(Math.random() * 3)));
+        gotNew = newOwnedCard(role, base);
+        state.profile.owned.push(gotNew);
+        items.push(`新卡：${gotNew.role} ${cardPower(gotNew)}`);
+      }
+
+      state.rewardData = { win:true, items };
+      state.profile.stage += 1;
+      saveProfile();
+      refreshMeta();
+      ui.rewardTitle.textContent = '獲勝';
+      ui.rewardSub.textContent = '這關打完了，拿資源去養牌。';
+      ui.rewardItems.innerHTML = items.map(x => `<div class="reward-item">${x}</div>`).join('');
+      showOverlay(ui.rewardOverlay);
+    }else{
+      state.rewardData = { win:false, items:[] };
+      ui.rewardTitle.textContent = '失敗';
+      ui.rewardSub.textContent = '這把打不過，先回去調整牌組或升級。';
+      ui.rewardItems.innerHTML = `<div class="reward-item">沒有通關獎勵</div>`;
+      showOverlay(ui.rewardOverlay);
+    }
+  }
+
+  function judgeWinner(){
+    const p = totalRemaining('player');
+    const e = totalRemaining('enemy');
+
+    if(e <= 0 && p <= 0){
+      setToast('同歸於盡');
+      endBattle(false);
+      return true;
+    }
+    if(e <= 0){
+      setToast('你贏了');
+      endBattle(true);
+      return true;
+    }
+    if(p <= 0){
+      setToast('你輸了');
+      endBattle(false);
+      return true;
+    }
+    return false;
+  }
+
+  async function postResolve(){
     await refillSideAnimated('player');
     await refillSideAnimated('enemy');
+    if(judgeWinner()) return;
 
-    judgeWinner();
-    render();
-    if(state.winner) return;
-
-    state.turn = state.turn === 'player' ? 'enemy' : 'player';
+    state.battle.turn = state.battle.turn === 'player' ? 'enemy' : 'player';
     clearSelection();
-    if(state.turn === 'player') state.round += 1;
+    refreshBattle();
 
-    if(state.turn === 'player'){
-      setAction('輪到你了', '先點我方一張，再點敵方一張。');
+    if(state.battle.turn === 'player'){
+      state.busy = false;
+      setToast('輪到你了');
     }else{
-      setAction('輪到對方', '正在選目標。');
-    }
-    state.busy = false;
-    render();
-
-    if(state.turn === 'enemy'){
-      await sleep(650);
+      setToast('對方出手中');
+      await sleep(560);
+      state.busy = false;
       aiTurn();
     }
   }
 
   async function resolveAttack(side, attackerIndex, defenderIndex){
-    if(state.busy || state.winner) return;
+    if(state.busy || !state.battle || state.battle.over) return;
 
-    const attackerField = [...getField(side)];
-    const defenderSide = side === 'player' ? 'enemy' : 'player';
-    const defenderField = [...getField(defenderSide)];
-
-    const attacker = attackerField[attackerIndex];
-    const defender = defenderField[defenderIndex];
+    const b = state.battle;
+    const attackFieldKey = side === 'player' ? 'playerField' : 'enemyField';
+    const defendSide = side === 'player' ? 'enemy' : 'player';
+    const defendFieldKey = defendSide === 'player' ? 'playerField' : 'enemyField';
+    const attackField = [...b[attackFieldKey]];
+    const defendField = [...b[defendFieldKey]];
+    const attacker = attackField[attackerIndex];
+    const defender = defendField[defenderIndex];
     if(!attacker || !defender) return;
 
     state.busy = true;
     clearSelection();
 
-    state.animate.attacking = { side, index: attackerIndex };
-    state.animate.hit = null;
-    state.animate.dying = [];
-    render();
-    setAction(`${sideName(side)} ${attacker.value} 發動攻擊`, `目標：${sideName(defenderSide)} ${defender.value}`);
+    b.animate.attacking = { side, index:attackerIndex };
+    b.animate.hit = null;
+    b.animate.dying = [];
+    refreshBattle();
+    setToast(`${attacker.value} 攻擊 ${defender.value}`);
     await sleep(260);
 
-    state.animate.hit = { side: defenderSide, index: defenderIndex };
-    render();
+    b.animate.hit = { side:defendSide, index:defenderIndex };
+    refreshBattle();
     await sleep(220);
 
     const aBefore = attacker.value;
@@ -627,78 +852,175 @@
     const aAfter = Math.max(0, aBefore - dBefore);
     const dAfter = Math.max(0, dBefore - aBefore);
 
-    attackerField[attackerIndex] = aAfter > 0 ? {...attacker, value:aAfter} : attacker;
-    defenderField[defenderIndex] = dAfter > 0 ? {...defender, value:dAfter} : defender;
-    setField(side, attackerField);
-    setField(defenderSide, defenderField);
+    attackField[attackerIndex] = aAfter > 0 ? { ...attacker, value:aAfter } : attacker;
+    defendField[defenderIndex] = dAfter > 0 ? { ...defender, value:dAfter } : defender;
 
-    if(aAfter <= 0) state.animate.dying.push({ side, index: attackerIndex });
-    if(dAfter <= 0) state.animate.dying.push({ side: defenderSide, index: defenderIndex });
+    if(aAfter <= 0) b.animate.dying.push({ side, index:attackerIndex });
+    if(dAfter <= 0) b.animate.dying.push({ side:defendSide, index:defenderIndex });
 
-    if(aAfter <= 0 && dAfter <= 0){
-      setAction('雙方互砍後都倒下', `${aBefore} ↔ ${dBefore}`);
-    }else if(aAfter <= 0){
-      setAction(`${sideName(side)} ${aBefore} 倒下`, `${sideName(defenderSide)} 剩 ${dAfter}`);
-    }else if(dAfter <= 0){
-      setAction(`${sideName(defenderSide)} ${dBefore} 倒下`, `${sideName(side)} 剩 ${aAfter}`);
-    }else{
-      setAction('雙方都存活', `${sideName(side)} 剩 ${aAfter}，${sideName(defenderSide)} 剩 ${dAfter}`);
-    }
+    if(aAfter <= 0 && dAfter <= 0) setToast('雙方都倒下');
+    else if(aAfter <= 0) setToast(`${aBefore} 倒下，對面剩 ${dAfter}`);
+    else if(dAfter <= 0) setToast(`${dBefore} 倒下，我方剩 ${aAfter}`);
+    else setToast(`剩 ${aAfter} 對 ${dAfter}`);
 
-    render();
-    await sleep(380);
+    b[attackFieldKey] = attackField;
+    b[defendFieldKey] = defendField;
+    refreshBattle();
+    await sleep(360);
 
-    if(aAfter <= 0) attackerField[attackerIndex] = null;
-    if(dAfter <= 0) defenderField[defenderIndex] = null;
+    if(aAfter <= 0) attackField[attackerIndex] = null;
+    if(dAfter <= 0) defendField[defenderIndex] = null;
+    b[attackFieldKey] = attackField;
+    b[defendFieldKey] = defendField;
 
-    setField(side, attackerField);
-    setField(defenderSide, defenderField);
+    b.animate.attacking = null;
+    b.animate.hit = null;
+    b.animate.dying = [];
+    refreshBattle();
+    await sleep(240);
 
-    state.animate.attacking = null;
-    state.animate.hit = null;
-    state.animate.dying = [];
-    render();
-    await sleep(260);
-
-    await postResolveCleanup();
+    await postResolve();
   }
 
   function aiTurn(){
-    if(state.winner) return;
-
-    const attackers = state.enemyField.map((card, idx) => card ? {idx, card} : null).filter(Boolean);
-    const targets = state.playerField.map((card, idx) => card ? {idx, card} : null).filter(Boolean);
-
-    if(attackers.length === 0 || targets.length === 0){
-      judgeWinner();
-      render();
-      return;
-    }
+    if(!state.battle || state.battle.over) return;
+    const attackers = state.battle.enemyField.map((c,i) => c ? {i,c} : null).filter(Boolean);
+    const targets = state.battle.playerField.map((c,i) => c ? {i,c} : null).filter(Boolean);
 
     let best = null;
     for(const a of attackers){
       for(const t of targets){
-        const aAfter = a.card.value - t.card.value;
-        const tAfter = t.card.value - a.card.value;
+        const aAfter = a.c.value - t.c.value;
+        const tAfter = t.c.value - a.c.value;
         let score = 0;
-        if(tAfter <= 0) score += 1200 + t.card.value;
-        if(aAfter > 0) score += 420 + aAfter;
-        if(aAfter <= 0) score -= Math.floor(a.card.value * 0.6);
-        score += t.card.value * 0.1;
-        score += Math.abs(a.card.value - t.card.value) < 30 ? 20 : 0;
-        if(!best || score > best.score){
-          best = { attackerIndex:a.idx, defenderIndex:t.idx, score };
-        }
+        if(tAfter <= 0) score += 1000 + t.c.value;
+        if(aAfter > 0) score += 300 + aAfter;
+        if(aAfter <= 0) score -= a.c.value * 0.6;
+        score += t.c.value * 0.1;
+        if(!best || score > best.score) best = {ai:a.i, ti:t.i, score};
       }
     }
-
-    resolveAttack('enemy', best.attackerIndex, best.defenderIndex);
+    resolveAttack('enemy', best.ai, best.ti);
   }
 
-  el.newPresetBtn.addEventListener('click', () => setupGame(false));
-  el.newRandomBtn.addEventListener('click', () => setupGame(true));
+  function renderDeckEditor(){
+    ui.deckCountPill.textContent = `已選 ${state.profile.deck.length} / 6`;
+    ui.deckGrid.innerHTML = state.profile.owned.map(card => {
+      const selected = state.profile.deck.includes(card.id);
+      return `
+        <div class="owned-card ${selected ? 'sel' : ''}" data-card="${card.id}">
+          <div class="owned-top">
+            <div>
+              <div class="role">${card.role}</div>
+              <div class="power-big">${cardPower(card)}</div>
+            </div>
+            <div class="lv">Lv.${card.level}</div>
+          </div>
+          <div class="owned-btns">
+            <button class="tiny-btn" data-toggle="${card.id}">${selected ? '移出牌組' : '加入牌組'}</button>
+            <div class="lv">基礎 ${card.base}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
 
-  setupGame(false);
+    ui.deckGrid.querySelectorAll('[data-toggle]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.toggle);
+        const inDeck = state.profile.deck.includes(id);
+        if(inDeck){
+          if(state.profile.deck.length <= 1) return;
+          state.profile.deck = state.profile.deck.filter(x => x !== id);
+        }else{
+          if(state.profile.deck.length >= 6) return;
+          state.profile.deck.push(id);
+        }
+        saveProfile();
+        refreshMeta();
+        renderDeckEditor();
+      });
+    });
+  }
+
+  function renderUpgradeEditor(){
+    ui.upgradeGold.textContent = `金幣 ${state.profile.gold}`;
+    ui.upgradeGrid.innerHTML = state.profile.owned.map(card => {
+      const cost = card.level * 6;
+      return `
+        <div class="owned-card">
+          <div class="owned-top">
+            <div>
+              <div class="role">${card.role}</div>
+              <div class="power-big">${cardPower(card)}</div>
+            </div>
+            <div class="lv">Lv.${card.level}</div>
+          </div>
+          <div class="owned-btns">
+            <button class="tiny-btn" data-up="${card.id}" ${state.profile.gold < cost ? 'disabled' : ''}>升級 ${cost}</button>
+            <div class="lv">基礎 ${card.base}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    ui.upgradeGrid.querySelectorAll('[data-up]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = Number(btn.dataset.up);
+        const card = ownedById(id);
+        const cost = card.level * 6;
+        if(state.profile.gold < cost) return;
+        state.profile.gold -= cost;
+        card.level += 1;
+        card.base += 1;
+        saveProfile();
+        refreshMeta();
+        renderUpgradeEditor();
+        renderDeckEditor();
+      });
+    });
+  }
+
+  $('startBattleBtn').addEventListener('click', startBattle);
+  $('editDeckBtn').addEventListener('click', () => {
+    renderDeckEditor();
+    showOverlay(ui.deckOverlay);
+  });
+  $('upgradeBtn').addEventListener('click', () => {
+    renderUpgradeEditor();
+    showOverlay(ui.upgradeOverlay);
+  });
+  $('closeMenuBtn').addEventListener('click', () => {
+    if(state.battle && !state.battle.over) showOverlay(null);
+  });
+  $('deckBackBtn').addEventListener('click', () => showOverlay(ui.menuOverlay));
+  $('upgradeBackBtn').addEventListener('click', () => showOverlay(ui.menuOverlay));
+  $('rewardMenuBtn').addEventListener('click', () => showOverlay(ui.menuOverlay));
+  $('nextStageBtn').addEventListener('click', () => {
+    if(state.rewardData?.win){
+      startBattle();
+    }else{
+      showOverlay(ui.menuOverlay);
+    }
+  });
+  $('menuBtn').addEventListener('click', () => {
+    refreshMeta();
+    showOverlay(ui.menuOverlay);
+  });
+  $('resetBtn').addEventListener('click', () => {
+    localStorage.removeItem(saveKey);
+    loadProfile();
+    refreshMeta();
+    renderDeckEditor();
+    renderUpgradeEditor();
+    setToast('進度已重置');
+    showOverlay(ui.menuOverlay);
+  });
+
+  loadProfile();
+  refreshMeta();
+  renderDeckEditor();
+  renderUpgradeEditor();
+  setToast('從主頁開始戰鬥');
 })();
 </script>
 </body>
