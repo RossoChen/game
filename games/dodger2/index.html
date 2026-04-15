@@ -219,6 +219,23 @@
     text-overflow:ellipsis;
   }
   .flash-note.show{opacity:1}
+  .version-badge{
+    position:absolute;
+    right:10px;
+    bottom:10px;
+    z-index:20;
+    padding:6px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:#cfd8ff;
+    font-size:11px;
+    font-weight:1000;
+    letter-spacing:.4px;
+    backdrop-filter:blur(6px);
+    pointer-events:none;
+    box-shadow:0 8px 18px rgba(0,0,0,.18);
+  }
 
   .bottom-row{
     display:flex;justify-content:space-between;align-items:center;padding:0 2px;
@@ -408,6 +425,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const saveKey = 'card_duel_progress_v3';
+  const GAME_VERSION = 'v4.1.0';
   const roles = ['劍士','弓箭手','魔法師','盾衛'];
 
   const ui = {
@@ -1041,7 +1059,8 @@
   $('menuBtn').addEventListener('click', () => { refreshMeta(); showOverlay(ui.menuOverlay); });
   $('resetBtn').addEventListener('click', () => {
     localStorage.removeItem(saveKey);
-    loadProfile();
+    $('versionBadge').textContent = GAME_VERSION;
+  loadProfile();
     refreshMeta();
     renderDeckEditor();
     renderUpgradeEditor();
