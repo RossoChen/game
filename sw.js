@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2026-02-23-2';
+const CACHE_VERSION = 'v2026-04-15-2';
 const CACHE_NAME = `rosso-games-${CACHE_VERSION}`;
 
 // 核心殼（壞掉就沒得玩）
