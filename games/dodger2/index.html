@@ -6,33 +6,29 @@
 <title>卡牌對決</title>
 <style>
   :root{
-    --bg:#0a0c14;
-    --panel:#131827;
-    --panel2:#1a2032;
-    --line:#2a324b;
+    --bg:#070910;
+    --panel:#121726;
+    --line:#29314a;
     --text:#eef2ff;
-    --muted:#98a2c9;
+    --muted:#99a5cb;
     --player:#7dd3fc;
     --enemy:#f9a8d4;
     --gold:#fcd34d;
-    --good:#86efac;
-    --bad:#fca5a5;
+    --ice:#93c5fd;
     --select:#a78bfa;
-    --shadow:0 18px 40px rgba(0,0,0,.28);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{
     margin:0;height:100%;
-    background:linear-gradient(180deg,#101427,#090b12 55%,#06070d);
+    background:#070910;
     color:var(--text);
     font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;
     overflow:hidden;
   }
-  body{position:fixed; inset:0}
+  body{position:fixed;inset:0}
   .app{
     height:100dvh;
-    width:100%;
-    max-width:540px;
+    max-width:560px;
     margin:0 auto;
     padding:
       calc(env(safe-area-inset-top) + 8px)
@@ -40,30 +36,26 @@
       calc(env(safe-area-inset-bottom) + 8px)
       calc(env(safe-area-inset-left) + 8px);
     position:relative;
+    background:linear-gradient(180deg,#0c1020,#06070d 55%,#05060a);
   }
-  .battle-screen{
+
+  .battle{
     height:100%;
     display:grid;
-    grid-template-rows:30px minmax(138px,1fr) 44px minmax(138px,1fr) 30px 44px;
-    gap:8px;
+    grid-template-rows:28px minmax(0,1fr) minmax(0,1fr) 34px 48px;
+    gap:10px;
   }
   .corner-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:12px;
-    color:var(--muted);
+    display:flex;justify-content:space-between;align-items:center;
     padding:0 2px;
   }
-  .tiny{
+  .chip{
+    min-width:58px;height:28px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:999px;
     background:rgba(255,255,255,.04);
     border:1px solid rgba(255,255,255,.07);
-    border-radius:999px;
-    padding:5px 10px;
-    min-width:60px;
-    text-align:center;
-    font-weight:900;
-    color:#dde5ff;
+    color:#dde5ff;font-size:12px;font-weight:1000;
   }
   .field{
     display:grid;
@@ -71,114 +63,51 @@
     gap:10px;
     min-height:0;
   }
-  .mid-status{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .toast{
-    min-height:36px;
-    padding:8px 14px;
-    border-radius:999px;
-    background:rgba(255,255,255,.05);
-    border:1px solid rgba(255,255,255,.08);
-    color:#dbe4ff;
-    font-size:13px;
-    font-weight:900;
-    text-align:center;
-    max-width:100%;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
+
   .card{
     min-height:100%;
-    border-radius:22px;
+    border-radius:24px;
     border:2px solid var(--line);
     background:
       radial-gradient(circle at top, rgba(255,255,255,.08), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
       var(--panel);
-    box-shadow:var(--shadow);
+    box-shadow:0 18px 40px rgba(0,0,0,.28);
     position:relative;
     overflow:hidden;
     display:flex;
     flex-direction:column;
     justify-content:space-between;
-    user-select:none;
+    padding:12px 8px 10px;
     transition:
-      transform .28s ease,
-      opacity .28s ease,
-      filter .22s ease,
+      transform .22s ease,
+      opacity .22s ease,
+      filter .18s ease,
       box-shadow .18s ease,
       border-color .18s ease;
-    padding:10px 8px;
+    user-select:none;
   }
-  .player-card{
-    background:
+  .player{background:
       radial-gradient(circle at top, rgba(125,211,252,.16), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
-      #152435;
-  }
-  .enemy-card{
-    background:
+      #142335;}
+  .enemy{background:
       radial-gradient(circle at top, rgba(249,168,212,.16), transparent 42%),
       linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)),
-      #291d2b;
-  }
-  .role{
-    font-size:12px;
-    font-weight:1000;
-    text-align:center;
-    color:#dfe6ff;
-    letter-spacing:.3px;
-  }
-  .num{
-    font-size:46px;
-    line-height:1;
-    font-weight:1000;
-    text-align:center;
-    letter-spacing:.7px;
-    flex:1;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .badges{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:6px;
-    min-height:24px;
-  }
-  .badge{
-    padding:4px 8px;
-    border-radius:999px;
-    background:rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.08);
-    font-size:11px;
-    font-weight:900;
-    color:#d8e0ff;
-  }
-  .badge.freeze{color:#bfdbfe}
-  .badge.shield{color:#fde68a}
+      #281c2b;}
   .card.selectable{border-color:rgba(125,211,252,.42)}
   .card.selected{
     border-color:var(--select);
-    box-shadow:0 0 0 3px rgba(167,139,250,.24), var(--shadow);
+    box-shadow:0 0 0 3px rgba(167,139,250,.24),0 18px 40px rgba(0,0,0,.28);
   }
   .card.targetable{
-    border-color:rgba(252,211,77,.56);
-    box-shadow:0 0 0 3px rgba(252,211,77,.18), var(--shadow);
+    border-color:rgba(252,211,77,.55);
+    box-shadow:0 0 0 3px rgba(252,211,77,.18),0 18px 40px rgba(0,0,0,.28);
   }
-  .card.frozen{
-    filter:saturate(.72) brightness(.94);
-  }
-  .card.attacking.player-card{ transform:translateY(-14px) scale(1.04); }
-  .card.attacking.enemy-card{ transform:translateY(14px) scale(1.04); }
+  .card.frozen{filter:saturate(.72) brightness(.94)}
   .card.hit{
-    box-shadow:0 0 0 4px rgba(252,211,77,.22), var(--shadow);
-    filter:brightness(1.18);
+    box-shadow:0 0 0 4px rgba(252,211,77,.22),0 18px 40px rgba(0,0,0,.28);
+    filter:brightness(1.14);
   }
   .card.dying{
     transform:scale(.82);
@@ -186,61 +115,135 @@
     filter:grayscale(1);
   }
   .card.entering{
-    animation:flipIn .44s ease;
+    animation:flipIn .42s ease;
     border-color:rgba(252,211,77,.55);
   }
-  @keyframes flipIn{
-    0%{ transform:rotateY(90deg) scale(.88); opacity:.12; }
-    100%{ transform:rotateY(0) scale(1); opacity:1; }
+  .card.shield-pop::after{
+    content:"";
+    position:absolute;inset:8px;
+    border-radius:20px;
+    border:3px solid rgba(252,211,77,.7);
+    animation:shieldPulse .45s ease;
+    pointer-events:none;
   }
-  .dead-slot{
-    border-radius:22px;
+  .card.slash::before{
+    content:"";
+    position:absolute;
+    left:12%;right:12%;top:48%;
+    height:4px;
+    transform:rotate(-18deg);
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.96), transparent);
+    box-shadow:0 0 10px rgba(255,255,255,.55);
+    animation:slashFx .26s ease;
+    pointer-events:none;
+  }
+  @keyframes flipIn{
+    0%{transform:rotateY(90deg) scale(.88);opacity:.12}
+    100%{transform:rotateY(0) scale(1);opacity:1}
+  }
+  @keyframes shieldPulse{
+    0%{opacity:0;transform:scale(.92)}
+    30%{opacity:1}
+    100%{opacity:0;transform:scale(1.08)}
+  }
+  @keyframes slashFx{
+    0%{opacity:0;transform:rotate(-18deg) scaleX(.2)}
+    30%{opacity:1}
+    100%{opacity:0;transform:rotate(-18deg) scaleX(1.15)}
+  }
+
+  .role{
+    text-align:center;
+    font-size:12px;
+    font-weight:1000;
+    color:#e1e8ff;
+    letter-spacing:.3px;
+  }
+  .num{
+    flex:1;
+    display:flex;align-items:center;justify-content:center;
+    font-size:48px;
+    line-height:1;
+    font-weight:1000;
+  }
+  .badges{
+    min-height:22px;
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+  .badge{
+    padding:4px 8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:11px;
+    font-weight:1000;
+    color:#d9e2ff;
+  }
+  .badge.shield{color:var(--gold)}
+  .badge.freeze{color:var(--ice)}
+  .dead{
+    border-radius:24px;
     border:2px dashed rgba(255,255,255,.16);
     background:rgba(255,255,255,.03);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
     color:#8d97bd;
     gap:6px;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
   }
-  .dead-slot .x{font-size:34px;font-weight:1000;line-height:1}
-  .dead-slot .t{font-size:12px;font-weight:800}
-  .bottom-actions{
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    gap:8px;
-  }
-  .mini-btn{
-    height:44px;
-    min-width:88px;
-    border:none;
-    border-radius:16px;
-    background:linear-gradient(180deg,#2c345a,#242949);
-    border:1px solid rgba(255,255,255,.07);
-    color:#eef2ff;
-    font-size:14px;
+  .dead .x{font-size:34px;font-weight:1000;line-height:1}
+  .dead .t{font-size:12px;font-weight:900}
+
+  .flash-note{
+    position:absolute;
+    left:50%;
+    top:calc(env(safe-area-inset-top) + 34px);
+    transform:translateX(-50%);
+    min-width:120px;
+    max-width:78%;
+    text-align:center;
+    padding:8px 14px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.09);
+    font-size:13px;
     font-weight:1000;
+    color:#e7edff;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+    z-index:3;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .flash-note.show{opacity:1}
+
+  .bottom-row{
+    display:flex;justify-content:space-between;align-items:center;padding:0 2px;
+  }
+  .menu-row{display:flex;justify-content:center;align-items:center}
+  .btn{
+    height:48px;min-width:96px;
+    border:none;border-radius:16px;
+    background:linear-gradient(180deg,#2c345a,#242949);
+    color:#eef2ff;font-size:14px;font-weight:1000;
+    border:1px solid rgba(255,255,255,.07);
     box-shadow:0 10px 18px rgba(0,0,0,.18);
   }
-  .mini-btn:active{transform:scale(.985)}
+  .btn:active{transform:scale(.985)}
+
   .overlay{
-    position:absolute;
-    inset:0;
-    display:none;
-    align-items:center;
-    justify-content:center;
+    position:absolute;inset:0;
+    display:none;align-items:center;justify-content:center;
     background:rgba(4,6,12,.58);
     backdrop-filter:blur(10px);
-    z-index:10;
-    padding:14px;
+    z-index:10;padding:14px;
   }
   .overlay.show{display:flex}
   .sheet{
-    width:100%;
-    max-height:100%;
+    width:100%;max-height:100%;
     background:rgba(19,24,39,.97);
     border:1px solid var(--line);
     border-radius:28px;
@@ -251,35 +254,29 @@
   }
   .sheet.slim{grid-template-rows:auto 1fr auto;max-width:430px}
   .sheet-hd{padding:18px 18px 10px}
-  .sheet-ttl{font-size:28px;font-weight:1000;letter-spacing:.4px}
+  .sheet-ttl{font-size:28px;font-weight:1000}
   .sheet-sub{margin-top:6px;color:var(--muted);font-size:13px;line-height:1.6}
-  .resource-bar{padding:0 18px 12px;display:flex;gap:8px;flex-wrap:wrap}
+  .resource{padding:0 18px 12px;display:flex;gap:8px;flex-wrap:wrap}
   .pill{
     display:inline-flex;align-items:center;gap:6px;
     padding:8px 12px;border-radius:999px;
     background:rgba(255,255,255,.05);
     border:1px solid rgba(255,255,255,.07);
-    font-size:13px;font-weight:900;
+    font-size:13px;font-weight:1000;
   }
   .pill.gold{color:var(--gold)}
   .sheet-bd{padding:0 18px 18px;overflow:auto}
+  .sheet-ft{padding:12px 18px 18px;display:flex;gap:10px}
+  .sheet-ft .btn,.menu-actions .btn{width:100%}
   .menu-actions{display:grid;gap:10px}
-  .main-btn{
-    height:56px;border:none;border-radius:18px;
-    background:linear-gradient(180deg,#334076,#29305a);
-    color:#eef2ff;font-size:16px;font-weight:1000;
-    border:1px solid rgba(255,255,255,.08);
-    box-shadow:0 14px 22px rgba(0,0,0,.18);
-  }
-  .main-btn.alt{background:linear-gradient(180deg,#29314e,#212743)}
-  .main-btn:active{transform:scale(.986)}
-  .small-note{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.6}
+  .btn.alt{background:linear-gradient(180deg,#29314e,#212743)}
+
   .deck-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-  .owned-card{
+  .owned{
     border-radius:18px;border:1px solid var(--line);
     background:rgba(255,255,255,.04);padding:12px;display:grid;gap:10px;
   }
-  .owned-card.sel{
+  .owned.sel{
     border-color:rgba(125,211,252,.45);
     box-shadow:0 0 0 3px rgba(125,211,252,.14);
   }
@@ -288,7 +285,7 @@
   .power-big{font-size:30px;line-height:1;font-weight:1000}
   .lv{
     font-size:12px;color:#dce4ff;padding:5px 8px;border-radius:999px;
-    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);font-weight:900;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.07);font-weight:1000;
   }
   .owned-btns{display:grid;grid-template-columns:1fr auto;gap:8px}
   .tiny-btn{
@@ -298,40 +295,36 @@
     border:1px solid rgba(255,255,255,.07);
   }
   .tiny-btn:disabled{opacity:.45}
-  .sheet-ft{padding:12px 18px 18px;display:flex;gap:10px}
-  .sheet-ft .main-btn{flex:1}
+
   .reward-box{padding:18px;text-align:center}
   .reward-title{font-size:26px;font-weight:1000;margin-bottom:8px}
   .reward-items{margin-top:12px;display:grid;gap:10px}
   .reward-item{
     padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.07);font-size:15px;font-weight:900;
+    border:1px solid rgba(255,255,255,.07);font-size:15px;font-weight:1000;
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="battle-screen">
+  <div class="flash-note" id="flashNote"></div>
+
+  <div class="battle">
     <div class="corner-row">
-      <div class="tiny" id="enemyReserve">3</div>
-      <div class="tiny" id="stageTiny">1-1</div>
+      <div class="chip" id="enemyReserve">3</div>
+      <div></div>
     </div>
 
     <div class="field" id="enemyField"></div>
-
-    <div class="mid-status">
-      <div class="toast" id="battleToast">從主頁開始戰鬥</div>
-    </div>
-
     <div class="field" id="playerField"></div>
 
-    <div class="corner-row">
-      <div class="tiny" id="playerReserve">3</div>
-      <div class="tiny" id="goldTiny">金幣 0</div>
+    <div class="bottom-row">
+      <div class="chip" id="playerReserve">3</div>
+      <div class="chip" id="goldTiny">金幣 0</div>
     </div>
 
-    <div class="bottom-actions">
-      <button class="mini-btn" id="menuBtn">主頁</button>
+    <div class="menu-row">
+      <button class="btn" id="menuBtn">主頁</button>
     </div>
   </div>
 
@@ -339,23 +332,23 @@
     <div class="sheet slim">
       <div class="sheet-hd">
         <div class="sheet-ttl">卡牌對決</div>
-        <div class="sheet-sub">戰鬥畫面只留必要資訊。劍士普通互砍，弓箭手主動攻擊不反傷，魔法師會冰凍，盾衛出手前上盾。</div>
+        <div class="sheet-sub">畫面只留必要資訊。劍士普通互砍，弓箭手主動攻擊不反傷，魔法師會冰凍，盾衛出手前上盾。</div>
       </div>
-      <div class="resource-bar">
+      <div class="resource">
         <div class="pill gold" id="menuGold">金幣 0</div>
         <div class="pill" id="menuStage">關卡 1</div>
         <div class="pill" id="menuDeck">牌組 6 / 6</div>
       </div>
       <div class="sheet-bd">
         <div class="menu-actions">
-          <button class="main-btn" id="startBattleBtn">開始戰鬥</button>
-          <button class="main-btn alt" id="editDeckBtn">編輯牌組</button>
-          <button class="main-btn alt" id="upgradeBtn">升級卡牌</button>
-          <button class="main-btn alt" id="resetBtn">重置進度</button>
+          <button class="btn" id="startBattleBtn">開始戰鬥</button>
+          <button class="btn alt" id="editDeckBtn">編輯牌組</button>
+          <button class="btn alt" id="upgradeBtn">升級卡牌</button>
+          <button class="btn alt" id="resetBtn">重置進度</button>
         </div>
       </div>
       <div class="sheet-ft">
-        <button class="main-btn alt" id="closeMenuBtn">回戰場</button>
+        <button class="btn alt" id="closeMenuBtn">回戰場</button>
       </div>
     </div>
   </div>
@@ -364,16 +357,16 @@
     <div class="sheet">
       <div class="sheet-hd">
         <div class="sheet-ttl">編輯牌組</div>
-        <div class="sheet-sub">固定帶 6 張。戰鬥時每張牌都會顯示職業，不再讓人猜。</div>
+        <div class="sheet-sub">固定帶 6 張。戰鬥中會直接顯示職業。</div>
       </div>
-      <div class="resource-bar">
+      <div class="resource">
         <div class="pill" id="deckCountPill">已選 6 / 6</div>
       </div>
       <div class="sheet-bd">
         <div class="deck-grid" id="deckGrid"></div>
       </div>
       <div class="sheet-ft">
-        <button class="main-btn alt" id="deckBackBtn">返回</button>
+        <button class="btn alt" id="deckBackBtn">返回</button>
       </div>
     </div>
   </div>
@@ -382,16 +375,16 @@
     <div class="sheet">
       <div class="sheet-hd">
         <div class="sheet-ttl">升級卡牌</div>
-        <div class="sheet-sub">每升 1 級，基礎值 +1。前期從個位數養起來。</div>
+        <div class="sheet-sub">每升 1 級，基礎值 +1。</div>
       </div>
-      <div class="resource-bar">
+      <div class="resource">
         <div class="pill gold" id="upgradeGold">金幣 0</div>
       </div>
       <div class="sheet-bd">
         <div class="deck-grid" id="upgradeGrid"></div>
       </div>
       <div class="sheet-ft">
-        <button class="main-btn alt" id="upgradeBackBtn">返回</button>
+        <button class="btn alt" id="upgradeBackBtn">返回</button>
       </div>
     </div>
   </div>
@@ -404,8 +397,8 @@
         <div class="reward-items" id="rewardItems"></div>
       </div>
       <div class="sheet-ft">
-        <button class="main-btn" id="nextStageBtn">下一關</button>
-        <button class="main-btn alt" id="rewardMenuBtn">回主頁</button>
+        <button class="btn" id="nextStageBtn">下一關</button>
+        <button class="btn alt" id="rewardMenuBtn">回主頁</button>
       </div>
     </div>
   </div>
@@ -414,17 +407,16 @@
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const saveKey = 'card_duel_progress_v2';
+  const saveKey = 'card_duel_progress_v3';
   const roles = ['劍士','弓箭手','魔法師','盾衛'];
 
   const ui = {
     enemyReserve: $('enemyReserve'),
     playerReserve: $('playerReserve'),
-    stageTiny: $('stageTiny'),
     goldTiny: $('goldTiny'),
     enemyField: $('enemyField'),
     playerField: $('playerField'),
-    battleToast: $('battleToast'),
+    flashNote: $('flashNote'),
     menuOverlay: $('menuOverlay'),
     deckOverlay: $('deckOverlay'),
     upgradeOverlay: $('upgradeOverlay'),
@@ -446,16 +438,22 @@
     battle: null,
     selection: null,
     busy: false,
-    rewardData: null,
+    noteTimer: null,
   };
 
   let nextCardId = 1;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  function showNote(text){
+    clearTimeout(state.noteTimer);
+    ui.flashNote.textContent = text;
+    ui.flashNote.classList.add('show');
+    state.noteTimer = setTimeout(() => ui.flashNote.classList.remove('show'), 700);
+  }
+
   function newOwnedCard(role, base, level=1){
     return { id: nextCardId++, role, base, level };
   }
-
   function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
   function cardPower(card){ return card.base + card.level - 1; }
   function saveProfile(){ localStorage.setItem(saveKey, JSON.stringify(state.profile)); }
@@ -496,8 +494,6 @@
     if(which) which.classList.add('show');
   }
 
-  function setToast(text){ ui.battleToast.textContent = text; }
-
   function refreshMeta(){
     ui.menuGold.textContent = `金幣 ${state.profile.gold}`;
     ui.menuStage.textContent = `關卡 ${state.profile.stage}`;
@@ -505,7 +501,6 @@
     ui.upgradeGold.textContent = `金幣 ${state.profile.gold}`;
     ui.deckCountPill.textContent = `已選 ${state.profile.deck.length} / 6`;
     ui.goldTiny.textContent = `金幣 ${state.profile.gold}`;
-    ui.stageTiny.textContent = `${state.profile.stage}-1`;
   }
 
   function makeBattleDeckFromIds(ids, side){
@@ -527,28 +522,21 @@
   }
 
   function startBattle(){
-    if(state.profile.deck.length !== 6){
-      setToast('牌組要先選滿 6 張');
-      return;
-    }
+    if(state.profile.deck.length !== 6) return;
+    const playerFull = makeBattleDeckFromIds(state.profile.deck, 'player');
+    const enemyFull = enemyDeckForStage(state.profile.stage);
     state.battle = {
-      playerField: makeBattleDeckFromIds(state.profile.deck, 'player').slice(0,3),
-      enemyField: enemyDeckForStage(state.profile.stage).slice(0,3),
-      playerReserve: makeBattleDeckFromIds(state.profile.deck, 'player').slice(3),
-      enemyReserve: enemyDeckForStage(state.profile.stage).slice(3),
-      animate: { attacking:null, hit:null, dying:[], entering:[] },
+      playerField: playerFull.slice(0,3),
+      enemyField: enemyFull.slice(0,3),
+      playerReserve: playerFull.slice(3),
+      enemyReserve: enemyFull.slice(3),
+      animate: { lunge:null, hit:null, dying:[], entering:[], shielding:[] },
       turn: 'player',
       over: false
     };
-    // fix: ensure same enemy deck source split consistently
-    const enemyFull = enemyDeckForStage(state.profile.stage);
-    state.battle.enemyField = enemyFull.slice(0,3);
-    state.battle.enemyReserve = enemyFull.slice(3);
-
     state.selection = null;
     state.busy = false;
     refreshBattle();
-    setToast('先選我方一張牌');
     showOverlay(null);
     ensureTurnCanAct();
   }
@@ -563,12 +551,18 @@
   function renderBadges(card){
     const out = [];
     if(card.shield > 0) out.push(`<span class="badge shield">盾</span>`);
-    if(card.frozen > 0) out.push(`<span class="badge freeze">冰 ${card.frozen}</span>`);
+    if(card.frozen > 0) out.push(`<span class="badge freeze">冰${card.frozen}</span>`);
     return out.join('');
   }
 
   function deadSlotHTML(){
-    return `<div class="dead-slot"><div class="x">✕</div><div class="t">空位</div></div>`;
+    return `<div class="dead"><div class="x">✕</div><div class="t">空位</div></div>`;
+  }
+
+  function cardTransform(side, idx){
+    const a = state.battle.animate.lunge;
+    if(!a || a.side !== side || a.index !== idx) return '';
+    return `transform: translate(${a.tx}px, ${a.ty}px) scale(1.04); z-index:2;`;
   }
 
   function renderField(container, list, side){
@@ -576,6 +570,7 @@
     list.forEach((card, idx) => {
       const anim = state.battle.animate;
       const dyingHere = anim.dying.some(x => x.side === side && x.index === idx);
+      const shieldingHere = anim.shielding.some(x => x.side === side && x.index === idx);
 
       if(!card){
         container.insertAdjacentHTML('beforeend', deadSlotHTML());
@@ -583,31 +578,31 @@
       }
 
       const d = document.createElement('div');
-      d.className = `card ${side === 'player' ? 'player-card' : 'enemy-card'}`;
-      if(card.frozen > 0) d.classList.add('frozen');
+      d.className = `card ${side === 'player' ? 'player' : 'enemy'}`;
+      d.dataset.side = side;
+      d.dataset.index = idx;
 
+      if(card.frozen > 0) d.classList.add('frozen');
       if(side === 'player' && state.battle.turn === 'player' && !state.busy && !state.battle.over && card.frozen <= 0){
         d.classList.add('selectable');
         if(state.selection === idx) d.classList.add('selected');
         d.addEventListener('click', () => {
           state.selection = idx;
           refreshBattle();
-          setToast('再點敵方一張牌');
         });
       }
 
       if(side === 'enemy' && state.battle.turn === 'player' && state.selection !== null && !state.busy && !state.battle.over){
         d.classList.add('targetable');
-        d.addEventListener('click', () => {
-          resolveAttack('player', state.selection, idx);
-        });
+        d.addEventListener('click', () => resolveAttack('player', state.selection, idx));
       }
 
-      if(anim.attacking && anim.attacking.side === side && anim.attacking.index === idx) d.classList.add('attacking');
-      if(anim.hit && anim.hit.side === side && anim.hit.index === idx) d.classList.add('hit');
+      if(anim.hit && anim.hit.side === side && anim.hit.index === idx) d.classList.add('hit','slash');
       if(dyingHere) d.classList.add('dying');
       if(anim.entering.some(x => x.side === side && x.index === idx)) d.classList.add('entering');
+      if(shieldingHere) d.classList.add('shield-pop');
 
+      d.style.cssText += cardTransform(side, idx);
       d.innerHTML = `
         <div class="role">${card.role}</div>
         <div class="num">${card.value}</div>
@@ -628,21 +623,14 @@
 
   function chooseShieldAlly(side, attackerIndex){
     const field = getField(side);
-    let candidates = field
+    const candidates = field
       .map((card, idx) => ({card, idx}))
-      .filter(x => x.card && x.idx !== attackerIndex);
-
-    if(candidates.length === 0) return null;
-    candidates.sort((a,b) => {
-      if(a.card.shield !== b.card.shield) return a.card.shield - b.card.shield;
-      return a.card.value - b.card.value;
-    });
-    return candidates[0].idx;
-  }
-
-  function applyShieldToCard(card){
-    if(!card) return;
-    card.shield = 1;
+      .filter(x => x.card && x.idx !== attackerIndex)
+      .sort((a,b) => {
+        if(a.card.shield !== b.card.shield) return a.card.shield - b.card.shield;
+        return a.card.value - b.card.value;
+      });
+    return candidates[0]?.idx ?? null;
   }
 
   function decrementFrozenForSide(side){
@@ -654,6 +642,32 @@
     setField(side, field);
   }
 
+  function sideHasAvailableAttacker(side){
+    return getField(side).some(card => card && card.frozen <= 0);
+  }
+
+  async function ensureTurnCanAct(){
+    if(!state.battle || state.battle.over) return;
+    const side = state.battle.turn;
+    if(sideHasAvailableAttacker(side)) return;
+
+    state.busy = true;
+    showNote(side === 'player' ? '我方全員冰凍，回合跳過' : '對方全員冰凍，回合跳過');
+    await sleep(520);
+    decrementFrozenForSide(side);
+    state.battle.turn = side === 'player' ? 'enemy' : 'player';
+    state.busy = false;
+    refreshBattle();
+
+    if(judgeWinner()) return;
+    if(state.battle.turn === 'enemy'){
+      await sleep(420);
+      aiTurn();
+    } else {
+      await ensureTurnCanAct();
+    }
+  }
+
   async function refillSideAnimated(side){
     const field = [...getField(side)];
     const reserve = [...getReserve(side)];
@@ -663,15 +677,14 @@
         const idx = Math.floor(Math.random() * reserve.length);
         const drawn = reserve[idx];
         state.battle.animate.entering = [{ side, index:i }];
-        setToast(`${side === 'player' ? '我方' : '對方'}補上 ${drawn.role} ${drawn.value}`);
         refreshBattle();
-        await sleep(260);
+        await sleep(220);
         reserve.splice(idx, 1);
         field[i] = drawn;
         setField(side, field);
         setReserve(side, reserve);
         refreshBattle();
-        await sleep(300);
+        await sleep(260);
         state.battle.animate.entering = [];
         refreshBattle();
       }
@@ -687,7 +700,6 @@
       const goldGain = 5 + state.profile.stage * 2;
       state.profile.gold += goldGain;
       const items = [`金幣 +${goldGain}`];
-
       if(Math.random() < 0.42){
         const role = roles[Math.floor(Math.random() * roles.length)];
         const base = Math.max(4, Math.min(14, 4 + Math.floor(state.profile.stage * 0.55) + Math.floor(Math.random() * 3)));
@@ -695,7 +707,6 @@
         state.profile.owned.push(card);
         items.push(`新卡：${card.role} ${cardPower(card)}`);
       }
-
       state.profile.stage += 1;
       saveProfile();
       refreshMeta();
@@ -703,7 +714,7 @@
       ui.rewardSub.textContent = '這關打完了，拿資源去養牌。';
       ui.rewardItems.innerHTML = items.map(x => `<div class="reward-item">${x}</div>`).join('');
       showOverlay(ui.rewardOverlay);
-    }else{
+    } else {
       ui.rewardTitle.textContent = '失敗';
       ui.rewardSub.textContent = '先回去調整牌組或升級。';
       ui.rewardItems.innerHTML = `<div class="reward-item">沒有通關獎勵</div>`;
@@ -714,63 +725,17 @@
   function judgeWinner(){
     const p = totalRemaining('player');
     const e = totalRemaining('enemy');
-
-    if(e <= 0 && p <= 0){ setToast('同歸於盡'); endBattle(false); return true; }
-    if(e <= 0){ setToast('你贏了'); endBattle(true); return true; }
-    if(p <= 0){ setToast('你輸了'); endBattle(false); return true; }
+    if(e <= 0 && p <= 0){ endBattle(false); return true; }
+    if(e <= 0){ endBattle(true); return true; }
+    if(p <= 0){ endBattle(false); return true; }
     return false;
   }
 
-  function sideHasAvailableAttacker(side){
-    return getField(side).some(card => card && card.frozen <= 0);
-  }
-
-  async function ensureTurnCanAct(){
-    if(!state.battle || state.battle.over) return;
-    const side = state.battle.turn;
-    if(sideHasAvailableAttacker(side)) return;
-
-    state.busy = true;
-    setToast(`${side === 'player' ? '我方' : '對方'}全員被冰凍，跳過回合`);
-    refreshBattle();
-    await sleep(520);
-    decrementFrozenForSide(side);
-    state.battle.turn = side === 'player' ? 'enemy' : 'player';
-    state.busy = false;
-    refreshBattle();
-
-    if(judgeWinner()) return;
-
-    if(state.battle.turn === 'enemy'){
-      setToast('對方出手中');
-      await sleep(520);
-      aiTurn();
-    }else{
-      setToast('輪到你了');
-      await ensureTurnCanAct();
-    }
-  }
-
-  async function postResolve(){
-    await refillSideAnimated('player');
-    await refillSideAnimated('enemy');
-    if(judgeWinner()) return;
-
-    decrementFrozenForSide(state.battle.turn);
-    state.battle.turn = state.battle.turn === 'player' ? 'enemy' : 'player';
-    clearSelection();
-    state.busy = false;
-    refreshBattle();
-
-    if(state.battle.turn === 'player'){
-      setToast('輪到你了');
-    }else{
-      setToast('對方出手中');
-      await sleep(520);
-      aiTurn();
-      return;
-    }
-    await ensureTurnCanAct();
+  function getCardCenter(side, idx){
+    const el = document.querySelector(`[data-side="${side}"][data-index="${idx}"]`);
+    if(!el) return null;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
   }
 
   async function resolveAttack(side, attackerIndex, defenderIndex){
@@ -781,36 +746,47 @@
     const defenderField = [...getField(defendSide)];
     const attacker = clone(attackerField[attackerIndex]);
     const defender = clone(defenderField[defenderIndex]);
-    if(!attacker || !defender) return;
-    if(attacker.frozen > 0) return;
+    if(!attacker || !defender || attacker.frozen > 0) return;
 
     state.busy = true;
     clearSelection();
 
-    // shield knight pre-attack
+    // 盾衛上盾
+    state.battle.animate.shielding = [];
     if(attacker.role === '盾衛'){
-      applyShieldToCard(attacker);
+      attacker.shield = 1;
+      state.battle.animate.shielding.push({ side, index:attackerIndex });
+
       const allyIdx = chooseShieldAlly(side, attackerIndex);
       if(allyIdx !== null){
         const ally = clone(attackerField[allyIdx]);
-        applyShieldToCard(ally);
+        ally.shield = 1;
         attackerField[allyIdx] = ally;
-        setToast(`盾衛先幫自己與同伴上盾`);
-      }else{
-        setToast(`盾衛先幫自己上盾`);
+        state.battle.animate.shielding.push({ side, index:allyIdx });
       }
-    } else {
-      setToast(`${attacker.role} ${attacker.value} 出手`);
+      attackerField[attackerIndex] = attacker;
+      setField(side, attackerField);
+      refreshBattle();
+      showNote('盾衛上盾');
+      await sleep(340);
+      state.battle.animate.shielding = [];
+      refreshBattle();
     }
-    attackerField[attackerIndex] = attacker;
-    setField(side, attackerField);
-    refreshBattle();
-    await sleep(260);
 
-    state.battle.animate.attacking = { side, index:attackerIndex };
-    refreshBattle();
-    await sleep(220);
+    // 出手位移
+    const aCenter = getCardCenter(side, attackerIndex);
+    const dCenter = getCardCenter(defendSide, defenderIndex);
+    if(aCenter && dCenter){
+      state.battle.animate.lunge = {
+        side, index:attackerIndex,
+        tx:(dCenter.x - aCenter.x) * 0.45,
+        ty:(dCenter.y - aCenter.y) * 0.45
+      };
+      refreshBattle();
+      await sleep(240);
+    }
 
+    // 命中
     state.battle.animate.hit = { side:defendSide, index:defenderIndex };
     refreshBattle();
     await sleep(180);
@@ -821,66 +797,53 @@
     if(defender.shield > 0){
       defender.shield = 0;
       attackDamage = 0;
-      setToast(`${defender.role} 的盾擋住這次傷害`);
+      showNote('護盾擋住傷害');
     }
 
     const attackerIsArcher = attacker.role === '弓箭手';
     const defenderCanCounter = defender.frozen <= 0;
+
     if(!attackerIsArcher && defenderCanCounter){
       counterDamage = defender.value;
       if(attacker.shield > 0){
         attacker.shield = 0;
         counterDamage = 0;
-        setToast(`${attacker.role} 的盾擋住這次反擊`);
+        showNote('護盾擋住反擊');
       }
     }
 
     const aAfter = Math.max(0, attacker.value - counterDamage);
     const dAfter = Math.max(0, defender.value - attackDamage);
 
-    const freezes = [];
-    if(attacker.role === '魔法師'){
+    const freezeMsgs = [];
+    if(attacker.role === '魔法師' && dAfter > 0){
       defender.frozen = Math.max(defender.frozen, 2);
-      freezes.push(`${defender.role} 被冰凍 2 回合`);
+      freezeMsgs.push('魔法師冰凍目標');
     }
-    if(defender.role === '魔法師'){
+    if(defender.role === '魔法師' && aAfter > 0){
       attacker.frozen = Math.max(attacker.frozen, 2);
-      freezes.push(`${attacker.role} 被冰凍 2 回合`);
+      freezeMsgs.push('魔法師反制冰凍');
     }
 
     attacker.value = aAfter;
     defender.value = dAfter;
 
-    const dying = [];
-    if(aAfter <= 0) dying.push({ side, index:attackerIndex });
-    if(dAfter <= 0) dying.push({ side:defendSide, index:defenderIndex });
-
-    state.battle.animate.dying = dying;
-
-    if(attackerIsArcher){
-      if(dAfter <= 0) setToast(`弓箭手擊殺目標，自己不反傷`);
-      else setToast(`弓箭手射擊後，對方剩 ${dAfter}`);
-    } else if(aAfter <= 0 && dAfter <= 0){
-      setToast(`雙方都倒下`);
-    } else if(aAfter <= 0){
-      setToast(`${attacker.role} 倒下，對面剩 ${dAfter}`);
-    } else if(dAfter <= 0){
-      setToast(`${defender.role} 倒下，我方剩 ${aAfter}`);
-    } else {
-      setToast(`互砍後 ${aAfter} 對 ${dAfter}`);
-    }
-
     attackerField[attackerIndex] = attacker;
     defenderField[defenderIndex] = defender;
     setField(side, attackerField);
     setField(defendSide, defenderField);
-    refreshBattle();
-    await sleep(360);
 
-    if(freezes.length){
-      setToast(freezes.join(' / '));
+    state.battle.animate.dying = [];
+    if(aAfter <= 0) state.battle.animate.dying.push({ side, index:attackerIndex });
+    if(dAfter <= 0) state.battle.animate.dying.push({ side:defendSide, index:defenderIndex });
+
+    refreshBattle();
+    await sleep(300);
+
+    if(freezeMsgs.length){
+      showNote(freezeMsgs.join(' / '));
       refreshBattle();
-      await sleep(320);
+      await sleep(280);
     }
 
     if(aAfter <= 0) attackerField[attackerIndex] = null;
@@ -888,18 +851,31 @@
     setField(side, attackerField);
     setField(defendSide, defenderField);
 
-    state.battle.animate.attacking = null;
+    state.battle.animate.lunge = null;
     state.battle.animate.hit = null;
     state.battle.animate.dying = [];
     refreshBattle();
-    await sleep(240);
+    await sleep(220);
 
-    await postResolve();
+    await refillSideAnimated('player');
+    await refillSideAnimated('enemy');
+    if(judgeWinner()) return;
+
+    decrementFrozenForSide(side);
+    state.battle.turn = side === 'player' ? 'enemy' : 'player';
+    state.busy = false;
+    refreshBattle();
+
+    if(state.battle.turn === 'enemy'){
+      await sleep(380);
+      aiTurn();
+    } else {
+      await ensureTurnCanAct();
+    }
   }
 
   function aiTurn(){
     if(!state.battle || state.battle.over || state.busy) return;
-
     if(!sideHasAvailableAttacker('enemy')){
       ensureTurnCanAct();
       return;
@@ -909,6 +885,7 @@
       .map((c,i) => c ? {i,c} : null)
       .filter(Boolean)
       .filter(x => x.c.frozen <= 0);
+
     const targets = state.battle.playerField
       .map((c,i) => c ? {i,c} : null)
       .filter(Boolean);
@@ -917,16 +894,14 @@
     for(const a of attackers){
       for(const t of targets){
         let score = 0;
-        const potentialDamage = t.c.shield > 0 ? 0 : a.c.value;
-        const kill = potentialDamage >= t.c.value;
-        if(kill) score += 1000 + t.c.value;
+        const dmg = t.c.shield > 0 ? 0 : a.c.value;
+        if(dmg >= t.c.value) score += 1000 + t.c.value;
         if(a.c.role === '弓箭手') score += 180;
         if(a.c.role === '魔法師') score += 220;
         if(a.c.role === '盾衛') score += 90;
-        if(t.c.shield > 0) score -= 160;
-        if(t.c.frozen > 0) score -= 40;
-        score += t.c.value * 0.2;
-        if(!best || score > best.score) best = {ai:a.i, ti:t.i, score};
+        if(t.c.shield > 0) score -= 150;
+        score += t.c.value * 0.18;
+        if(!best || score > best.score) best = {ai:a.i, ti:t.i};
       }
     }
     if(best) resolveAttack('enemy', best.ai, best.ti);
@@ -937,7 +912,7 @@
     ui.deckGrid.innerHTML = state.profile.owned.map(card => {
       const selected = state.profile.deck.includes(card.id);
       return `
-        <div class="owned-card ${selected ? 'sel' : ''}">
+        <div class="owned ${selected ? 'sel' : ''}">
           <div class="owned-top">
             <div>
               <div class="owned-role">${card.role}</div>
@@ -960,7 +935,7 @@
         if(inDeck){
           if(state.profile.deck.length <= 1) return;
           state.profile.deck = state.profile.deck.filter(x => x !== id);
-        }else{
+        } else {
           if(state.profile.deck.length >= 6) return;
           state.profile.deck.push(id);
         }
@@ -976,7 +951,7 @@
     ui.upgradeGrid.innerHTML = state.profile.owned.map(card => {
       const cost = card.level * 6;
       return `
-        <div class="owned-card">
+        <div class="owned">
           <div class="owned-top">
             <div>
               <div class="owned-role">${card.role}</div>
@@ -1027,7 +1002,7 @@
     refreshMeta();
     renderDeckEditor();
     renderUpgradeEditor();
-    setToast('進度已重置');
+    showNote('進度已重置');
     showOverlay(ui.menuOverlay);
   });
 
@@ -1035,7 +1010,6 @@
   refreshMeta();
   renderDeckEditor();
   renderUpgradeEditor();
-  setToast('從主頁開始戰鬥');
 })();
 </script>
 </body>
