@@ -132,12 +132,9 @@
   .dead .x{font-size:34px;font-weight:1000;line-height:1}
   .dead .t{font-size:12px;font-weight:900}
   .flash-note{
-    position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 18px);transform:translateX(-50%);
-    min-width:120px;max-width:78%;text-align:center;padding:8px 14px;border-radius:999px;
-    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);font-size:13px;font-weight:1000;
-    color:#e7edff;opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    display:none !important;
   }
-  .flash-note.show{opacity:1}
+  .flash-note.show{display:none !important;opacity:0}
   .menu-row{display:flex;justify-content:center;align-items:center}
   .btn{
     height:48px;min-width:96px;border:none;border-radius:16px;background:linear-gradient(180deg,#2c345a,#242949);
@@ -278,14 +275,14 @@
     </div>
   </div>
 
-  <div class="version-badge" id="versionBadge">v5.0.4</div>
+  <div class="version-badge" id="versionBadge">v5.0.5</div>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const saveKey = 'card_duel_progress_v5';
-  const GAME_VERSION = 'v5.0.4';
+  const GAME_VERSION = 'v5.0.5';
   const ROLE_MULT = {
     '劍士': 1.30,
     '弓箭手': 0.80,
@@ -332,10 +329,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   function showNote(text) {
-    clearTimeout(state.noteTimer);
-    ui.flashNote.textContent = text;
-    ui.flashNote.classList.add('show');
-    state.noteTimer = setTimeout(() => ui.flashNote.classList.remove('show'), 760);
+    // intentionally no-op in v5.0.5: battle should read through motion, not subtitles
   }
 
   function shuffle(arr) {
