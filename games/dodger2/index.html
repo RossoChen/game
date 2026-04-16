@@ -278,14 +278,14 @@
     </div>
   </div>
 
-  <div class="version-badge" id="versionBadge">v5.0.3</div>
+  <div class="version-badge" id="versionBadge">v5.0.4</div>
 </div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const saveKey = 'card_duel_progress_v5';
-  const GAME_VERSION = 'v5.0.3';
+  const GAME_VERSION = 'v5.0.4';
   const ROLE_MULT = {
     '劍士': 1.30,
     '弓箭手': 0.80,
@@ -793,12 +793,12 @@
     const attackDamage = attackerCanDealDamage ? attacker.value : 0;
     let counterDamage = 0;
 
-    if (attacker.role !== '弓箭手') {
-      const mainDef = clone(defenderField[primaryIndex]);
-      if (mainDef) {
-        const defenderCanDealDamage = mainDef.frozen <= 0;
-        counterDamage = defenderCanDealDamage ? mainDef.value : 0;
-      }
+    // 只有「主動攻擊者是弓箭手」才不吃反擊。
+    // 守方就算是弓箭手，被打時依然要正常反擊。
+    const mainDefForCounter = clone(defenderField[primaryIndex]);
+    if (mainDefForCounter && attacker.role !== '弓箭手') {
+      const defenderCanDealDamage = mainDefForCounter.frozen <= 0;
+      counterDamage = defenderCanDealDamage ? mainDefForCounter.value : 0;
     }
 
     for (const ti of targetIndices) {
